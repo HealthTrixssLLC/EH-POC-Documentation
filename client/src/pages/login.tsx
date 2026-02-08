@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Stethoscope, LogIn } from "lucide-react";
+import { Stethoscope, LogIn, UserCircle } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 
@@ -16,6 +16,14 @@ const roleOptions = [
   { value: "care_coordinator", label: "Care Coordinator" },
   { value: "admin", label: "Administrator" },
   { value: "compliance", label: "Compliance" },
+];
+
+const demoAccounts = [
+  { username: "sarah.np", password: "password", role: "np", label: "Nurse Practitioner", name: "Sarah Johnson, NP" },
+  { username: "dr.williams", password: "password", role: "supervisor", label: "Supervisor", name: "Dr. Lisa Williams" },
+  { username: "emma.coord", password: "password", role: "care_coordinator", label: "Care Coordinator", name: "Emma Davis" },
+  { username: "admin", password: "password", role: "admin", label: "Admin", name: "System Admin" },
+  { username: "compliance", password: "password", role: "compliance", label: "Compliance", name: "Compliance Officer" },
 ];
 
 export default function LoginPage() {
@@ -114,6 +122,35 @@ export default function LoginPage() {
                 {loading ? "Signing in..." : "Sign In"}
               </Button>
             </form>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="pb-3">
+            <h3 className="text-sm font-semibold text-center text-muted-foreground">Demo Accounts</h3>
+          </CardHeader>
+          <CardContent className="pt-0">
+            <div className="grid gap-2">
+              {demoAccounts.map((account) => (
+                <button
+                  key={account.username}
+                  type="button"
+                  onClick={() => {
+                    setUsername(account.username);
+                    setPassword(account.password);
+                    setRole(account.role);
+                  }}
+                  className="flex items-center gap-3 w-full p-2.5 rounded-md text-left text-sm hover-elevate active-elevate-2 border border-transparent"
+                  data-testid={`button-demo-${account.role}`}
+                >
+                  <UserCircle className="w-5 h-5 shrink-0 text-muted-foreground" />
+                  <div className="flex flex-col min-w-0">
+                    <span className="font-medium truncate">{account.name}</span>
+                    <span className="text-xs text-muted-foreground">{account.label} &middot; {account.username}</span>
+                  </div>
+                </button>
+              ))}
+            </div>
           </CardContent>
         </Card>
 

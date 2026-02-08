@@ -24,6 +24,7 @@ import {
   LogOut,
   Stethoscope,
   FileJson,
+  HelpCircle,
 } from "lucide-react";
 
 const roleMenus: Record<string, Array<{ title: string; url: string; icon: any }>> = {
@@ -112,6 +113,21 @@ export function AppSidebar() {
                   </SidebarMenuItem>
                 );
               })}
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
+        <SidebarGroup>
+          <SidebarGroupLabel>Support</SidebarGroupLabel>
+          <SidebarGroupContent>
+            <SidebarMenu>
+              <SidebarMenuItem>
+                <SidebarMenuButton asChild data-active={location === "/help"}>
+                  <Link href="/help" data-testid="link-help-support">
+                    <HelpCircle className="w-4 h-4" />
+                    <span>Help & Support</span>
+                  </Link>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>

@@ -38,6 +38,13 @@ client/src/pages/         - All page components
 ```
 
 ## Recent Changes
+- 2026-02-08: Added Help & Support page at /help
+  - Comprehensive documentation covering all 12 feature areas
+  - Searchable with real-time filtering across all topics
+  - Tabbed navigation: All Topics, Workflows, Features, Testing
+  - Step-by-step testing walkthroughs for every major workflow
+  - Demo credentials reference and seed data documentation
+  - Accessible to ALL user roles via sidebar "Support" section
 - 2026-02-08: Added FHIR R4 Interoperability API and Admin Playground
   - Outbound endpoints: GET Patient, Encounter, Observation, Condition, Bundle
   - Inbound endpoints: POST Patient (create/update), POST Bundle (import Patient + Encounter)

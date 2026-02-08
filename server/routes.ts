@@ -719,8 +719,9 @@ export async function registerRoutes(
       const { instrumentId, instrumentVersion, responses, computedScore, interpretation, status } = req.body;
       const existing = await storage.getAssessmentResponse(req.params.id, instrumentId);
 
+      let result;
       if (existing) {
-        const updated = await storage.updateAssessmentResponse(existing.id, {
+        result = await storage.updateAssessmentResponse(existing.id, {
           responses,
           computedScore,
           interpretation,
@@ -741,28 +742,56 @@ export async function registerRoutes(
             details: `Assessment ${instrumentId} completed with score ${computedScore}`,
           });
         }
-        return res.json(updated);
-      }
+      } else {
+        result = await storage.createAssessmentResponse({
+          visitId: req.params.id,
+          instrumentId,
+          instrumentVersion,
+          responses,
+          computedScore,
+          interpretation,
+          status,
+          completedAt: status === "complete" ? new Date().toISOString() : undefined,
+        });
 
-      const created = await storage.createAssessmentResponse({
-        visitId: req.params.id,
-        instrumentId,
-        instrumentVersion,
-        responses,
-        computedScore,
-        interpretation,
-        status,
-        completedAt: status === "complete" ? new Date().toISOString() : undefined,
-      });
-
-      if (status === "complete") {
-        const checkItem = await storage.getChecklistItemByVisitAndItem(req.params.id, instrumentId);
-        if (checkItem) {
-          await storage.updateChecklistItem(checkItem.id, { status: "complete", completedAt: new Date().toISOString() });
+        if (status === "complete") {
+          const checkItem = await storage.getChecklistItemByVisitAndItem(req.params.id, instrumentId);
+          if (checkItem) {
+            await storage.updateChecklistItem(checkItem.id, { status: "complete", completedAt: new Date().toISOString() });
+          }
         }
       }
 
-      return res.json(created);
+      // Conditional assessment dependencies: PHQ-2 triggers PHQ-9 when positive
+      if (instrumentId === "PHQ-2" && status === "complete") {
+        try {
+          const phq9Checklist = await storage.getChecklistItemByVisitAndItem(req.params.id, "PHQ-9");
+          if (computedScore != null && computedScore >= 3) {
+            if (!phq9Checklist) {
+              const phq9Def = await storage.getAssessmentDefinition("PHQ-9");
+              await storage.createChecklistItem({
+                visitId: req.params.id,
+                itemType: "assessment",
+                itemId: "PHQ-9",
+                itemName: phq9Def?.name || "PHQ-9 Depression Assessment",
+                status: "not_started",
+              });
+            }
+          } else {
+            if (phq9Checklist && phq9Checklist.status !== "complete") {
+              await storage.deleteChecklistItem(phq9Checklist.id);
+              const phq9Response = await storage.getAssessmentResponse(req.params.id, "PHQ-9");
+              if (phq9Response) {
+                await storage.updateAssessmentResponse(phq9Response.id, { status: "not_started" });
+              }
+            }
+          }
+        } catch (depErr) {
+          console.error("Conditional PHQ-9 dependency handling failed:", depErr);
+        }
+      }
+
+      return res.json(result);
     } catch (err: any) {
       return res.status(500).json({ message: err.message });
     }

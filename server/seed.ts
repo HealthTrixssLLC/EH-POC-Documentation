@@ -366,7 +366,7 @@ export async function seedDatabase() {
     planName: "ACA Comprehensive",
     programId: "ACA-COMP",
     visitType: "annual_wellness",
-    requiredAssessments: ["PHQ-2", "PHQ-9", "PRAPARE", "AWV"],
+    requiredAssessments: ["PHQ-2", "PRAPARE", "AWV"],
     requiredMeasures: ["BCS", "COL", "CBP"],
     version: "1.0",
     active: true,

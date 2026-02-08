@@ -61,6 +61,7 @@ export interface IStorage {
   createChecklistItem(item: InsertRequiredChecklist): Promise<RequiredChecklist>;
   updateChecklistItem(id: string, updates: Partial<RequiredChecklist>): Promise<RequiredChecklist | undefined>;
   getChecklistItemByVisitAndItem(visitId: string, itemId: string): Promise<RequiredChecklist | undefined>;
+  deleteChecklistItem(id: string): Promise<void>;
 
   getAssessmentResponse(visitId: string, instrumentId: string): Promise<AssessmentResponse | undefined>;
   createAssessmentResponse(response: InsertAssessmentResponse): Promise<AssessmentResponse>;
@@ -243,6 +244,10 @@ export class DatabaseStorage implements IStorage {
     const [item] = await db.select().from(requiredChecklists)
       .where(and(eq(requiredChecklists.visitId, visitId), eq(requiredChecklists.itemId, itemId)));
     return item;
+  }
+
+  async deleteChecklistItem(id: string) {
+    await db.delete(requiredChecklists).where(eq(requiredChecklists.id, id));
   }
 
   async getAssessmentResponse(visitId: string, instrumentId: string) {

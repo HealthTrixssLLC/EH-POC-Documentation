@@ -38,15 +38,19 @@ client/src/pages/         - All page components
 ```
 
 ## Recent Changes
-- 2026-02-08: Redesigned Intake Dashboard with 2-panel side-by-side layout
-  - LEFT panel: Visit Objectives checklist + inline vitals/assessment/medication data summaries
-  - RIGHT panel: CDS recommendations with dismiss, Provider Tasks with add dialog, auto-composed Progress Note with copy
-  - Patient Context moved to dedicated page at /visits/:id/intake/patient-context (demographics, alerts, full vitals grid, assessments, meds)
-  - New GET /api/visits/:id/overview endpoint aggregating all visit data with vitals/assessment flags and auto-generated progress note
-  - All sub-pages (vitals, identity, assessments, meds, measures) invalidate overview query for cross-panel data refresh
-  - Care plan tasks integrated into main dashboard (no longer separate-only page)
+- 2026-02-08: Redesigned Intake Dashboard with task-driven UX and objective tracking
+  - LEFT panel: NP Tasks (action items driving data entry) + Provider Tasks + Progress Notes (MEAT/TAMPER)
+  - RIGHT panel: CDS at top, then Objectives (what we accomplished) with visual status, assessment results, meds, vitals, plan targets
+  - Visual status indicators: green (completed), amber (excluded), gray (pending) with colored borders, badges, and icons
+  - New objective_exclusions table for documenting why objectives could not be completed
+  - Exclusion flow: XCircle button on pending tasks → dialog with 10 predefined reasons + optional notes → stored exclusion
+  - Exclusion removal via trash button to revert objectives back to pending
+  - Task completion = objectives met model; all tasks resolved (completed or excluded) = ready for finalization
+  - Patient Context at /visits/:id/intake/patient-context (demographics, alerts, full vitals grid, assessments, meds)
+  - GET /api/visits/:id/overview aggregates all visit data with vitals/assessment flags, progress note, and exclusions
+  - CRUD API: GET/POST /api/visits/:id/exclusions, DELETE /api/exclusions/:id
   - Progress note is MEAT/TAMPER compliant for RADV & NCQA audit readiness
-  - Note sections: Encounter Info (DOS, POS-12, provider, insurance), HPI, Physical Exam, Standardized Assessments, Medication Reconciliation, Assessment & Plan with per-diagnosis MEAT (Monitor/Evaluate/Assess/Treat), Quality Measures (HEDIS with per-measure detail), Care Coordination, CDS, Coding Summary (ICD-10/CPT), Provider Attestation
+  - Note sections: Encounter Info, HPI, Physical Exam, Assessments, Med Recon, A&P with per-diagnosis MEAT, Quality Measures, CDS, Coding, Attestation
   - MEAT tags displayed as colored M/E/A/T indicators per section
   - Copy-to-clipboard produces formatted clinical note grouped by ENCOUNTER/SUBJECTIVE/OBJECTIVE/ASSESSMENT & PLAN/PLAN/QUALITY/ATTESTATION
 - 2026-02-08: Added Medication Reconciliation feature

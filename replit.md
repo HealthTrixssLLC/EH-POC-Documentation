@@ -101,6 +101,12 @@ client/src/pages/         - All page components
   - Business rules docs: CDS rules, assessment scoring algorithms, medication safety checks
   - Tabbed layout: Workflow, Activity Diagram, Interface Specs
   - Added to Admin sidebar navigation and Admin Dashboard card grid
+- 2026-02-08: Conditional assessment dependencies
+  - PHQ-9 only appears as a task when PHQ-2 scores >= 3 (positive depression screen)
+  - Dynamic checklist management: PHQ-9 auto-added on positive screen, auto-removed on negative
+  - Re-scoring PHQ-2 correctly adds/removes PHQ-9; completed PHQ-9 preserved for clinical integrity
+  - Vitals save now syncs to vitals_history for real-time clinical timeline updates
+  - Fixed systolicBp/diastolicBp field name inconsistencies across overview, dashboard, and patient context
 - 2026-02-07: Initial POC build - schema, frontend, backend, seed data
 
 ## User Preferences

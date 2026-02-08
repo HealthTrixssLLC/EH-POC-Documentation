@@ -119,6 +119,11 @@ export interface IStorage {
   createMedicationHistory(med: InsertMedicationHistory): Promise<MedicationHistory>;
   getVitalsHistoryByMember(memberId: string): Promise<VitalsHistory[]>;
   createVitalsHistory(vitals: InsertVitalsHistory): Promise<VitalsHistory>;
+
+  getMemberByMemberId(memberId: string): Promise<Member | undefined>;
+  updateMember(id: string, updates: Partial<Member>): Promise<Member | undefined>;
+  getAssessmentResponsesByVisit(visitId: string): Promise<AssessmentResponse[]>;
+  getVisitsByMember(memberId: string): Promise<Visit[]>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -489,6 +494,24 @@ export class DatabaseStorage implements IStorage {
   async createVitalsHistory(vitals: InsertVitalsHistory) {
     const [created] = await db.insert(vitalsHistory).values(vitals).returning();
     return created;
+  }
+
+  async getMemberByMemberId(memberId: string) {
+    const [member] = await db.select().from(members).where(eq(members.memberId, memberId));
+    return member;
+  }
+
+  async updateMember(id: string, updates: Partial<Member>) {
+    const [updated] = await db.update(members).set(updates).where(eq(members.id, id)).returning();
+    return updated;
+  }
+
+  async getAssessmentResponsesByVisit(visitId: string) {
+    return db.select().from(assessmentResponses).where(eq(assessmentResponses.visitId, visitId));
+  }
+
+  async getVisitsByMember(memberId: string) {
+    return db.select().from(visits).where(eq(visits.memberId, memberId)).orderBy(desc(visits.createdAt));
   }
 }
 

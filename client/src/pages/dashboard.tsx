@@ -16,6 +16,7 @@ import {
   Activity,
   Settings,
   Shield,
+  FileJson,
 } from "lucide-react";
 
 function StatCard({ title, value, icon: Icon, color, loading }: {
@@ -244,6 +245,19 @@ function AdminDashboard() {
               <div>
                 <h3 className="font-semibold">Audit Viewer</h3>
                 <p className="text-sm text-muted-foreground">Review access logs and compliance events</p>
+              </div>
+            </CardContent>
+          </Card>
+        </Link>
+        <Link href="/admin/fhir">
+          <Card className="hover-elevate cursor-pointer">
+            <CardContent className="p-6 flex items-center gap-4 flex-wrap">
+              <div className="flex items-center justify-center w-12 h-12 rounded-md" style={{ backgroundColor: "#FEA00215" }}>
+                <FileJson className="w-6 h-6" style={{ color: "#FEA002" }} />
+              </div>
+              <div>
+                <h3 className="font-semibold">FHIR Interoperability</h3>
+                <p className="text-sm text-muted-foreground">Import and export FHIR R4 clinical data</p>
               </div>
             </CardContent>
           </Card>

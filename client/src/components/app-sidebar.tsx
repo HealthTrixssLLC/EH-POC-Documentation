@@ -23,6 +23,7 @@ import {
   Shield,
   LogOut,
   Stethoscope,
+  FileJson,
 } from "lucide-react";
 
 const roleMenus: Record<string, Array<{ title: string; url: string; icon: any }>> = {
@@ -43,6 +44,7 @@ const roleMenus: Record<string, Array<{ title: string; url: string; icon: any }>
   admin: [
     { title: "Dashboard", url: "/", icon: LayoutDashboard },
     { title: "Admin Console", url: "/admin", icon: Settings },
+    { title: "FHIR Interop", url: "/admin/fhir", icon: FileJson },
     { title: "All Visits", url: "/visits", icon: ClipboardList },
   ],
   compliance: [

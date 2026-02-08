@@ -26,6 +26,7 @@ import CareCoordination from "@/pages/care-coordination";
 import AdminConsole from "@/pages/admin-console";
 import AuditViewer from "@/pages/audit-viewer";
 import PatientTimeline from "@/pages/patient-timeline";
+import FhirPlayground from "@/pages/fhir-playground";
 
 function Router() {
   return (
@@ -45,6 +46,7 @@ function Router() {
       <Route path="/reviews" component={SupervisorReviews} />
       <Route path="/coordination" component={CareCoordination} />
       <Route path="/admin" component={AdminConsole} />
+      <Route path="/admin/fhir" component={FhirPlayground} />
       <Route path="/audit" component={AuditViewer} />
       <Route component={NotFound} />
     </Switch>

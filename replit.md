@@ -38,6 +38,12 @@ client/src/pages/         - All page components
 ```
 
 ## Recent Changes
+- 2026-02-08: Added FHIR R4 Interoperability API and Admin Playground
+  - Outbound endpoints: GET Patient, Encounter, Observation, Condition, Bundle
+  - Inbound endpoints: POST Patient (create/update), POST Bundle (import Patient + Encounter)
+  - FHIR R4 compliant with LOINC codes, OperationOutcome errors, proper resource mappings
+  - Admin FHIR Playground at /admin/fhir with Export, Import (with sample data), and API Reference tabs
+  - Added to admin sidebar and dashboard
 - 2026-02-08: Added Patient Clinical Timeline visualization page
   - New tables: lab_results, medication_history, vitals_history
   - 2 years of longitudinal seed data for all 3 members (labs, vitals, Rx)

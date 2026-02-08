@@ -957,5 +957,477 @@ export async function registerRoutes(
     }
   });
 
+  // ========== FHIR R4 API ==========
+
+  // --- Helper: convert member to FHIR Patient ---
+  function memberToFhirPatient(member: any) {
+    return {
+      resourceType: "Patient",
+      id: member.id,
+      identifier: [{ system: "urn:easy-health:member-id", value: member.memberId }],
+      name: [{ family: member.lastName, given: [member.firstName], use: "official" }],
+      birthDate: member.dob,
+      gender: member.gender || "unknown",
+      telecom: [
+        member.phone ? { system: "phone", value: member.phone, use: "home" } : null,
+        member.email ? { system: "email", value: member.email } : null,
+      ].filter(Boolean),
+      address: member.address ? [{
+        use: "home",
+        line: [member.address],
+        city: member.city || "",
+        state: member.state || "",
+        postalCode: member.zip || "",
+      }] : [],
+      generalPractitioner: member.pcp ? [{ display: member.pcp }] : [],
+    };
+  }
+
+  // --- Helper: convert visit to FHIR Encounter ---
+  function visitToFhirEncounter(visit: any, member: any) {
+    return {
+      resourceType: "Encounter",
+      id: visit.id,
+      status: visit.status === "finalized" || visit.status === "exported" ? "finished" :
+              visit.status === "in_progress" ? "in-progress" : "planned",
+      class: { system: "http://terminology.hl7.org/CodeSystem/v3-ActCode", code: "HH", display: "home health" },
+      type: [{ coding: [{ system: "urn:easy-health:visit-type", code: visit.visitType, display: visit.visitType?.replace(/_/g, " ") }] }],
+      subject: { reference: `Patient/${member?.id || visit.memberId}` },
+      period: {
+        start: visit.scheduledDate,
+        ...(visit.finalizedAt ? { end: visit.finalizedAt } : {}),
+      },
+      participant: visit.npUserId ? [{ individual: { reference: `Practitioner/${visit.npUserId}` } }] : [],
+    };
+  }
+
+  // --- Helper: convert vitals to FHIR Observations ---
+  function vitalsToFhirObservations(vitals: any, visitId: string) {
+    const observations: any[] = [];
+    if (vitals.systolic || vitals.diastolic) {
+      observations.push({
+        resourceType: "Observation",
+        id: `${vitals.id}-bp`,
+        status: "final",
+        category: [{ coding: [{ system: "http://terminology.hl7.org/CodeSystem/observation-category", code: "vital-signs", display: "Vital Signs" }] }],
+        code: { coding: [{ system: "http://loinc.org", code: "85354-9", display: "Blood pressure panel" }] },
+        encounter: { reference: `Encounter/${visitId}` },
+        component: [
+          vitals.systolic ? { code: { coding: [{ system: "http://loinc.org", code: "8480-6", display: "Systolic BP" }] }, valueQuantity: { value: vitals.systolic, unit: "mmHg", system: "http://unitsofmeasure.org", code: "mm[Hg]" } } : null,
+          vitals.diastolic ? { code: { coding: [{ system: "http://loinc.org", code: "8462-4", display: "Diastolic BP" }] }, valueQuantity: { value: vitals.diastolic, unit: "mmHg", system: "http://unitsofmeasure.org", code: "mm[Hg]" } } : null,
+        ].filter(Boolean),
+      });
+    }
+    if (vitals.heartRate) {
+      observations.push({
+        resourceType: "Observation",
+        id: `${vitals.id}-hr`,
+        status: "final",
+        category: [{ coding: [{ system: "http://terminology.hl7.org/CodeSystem/observation-category", code: "vital-signs" }] }],
+        code: { coding: [{ system: "http://loinc.org", code: "8867-4", display: "Heart rate" }] },
+        encounter: { reference: `Encounter/${visitId}` },
+        valueQuantity: { value: vitals.heartRate, unit: "bpm", system: "http://unitsofmeasure.org", code: "/min" },
+      });
+    }
+    if (vitals.respiratoryRate) {
+      observations.push({
+        resourceType: "Observation",
+        id: `${vitals.id}-rr`,
+        status: "final",
+        category: [{ coding: [{ system: "http://terminology.hl7.org/CodeSystem/observation-category", code: "vital-signs" }] }],
+        code: { coding: [{ system: "http://loinc.org", code: "9279-1", display: "Respiratory rate" }] },
+        encounter: { reference: `Encounter/${visitId}` },
+        valueQuantity: { value: vitals.respiratoryRate, unit: "breaths/min", system: "http://unitsofmeasure.org", code: "/min" },
+      });
+    }
+    if (vitals.temperature) {
+      observations.push({
+        resourceType: "Observation",
+        id: `${vitals.id}-temp`,
+        status: "final",
+        category: [{ coding: [{ system: "http://terminology.hl7.org/CodeSystem/observation-category", code: "vital-signs" }] }],
+        code: { coding: [{ system: "http://loinc.org", code: "8310-5", display: "Body temperature" }] },
+        encounter: { reference: `Encounter/${visitId}` },
+        valueQuantity: { value: vitals.temperature, unit: "degF", system: "http://unitsofmeasure.org", code: "[degF]" },
+      });
+    }
+    if (vitals.oxygenSaturation) {
+      observations.push({
+        resourceType: "Observation",
+        id: `${vitals.id}-spo2`,
+        status: "final",
+        category: [{ coding: [{ system: "http://terminology.hl7.org/CodeSystem/observation-category", code: "vital-signs" }] }],
+        code: { coding: [{ system: "http://loinc.org", code: "2708-6", display: "Oxygen saturation" }] },
+        encounter: { reference: `Encounter/${visitId}` },
+        valueQuantity: { value: vitals.oxygenSaturation, unit: "%", system: "http://unitsofmeasure.org", code: "%" },
+      });
+    }
+    if (vitals.weight) {
+      observations.push({
+        resourceType: "Observation",
+        id: `${vitals.id}-wt`,
+        status: "final",
+        category: [{ coding: [{ system: "http://terminology.hl7.org/CodeSystem/observation-category", code: "vital-signs" }] }],
+        code: { coding: [{ system: "http://loinc.org", code: "29463-7", display: "Body weight" }] },
+        encounter: { reference: `Encounter/${visitId}` },
+        valueQuantity: { value: vitals.weight, unit: "lbs", system: "http://unitsofmeasure.org", code: "[lb_av]" },
+      });
+    }
+    if (vitals.bmi) {
+      observations.push({
+        resourceType: "Observation",
+        id: `${vitals.id}-bmi`,
+        status: "final",
+        category: [{ coding: [{ system: "http://terminology.hl7.org/CodeSystem/observation-category", code: "vital-signs" }] }],
+        code: { coding: [{ system: "http://loinc.org", code: "39156-5", display: "BMI" }] },
+        encounter: { reference: `Encounter/${visitId}` },
+        valueQuantity: { value: vitals.bmi, unit: "kg/m2", system: "http://unitsofmeasure.org", code: "kg/m2" },
+      });
+    }
+    return observations;
+  }
+
+  // --- Helper: convert visit codes (ICD-10) to FHIR Conditions ---
+  function codesToFhirConditions(codes: any[], visitId: string, memberId: string) {
+    return codes
+      .filter((c: any) => c.codeType === "ICD-10" && !c.removedByNp)
+      .map((c: any) => ({
+        resourceType: "Condition",
+        id: c.id,
+        clinicalStatus: { coding: [{ system: "http://terminology.hl7.org/CodeSystem/condition-clinical", code: "active" }] },
+        code: { coding: [{ system: "http://hl7.org/fhir/sid/icd-10-cm", code: c.code, display: c.description }] },
+        subject: { reference: `Patient/${memberId}` },
+        encounter: { reference: `Encounter/${visitId}` },
+      }));
+  }
+
+  // --- Outbound: GET /api/fhir/Patient/:id ---
+  app.get("/api/fhir/Patient/:id", async (req, res) => {
+    try {
+      const member = await storage.getMember(req.params.id);
+      if (!member) return res.status(404).json({ resourceType: "OperationOutcome", issue: [{ severity: "error", code: "not-found", diagnostics: "Patient not found" }] });
+      return res.json(memberToFhirPatient(member));
+    } catch (err: any) {
+      return res.status(500).json({ resourceType: "OperationOutcome", issue: [{ severity: "error", code: "exception", diagnostics: err.message }] });
+    }
+  });
+
+  // --- Outbound: GET /api/fhir/Encounter/:id ---
+  app.get("/api/fhir/Encounter/:id", async (req, res) => {
+    try {
+      const visit = await storage.getVisit(req.params.id);
+      if (!visit) return res.status(404).json({ resourceType: "OperationOutcome", issue: [{ severity: "error", code: "not-found", diagnostics: "Encounter not found" }] });
+      const member = await storage.getMember(visit.memberId);
+      return res.json(visitToFhirEncounter(visit, member));
+    } catch (err: any) {
+      return res.status(500).json({ resourceType: "OperationOutcome", issue: [{ severity: "error", code: "exception", diagnostics: err.message }] });
+    }
+  });
+
+  // --- Outbound: GET /api/fhir/Observation?encounter=:id ---
+  app.get("/api/fhir/Observation", async (req, res) => {
+    try {
+      const encounterId = req.query.encounter as string;
+      if (!encounterId) return res.status(400).json({ resourceType: "OperationOutcome", issue: [{ severity: "error", code: "required", diagnostics: "encounter query parameter required" }] });
+      const visit = await storage.getVisit(encounterId);
+      if (!visit) return res.status(404).json({ resourceType: "OperationOutcome", issue: [{ severity: "error", code: "not-found", diagnostics: "Encounter not found" }] });
+      const vitals = await storage.getVitalsByVisit(encounterId);
+      const observations = vitals ? vitalsToFhirObservations(vitals, encounterId) : [];
+      return res.json({
+        resourceType: "Bundle",
+        type: "searchset",
+        total: observations.length,
+        entry: observations.map(obs => ({ resource: obs })),
+      });
+    } catch (err: any) {
+      return res.status(500).json({ resourceType: "OperationOutcome", issue: [{ severity: "error", code: "exception", diagnostics: err.message }] });
+    }
+  });
+
+  // --- Outbound: GET /api/fhir/Condition?encounter=:id ---
+  app.get("/api/fhir/Condition", async (req, res) => {
+    try {
+      const encounterId = req.query.encounter as string;
+      if (!encounterId) return res.status(400).json({ resourceType: "OperationOutcome", issue: [{ severity: "error", code: "required", diagnostics: "encounter query parameter required" }] });
+      const visit = await storage.getVisit(encounterId);
+      if (!visit) return res.status(404).json({ resourceType: "OperationOutcome", issue: [{ severity: "error", code: "not-found", diagnostics: "Encounter not found" }] });
+      const codes = await storage.getCodesByVisit(encounterId);
+      const conditions = codesToFhirConditions(codes, encounterId, visit.memberId);
+      return res.json({
+        resourceType: "Bundle",
+        type: "searchset",
+        total: conditions.length,
+        entry: conditions.map(cond => ({ resource: cond })),
+      });
+    } catch (err: any) {
+      return res.status(500).json({ resourceType: "OperationOutcome", issue: [{ severity: "error", code: "exception", diagnostics: err.message }] });
+    }
+  });
+
+  // --- Outbound: GET /api/fhir/Bundle?visit=:id ---
+  app.get("/api/fhir/Bundle", async (req, res) => {
+    try {
+      const visitId = req.query.visit as string;
+      if (!visitId) return res.status(400).json({ resourceType: "OperationOutcome", issue: [{ severity: "error", code: "required", diagnostics: "visit query parameter required" }] });
+      const visit = await storage.getVisit(visitId);
+      if (!visit) return res.status(404).json({ resourceType: "OperationOutcome", issue: [{ severity: "error", code: "not-found", diagnostics: "Visit not found" }] });
+
+      const member = await storage.getMember(visit.memberId);
+      const vitals = await storage.getVitalsByVisit(visit.id);
+      const codes = await storage.getCodesByVisit(visit.id);
+      const note = await storage.getClinicalNote(visit.id);
+      const tasks = await storage.getTasksByVisit(visit.id);
+      const assessments = await storage.getAssessmentResponsesByVisit(visit.id);
+
+      const entries: any[] = [];
+      if (member) entries.push({ fullUrl: `urn:uuid:${member.id}`, resource: memberToFhirPatient(member) });
+      entries.push({ fullUrl: `urn:uuid:${visit.id}`, resource: visitToFhirEncounter(visit, member) });
+      if (vitals) {
+        vitalsToFhirObservations(vitals, visit.id).forEach(obs => {
+          entries.push({ fullUrl: `urn:uuid:${obs.id}`, resource: obs });
+        });
+      }
+      codesToFhirConditions(codes, visit.id, visit.memberId).forEach(cond => {
+        entries.push({ fullUrl: `urn:uuid:${cond.id}`, resource: cond });
+      });
+      assessments.forEach(a => {
+        entries.push({
+          fullUrl: `urn:uuid:${a.id}`,
+          resource: {
+            resourceType: "Observation",
+            id: a.id,
+            status: a.status === "completed" ? "final" : "preliminary",
+            category: [{ coding: [{ system: "http://terminology.hl7.org/CodeSystem/observation-category", code: "survey", display: "Survey" }] }],
+            code: { coding: [{ system: "urn:easy-health:instrument", code: a.instrumentId, display: a.instrumentId }] },
+            encounter: { reference: `Encounter/${visit.id}` },
+            valueInteger: a.computedScore ?? undefined,
+            interpretation: a.interpretation ? [{ text: a.interpretation }] : [],
+          },
+        });
+      });
+      if (note) {
+        entries.push({
+          fullUrl: `urn:uuid:${note.id}`,
+          resource: {
+            resourceType: "DocumentReference",
+            id: note.id,
+            status: "current",
+            type: { coding: [{ system: "http://loinc.org", code: "11506-3", display: "Progress note" }] },
+            content: [{ attachment: { contentType: "application/json", data: Buffer.from(JSON.stringify(note)).toString("base64") } }],
+          },
+        });
+      }
+      tasks.forEach(t => {
+        entries.push({
+          fullUrl: `urn:uuid:${t.id}`,
+          resource: {
+            resourceType: "Task",
+            id: t.id,
+            status: t.status === "completed" ? "completed" : t.status === "in_progress" ? "in-progress" : "requested",
+            description: t.title,
+            note: t.description ? [{ text: t.description }] : [],
+            priority: t.priority === "urgent" ? "urgent" : t.priority === "high" ? "asap" : "routine",
+          },
+        });
+      });
+
+      const bundle = {
+        resourceType: "Bundle",
+        id: `export-${visit.id}`,
+        type: "document",
+        timestamp: new Date().toISOString(),
+        entry: entries,
+      };
+
+      return res.json(bundle);
+    } catch (err: any) {
+      return res.status(500).json({ resourceType: "OperationOutcome", issue: [{ severity: "error", code: "exception", diagnostics: err.message }] });
+    }
+  });
+
+  // --- Inbound: POST /api/fhir/Patient ---
+  app.post("/api/fhir/Patient", async (req, res) => {
+    try {
+      const resource = req.body;
+      if (resource.resourceType !== "Patient") {
+        return res.status(400).json({ resourceType: "OperationOutcome", issue: [{ severity: "error", code: "invalid", diagnostics: "Expected resourceType 'Patient'" }] });
+      }
+      if (!resource.name || !resource.name[0]) {
+        return res.status(400).json({ resourceType: "OperationOutcome", issue: [{ severity: "error", code: "required", diagnostics: "Patient.name is required" }] });
+      }
+
+      const name = resource.name[0];
+      const firstName = (name.given || [])[0] || "Unknown";
+      const lastName = name.family || "Unknown";
+      const identifier = resource.identifier?.find((i: any) => i.system === "urn:easy-health:member-id");
+      const externalMemberId = identifier?.value || `FHIR-${Date.now()}`;
+      const addr = resource.address?.[0];
+      const phone = resource.telecom?.find((t: any) => t.system === "phone")?.value;
+      const email = resource.telecom?.find((t: any) => t.system === "email")?.value;
+
+      const existing = await storage.getMemberByMemberId(externalMemberId);
+      if (existing) {
+        const updated = await storage.updateMember(existing.id, {
+          firstName,
+          lastName,
+          dob: resource.birthDate || existing.dob,
+          gender: resource.gender || existing.gender,
+          phone: phone || existing.phone,
+          email: email || existing.email,
+          address: addr?.line?.[0] || existing.address,
+          city: addr?.city || existing.city,
+          state: addr?.state || existing.state,
+          zip: addr?.postalCode || existing.zip,
+        });
+        await storage.createAuditEvent({ eventType: "fhir_patient_updated", patientId: existing.id, details: `Patient ${externalMemberId} updated via FHIR API` });
+        return res.status(200).json(memberToFhirPatient(updated || existing));
+      }
+
+      const created = await storage.createMember({
+        memberId: externalMemberId,
+        firstName,
+        lastName,
+        dob: resource.birthDate || "1900-01-01",
+        gender: resource.gender,
+        phone,
+        email,
+        address: addr?.line?.[0],
+        city: addr?.city,
+        state: addr?.state,
+        zip: addr?.postalCode,
+        insurancePlan: null,
+        pcp: resource.generalPractitioner?.[0]?.display || null,
+        conditions: null,
+        medications: null,
+        allergies: null,
+        riskFlags: null,
+      });
+      await storage.createAuditEvent({ eventType: "fhir_patient_created", patientId: created.id, details: `Patient ${externalMemberId} created via FHIR API` });
+      return res.status(201).json(memberToFhirPatient(created));
+    } catch (err: any) {
+      return res.status(500).json({ resourceType: "OperationOutcome", issue: [{ severity: "error", code: "exception", diagnostics: err.message }] });
+    }
+  });
+
+  // --- Inbound: POST /api/fhir/Bundle ---
+  app.post("/api/fhir/Bundle", async (req, res) => {
+    try {
+      const bundle = req.body;
+      if (bundle.resourceType !== "Bundle") {
+        return res.status(400).json({ resourceType: "OperationOutcome", issue: [{ severity: "error", code: "invalid", diagnostics: "Expected resourceType 'Bundle'" }] });
+      }
+      if (!bundle.entry || !Array.isArray(bundle.entry)) {
+        return res.status(400).json({ resourceType: "OperationOutcome", issue: [{ severity: "error", code: "required", diagnostics: "Bundle.entry is required" }] });
+      }
+
+      const results: any[] = [];
+      const errors: any[] = [];
+      let createdMember: any = null;
+
+      for (const entry of bundle.entry) {
+        const resource = entry.resource;
+        if (!resource || !resource.resourceType) {
+          errors.push({ severity: "warning", code: "invalid", diagnostics: "Entry missing resource or resourceType" });
+          continue;
+        }
+
+        try {
+          if (resource.resourceType === "Patient") {
+            const name = resource.name?.[0];
+            const firstName = (name?.given || [])[0] || "Unknown";
+            const lastName = name?.family || "Unknown";
+            const identifier = resource.identifier?.find((i: any) => i.system === "urn:easy-health:member-id");
+            const externalMemberId = identifier?.value || `FHIR-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
+            const addr = resource.address?.[0];
+            const phone = resource.telecom?.find((t: any) => t.system === "phone")?.value;
+            const email = resource.telecom?.find((t: any) => t.system === "email")?.value;
+
+            const existing = await storage.getMemberByMemberId(externalMemberId);
+            if (existing) {
+              await storage.updateMember(existing.id, {
+                firstName, lastName,
+                dob: resource.birthDate || existing.dob,
+                gender: resource.gender || existing.gender,
+                phone: phone || existing.phone, email: email || existing.email,
+                address: addr?.line?.[0] || existing.address, city: addr?.city || existing.city,
+                state: addr?.state || existing.state, zip: addr?.postalCode || existing.zip,
+              });
+              createdMember = existing;
+              results.push({ resourceType: "Patient", action: "updated", id: existing.id });
+            } else {
+              const created = await storage.createMember({
+                memberId: externalMemberId, firstName, lastName,
+                dob: resource.birthDate || "1900-01-01",
+                gender: resource.gender, phone, email,
+                address: addr?.line?.[0], city: addr?.city, state: addr?.state, zip: addr?.postalCode,
+                insurancePlan: null, pcp: resource.generalPractitioner?.[0]?.display || null,
+                conditions: null, medications: null, allergies: null, riskFlags: null,
+              });
+              createdMember = created;
+              results.push({ resourceType: "Patient", action: "created", id: created.id });
+            }
+          } else if (resource.resourceType === "Encounter") {
+            const subjectRef = resource.subject?.reference;
+            const memberId = createdMember?.id || (subjectRef ? subjectRef.replace("Patient/", "") : null);
+            if (!memberId) {
+              errors.push({ severity: "warning", code: "invalid", diagnostics: "Encounter has no subject reference and no Patient in bundle" });
+              continue;
+            }
+            const allUsers = await storage.getAllUsers();
+            const npUser = allUsers.find(u => u.role === "np");
+            const created = await storage.createVisit({
+              memberId,
+              npUserId: npUser?.id || "unknown",
+              scheduledDate: resource.period?.start || new Date().toISOString().split("T")[0],
+              scheduledTime: null,
+              visitType: resource.type?.[0]?.coding?.[0]?.code || "annual_wellness",
+              status: "scheduled",
+              planId: null,
+              identityVerified: false, identityMethod: null,
+              signedAt: null, signedBy: null, attestationText: null, finalizedAt: null,
+              syncStatus: "draft_local", travelNotes: null, safetyNotes: null,
+            });
+            results.push({ resourceType: "Encounter", action: "created", id: created.id });
+          } else {
+            results.push({ resourceType: resource.resourceType, action: "skipped", reason: "unsupported resource type" });
+          }
+        } catch (entryErr: any) {
+          errors.push({ severity: "error", code: "exception", diagnostics: `Error processing ${resource.resourceType}: ${entryErr.message}` });
+        }
+      }
+
+      await storage.createAuditEvent({
+        eventType: "fhir_bundle_imported",
+        details: `FHIR Bundle imported: ${results.length} resources processed, ${errors.length} errors`,
+      });
+
+      return res.status(200).json({
+        resourceType: "OperationOutcome",
+        issue: [
+          { severity: "information", code: "informational", diagnostics: `Processed ${results.length} resources` },
+          ...errors,
+        ],
+        results,
+      });
+    } catch (err: any) {
+      return res.status(500).json({ resourceType: "OperationOutcome", issue: [{ severity: "error", code: "exception", diagnostics: err.message }] });
+    }
+  });
+
+  // --- List all members as FHIR Patients ---
+  app.get("/api/fhir/Patient", async (_req, res) => {
+    try {
+      const allMembers = await storage.getAllMembers();
+      return res.json({
+        resourceType: "Bundle",
+        type: "searchset",
+        total: allMembers.length,
+        entry: allMembers.map(m => ({ resource: memberToFhirPatient(m) })),
+      });
+    } catch (err: any) {
+      return res.status(500).json({ resourceType: "OperationOutcome", issue: [{ severity: "error", code: "exception", diagnostics: err.message }] });
+    }
+  });
+
   return httpServer;
 }

@@ -38,6 +38,12 @@ client/src/pages/         - All page components
 ```
 
 ## Recent Changes
+- 2026-02-08: Added Clinical Decision Support (CDS), Data Validation with override tracking, and Auto-Coding (CPT/HCPCS/ICD-10)
+  - New tables: clinical_rules, visit_recommendations, validation_overrides, visit_codes
+  - 8 clinical rules seeded (PHQ-2→PHQ-9, BP, BMI, O2, pain, PRAPARE, heart rate)
+  - Real-time rule evaluation after vitals save and assessment completion
+  - Inline validation warnings with structured override reasons
+  - Auto-generated codes visible on Review & Finalize page with verify/remove actions
 - 2026-02-07: Initial POC build - schema, frontend, backend, seed data
 
 ## User Preferences

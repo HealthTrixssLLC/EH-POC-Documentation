@@ -290,6 +290,78 @@ export const insertPlanPackSchema = createInsertSchema(planPacks).omit({ id: tru
 export type InsertPlanPack = z.infer<typeof insertPlanPackSchema>;
 export type PlanPack = typeof planPacks.$inferSelect;
 
+// Clinical decision rules
+export const clinicalRules = pgTable("clinical_rules", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  ruleId: text("rule_id").notNull().unique(),
+  name: text("name").notNull(),
+  category: text("category").notNull(),
+  triggerSource: text("trigger_source").notNull(),
+  triggerCondition: jsonb("trigger_condition").notNull(),
+  recommendedAction: text("recommended_action").notNull(),
+  recommendedItemType: text("recommended_item_type"),
+  recommendedItemId: text("recommended_item_id"),
+  priority: text("priority").notNull().default("medium"),
+  description: text("description"),
+  active: boolean("active").notNull().default(true),
+});
+
+export const insertClinicalRuleSchema = createInsertSchema(clinicalRules).omit({ id: true });
+export type InsertClinicalRule = z.infer<typeof insertClinicalRuleSchema>;
+export type ClinicalRule = typeof clinicalRules.$inferSelect;
+
+// Triggered recommendations per visit
+export const visitRecommendations = pgTable("visit_recommendations", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  visitId: varchar("visit_id").notNull(),
+  ruleId: text("rule_id").notNull(),
+  ruleName: text("rule_name").notNull(),
+  recommendation: text("recommendation").notNull(),
+  status: text("status").notNull().default("pending"),
+  dismissReason: text("dismiss_reason"),
+  dismissNote: text("dismiss_note"),
+  triggeredAt: text("triggered_at"),
+  resolvedAt: text("resolved_at"),
+});
+
+export const insertVisitRecommendationSchema = createInsertSchema(visitRecommendations).omit({ id: true });
+export type InsertVisitRecommendation = z.infer<typeof insertVisitRecommendationSchema>;
+export type VisitRecommendation = typeof visitRecommendations.$inferSelect;
+
+// Validation overrides (when NP overrides a warning)
+export const validationOverrides = pgTable("validation_overrides", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  visitId: varchar("visit_id").notNull(),
+  field: text("field").notNull(),
+  warningType: text("warning_type").notNull(),
+  warningMessage: text("warning_message").notNull(),
+  overrideReason: text("override_reason").notNull(),
+  overrideNote: text("override_note"),
+  value: text("value"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const insertValidationOverrideSchema = createInsertSchema(validationOverrides).omit({ id: true, createdAt: true });
+export type InsertValidationOverride = z.infer<typeof insertValidationOverrideSchema>;
+export type ValidationOverride = typeof validationOverrides.$inferSelect;
+
+// Visit coding (CPT, HCPCS, ICD-10)
+export const visitCodes = pgTable("visit_codes", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  visitId: varchar("visit_id").notNull(),
+  codeType: text("code_type").notNull(),
+  code: text("code").notNull(),
+  description: text("description").notNull(),
+  source: text("source"),
+  autoAssigned: boolean("auto_assigned").notNull().default(true),
+  verified: boolean("verified").notNull().default(false),
+  removedByNp: boolean("removed_by_np").notNull().default(false),
+});
+
+export const insertVisitCodeSchema = createInsertSchema(visitCodes).omit({ id: true });
+export type InsertVisitCode = z.infer<typeof insertVisitCodeSchema>;
+export type VisitCode = typeof visitCodes.$inferSelect;
+
 export const ROLES = ["np", "supervisor", "care_coordinator", "admin", "compliance"] as const;
 export type Role = typeof ROLES[number];
 
@@ -315,3 +387,27 @@ export const UNABLE_TO_ASSESS_REASONS = [
   "Time constraints",
   "Other",
 ] as const;
+
+export const VALIDATION_OVERRIDE_REASONS = [
+  "Confirmed with patient",
+  "Known outlier for this patient",
+  "Equipment recalibrated and verified",
+  "Value consistent with clinical presentation",
+  "Documented in prior records",
+  "Patient has known condition explaining value",
+  "Measurement repeated and confirmed",
+  "Other (see notes)",
+] as const;
+
+export const RECOMMENDATION_DISMISS_REASONS = [
+  "Already addressed in prior visit",
+  "Not clinically indicated",
+  "Patient declined",
+  "Will address in follow-up",
+  "Duplicate of existing order",
+  "Outside scope of this visit",
+  "Other (see notes)",
+] as const;
+
+export const CODE_TYPES = ["CPT", "HCPCS", "ICD-10"] as const;
+export type CodeType = typeof CODE_TYPES[number];

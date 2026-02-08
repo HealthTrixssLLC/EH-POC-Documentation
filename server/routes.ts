@@ -2,6 +2,17 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 
+function evaluateCondition(value: number, threshold: number, operator: string): boolean {
+  switch (operator) {
+    case ">=": return value >= threshold;
+    case "<=": return value <= threshold;
+    case ">": return value > threshold;
+    case "<": return value < threshold;
+    case "==": return value === threshold;
+    default: return false;
+  }
+}
+
 export async function registerRoutes(
   httpServer: Server,
   app: Express
@@ -609,6 +620,283 @@ export async function registerRoutes(
     try {
       const events = await storage.getAuditEvents();
       return res.json(events);
+    } catch (err: any) {
+      return res.status(500).json({ message: err.message });
+    }
+  });
+
+  // ===== Clinical Decision Support =====
+  app.get("/api/clinical-rules", async (_req, res) => {
+    try {
+      const rules = await storage.getAllClinicalRules();
+      return res.json(rules);
+    } catch (err: any) {
+      return res.status(500).json({ message: err.message });
+    }
+  });
+
+  app.post("/api/visits/:id/evaluate-rules", async (req, res) => {
+    try {
+      const { source, data } = req.body;
+      const rules = await storage.getAllClinicalRules();
+      const existingRecs = await storage.getRecommendationsByVisit(req.params.id);
+      const existingRuleIds = new Set(existingRecs.map((r) => r.ruleId));
+      const triggered: any[] = [];
+
+      for (const rule of rules) {
+        if (existingRuleIds.has(rule.ruleId)) continue;
+        if (rule.triggerSource !== source) continue;
+        const condition = rule.triggerCondition as any;
+
+        let matches = false;
+        if (source === "vitals") {
+          const value = data[condition.field];
+          if (value != null) {
+            matches = evaluateCondition(value, condition.threshold, condition.operator);
+          }
+          if (!matches && condition.orCondition) {
+            const orValue = data[condition.orCondition.field];
+            if (orValue != null) {
+              matches = evaluateCondition(orValue, condition.orCondition.threshold, condition.orCondition.operator);
+            }
+          }
+        } else if (source === "assessment") {
+          if (condition.instrumentId === data.instrumentId) {
+            matches = evaluateCondition(data.score, condition.scoreThreshold, condition.operator);
+          }
+        }
+
+        if (matches) {
+          const rec = await storage.createRecommendation({
+            visitId: req.params.id,
+            ruleId: rule.ruleId,
+            ruleName: rule.name,
+            recommendation: rule.recommendedAction,
+            status: "pending",
+            triggeredAt: new Date().toISOString(),
+          });
+          triggered.push({ ...rec, priority: rule.priority, category: rule.category });
+        }
+      }
+
+      return res.json({ triggered, total: triggered.length });
+    } catch (err: any) {
+      return res.status(500).json({ message: err.message });
+    }
+  });
+
+  app.get("/api/visits/:id/recommendations", async (req, res) => {
+    try {
+      const recs = await storage.getRecommendationsByVisit(req.params.id);
+      return res.json(recs);
+    } catch (err: any) {
+      return res.status(500).json({ message: err.message });
+    }
+  });
+
+  app.patch("/api/recommendations/:id", async (req, res) => {
+    try {
+      const { status, dismissReason, dismissNote } = req.body;
+      const updates: any = { status };
+      if (dismissReason) updates.dismissReason = dismissReason;
+      if (dismissNote) updates.dismissNote = dismissNote;
+      if (status === "dismissed" || status === "resolved") updates.resolvedAt = new Date().toISOString();
+      const updated = await storage.updateRecommendation(req.params.id, updates);
+      return res.json(updated);
+    } catch (err: any) {
+      return res.status(500).json({ message: err.message });
+    }
+  });
+
+  // ===== Data Validation =====
+  app.post("/api/visits/:id/validate-vitals", async (req, res) => {
+    try {
+      const data = req.body;
+      const warnings: any[] = [];
+
+      const checks = [
+        { field: "systolic", min: 60, max: 250, label: "Systolic BP" },
+        { field: "diastolic", min: 30, max: 150, label: "Diastolic BP" },
+        { field: "heartRate", min: 30, max: 220, label: "Heart Rate" },
+        { field: "respiratoryRate", min: 6, max: 60, label: "Respiratory Rate" },
+        { field: "temperature", min: 90, max: 108, label: "Temperature" },
+        { field: "oxygenSaturation", min: 50, max: 100, label: "O2 Saturation" },
+        { field: "bmi", min: 10, max: 70, label: "BMI" },
+        { field: "painLevel", min: 0, max: 10, label: "Pain Level" },
+      ];
+
+      for (const check of checks) {
+        const val = parseFloat(data[check.field]);
+        if (isNaN(val)) continue;
+        if (val < check.min || val > check.max) {
+          warnings.push({
+            field: check.field,
+            warningType: "out_of_range",
+            message: `${check.label} value of ${val} is outside expected range (${check.min}-${check.max})`,
+            value: val,
+          });
+        }
+      }
+
+      if (data.systolic && data.diastolic) {
+        const sys = parseFloat(data.systolic);
+        const dia = parseFloat(data.diastolic);
+        if (!isNaN(sys) && !isNaN(dia) && dia >= sys) {
+          warnings.push({
+            field: "diastolic",
+            warningType: "logical_conflict",
+            message: "Diastolic pressure should be less than systolic pressure",
+            value: dia,
+          });
+        }
+      }
+
+      return res.json({ warnings, valid: warnings.length === 0 });
+    } catch (err: any) {
+      return res.status(500).json({ message: err.message });
+    }
+  });
+
+  app.get("/api/visits/:id/overrides", async (req, res) => {
+    try {
+      const overrides = await storage.getOverridesByVisit(req.params.id);
+      return res.json(overrides);
+    } catch (err: any) {
+      return res.status(500).json({ message: err.message });
+    }
+  });
+
+  app.post("/api/visits/:id/overrides", async (req, res) => {
+    try {
+      const override = await storage.createOverride({
+        ...req.body,
+        visitId: req.params.id,
+      });
+      return res.json(override);
+    } catch (err: any) {
+      return res.status(500).json({ message: err.message });
+    }
+  });
+
+  // ===== Auto-Coding Engine =====
+  app.get("/api/visits/:id/codes", async (req, res) => {
+    try {
+      const codes = await storage.getCodesByVisit(req.params.id);
+      return res.json(codes);
+    } catch (err: any) {
+      return res.status(500).json({ message: err.message });
+    }
+  });
+
+  app.post("/api/visits/:id/generate-codes", async (req, res) => {
+    try {
+      const visit = await storage.getVisit(req.params.id);
+      if (!visit) return res.status(404).json({ message: "Visit not found" });
+
+      await storage.deleteVisitCodesByVisit(req.params.id);
+
+      const codes: any[] = [];
+
+      if (visit.visitType === "annual_wellness") {
+        codes.push(
+          { codeType: "CPT", code: "99387", description: "Preventive visit, new patient, 65+", source: "visit_type" },
+          { codeType: "HCPCS", code: "G0438", description: "Annual wellness visit, initial", source: "visit_type" },
+          { codeType: "ICD-10", code: "Z00.00", description: "Encounter for general adult medical exam w/o abnormal findings", source: "visit_type" },
+        );
+      } else if (visit.visitType === "initial_assessment") {
+        codes.push(
+          { codeType: "CPT", code: "99345", description: "Home visit, new patient, high complexity", source: "visit_type" },
+          { codeType: "ICD-10", code: "Z00.00", description: "Encounter for general adult medical exam w/o abnormal findings", source: "visit_type" },
+        );
+      } else {
+        codes.push(
+          { codeType: "CPT", code: "99350", description: "Home visit, established patient, high complexity", source: "visit_type" },
+        );
+      }
+
+      const vitals = await storage.getVitalsByVisit(req.params.id);
+      if (vitals) {
+        if (vitals.systolic && vitals.systolic >= 140) {
+          codes.push({ codeType: "ICD-10", code: "I10", description: "Essential (primary) hypertension", source: "vitals" });
+        }
+        if (vitals.bmi && vitals.bmi >= 30) {
+          codes.push({ codeType: "ICD-10", code: "E66.9", description: "Obesity, unspecified", source: "vitals" });
+        }
+        if (vitals.bmi && vitals.bmi >= 25 && vitals.bmi < 30) {
+          codes.push({ codeType: "ICD-10", code: "E66.3", description: "Overweight", source: "vitals" });
+        }
+      }
+
+      const checklist = await storage.getChecklistByVisit(req.params.id);
+      for (const item of checklist) {
+        if (item.status !== "complete") continue;
+
+        if (item.itemType === "assessment") {
+          const resp = await storage.getAssessmentResponse(req.params.id, item.itemId);
+          if (resp) {
+            if (item.itemId === "PHQ-2" || item.itemId === "PHQ-9") {
+              codes.push({ codeType: "CPT", code: "96127", description: "Brief emotional/behavioral assessment", source: "assessment" });
+              if (resp.computedScore && resp.computedScore >= 10) {
+                codes.push({ codeType: "ICD-10", code: "F32.1", description: "Major depressive disorder, single episode, moderate", source: "assessment" });
+              }
+            }
+            if (item.itemId === "PRAPARE") {
+              codes.push({ codeType: "CPT", code: "96160", description: "Patient-focused health risk assessment", source: "assessment" });
+            }
+            if (item.itemId === "AWV") {
+              codes.push({ codeType: "HCPCS", code: "G0438", description: "Annual wellness visit, initial", source: "assessment" });
+            }
+          }
+        }
+
+        if (item.itemType === "measure") {
+          if (item.itemId === "BCS") {
+            codes.push({ codeType: "HCPCS", code: "G0202", description: "Screening mammography reference", source: "measure" });
+          }
+          if (item.itemId === "COL") {
+            codes.push({ codeType: "HCPCS", code: "G0121", description: "Colorectal cancer screening", source: "measure" });
+          }
+          if (item.itemId === "CDC-A1C") {
+            codes.push({ codeType: "CPT", code: "83036", description: "Hemoglobin A1c", source: "measure" });
+            codes.push({ codeType: "ICD-10", code: "Z13.1", description: "Encounter for screening for diabetes mellitus", source: "measure" });
+          }
+          if (item.itemId === "CBP") {
+            codes.push({ codeType: "ICD-10", code: "Z13.6", description: "Encounter for screening for cardiovascular disorders", source: "measure" });
+          }
+        }
+      }
+
+      const unique = new Map<string, any>();
+      for (const c of codes) {
+        const key = `${c.codeType}:${c.code}`;
+        if (!unique.has(key)) unique.set(key, c);
+      }
+
+      const savedCodes = [];
+      for (const c of unique.values()) {
+        const saved = await storage.createVisitCode({
+          visitId: req.params.id,
+          codeType: c.codeType,
+          code: c.code,
+          description: c.description,
+          source: c.source,
+          autoAssigned: true,
+          verified: false,
+          removedByNp: false,
+        });
+        savedCodes.push(saved);
+      }
+
+      return res.json({ codes: savedCodes, total: savedCodes.length });
+    } catch (err: any) {
+      return res.status(500).json({ message: err.message });
+    }
+  });
+
+  app.patch("/api/codes/:id", async (req, res) => {
+    try {
+      const updated = await storage.updateVisitCode(req.params.id, req.body);
+      return res.json(updated);
     } catch (err: any) {
       return res.status(500).json({ message: err.message });
     }

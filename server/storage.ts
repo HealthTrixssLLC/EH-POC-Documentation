@@ -5,6 +5,7 @@ import {
   requiredChecklists, assessmentResponses, measureDefinitions,
   measureResults, vitalsRecords, clinicalNotes, carePlanTasks,
   reviewDecisions, exportArtifacts, auditEvents, planPacks,
+  clinicalRules, visitRecommendations, validationOverrides, visitCodes,
   type User, type InsertUser, type Member, type InsertMember,
   type Visit, type InsertVisit, type PlanTarget, type InsertPlanTarget,
   type AssessmentDefinition, type InsertAssessmentDefinition,
@@ -19,6 +20,10 @@ import {
   type ExportArtifact, type InsertExportArtifact,
   type AuditEvent, type InsertAuditEvent,
   type PlanPack, type InsertPlanPack,
+  type ClinicalRule, type InsertClinicalRule,
+  type VisitRecommendation, type InsertVisitRecommendation,
+  type ValidationOverride, type InsertValidationOverride,
+  type VisitCode, type InsertVisitCode,
 } from "@shared/schema";
 
 export interface IStorage {
@@ -91,6 +96,18 @@ export interface IStorage {
   getTasksEnriched(): Promise<(CarePlanTask & { memberName: string })[]>;
   getReviewVisitsEnriched(): Promise<(Visit & { memberName: string; npName: string; reviewStatus: string | null })[]>;
   getMemberMap(): Promise<Map<string, Member>>;
+
+  getAllClinicalRules(): Promise<ClinicalRule[]>;
+  createClinicalRule(rule: InsertClinicalRule): Promise<ClinicalRule>;
+  getRecommendationsByVisit(visitId: string): Promise<VisitRecommendation[]>;
+  createRecommendation(rec: InsertVisitRecommendation): Promise<VisitRecommendation>;
+  updateRecommendation(id: string, updates: Partial<VisitRecommendation>): Promise<VisitRecommendation>;
+  getOverridesByVisit(visitId: string): Promise<ValidationOverride[]>;
+  createOverride(override: InsertValidationOverride): Promise<ValidationOverride>;
+  getCodesByVisit(visitId: string): Promise<VisitCode[]>;
+  createVisitCode(code: InsertVisitCode): Promise<VisitCode>;
+  deleteVisitCodesByVisit(visitId: string): Promise<void>;
+  updateVisitCode(id: string, updates: Partial<VisitCode>): Promise<VisitCode>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -384,6 +401,56 @@ export class DatabaseStorage implements IStorage {
         reviewStatus: null as string | null,
       };
     });
+  }
+
+  async getAllClinicalRules() {
+    return db.select().from(clinicalRules).where(eq(clinicalRules.active, true));
+  }
+
+  async createClinicalRule(rule: InsertClinicalRule) {
+    const [created] = await db.insert(clinicalRules).values(rule).returning();
+    return created;
+  }
+
+  async getRecommendationsByVisit(visitId: string) {
+    return db.select().from(visitRecommendations).where(eq(visitRecommendations.visitId, visitId));
+  }
+
+  async createRecommendation(rec: InsertVisitRecommendation) {
+    const [created] = await db.insert(visitRecommendations).values(rec).returning();
+    return created;
+  }
+
+  async updateRecommendation(id: string, updates: Partial<VisitRecommendation>) {
+    const [updated] = await db.update(visitRecommendations).set(updates).where(eq(visitRecommendations.id, id)).returning();
+    return updated;
+  }
+
+  async getOverridesByVisit(visitId: string) {
+    return db.select().from(validationOverrides).where(eq(validationOverrides.visitId, visitId));
+  }
+
+  async createOverride(override: InsertValidationOverride) {
+    const [created] = await db.insert(validationOverrides).values(override).returning();
+    return created;
+  }
+
+  async getCodesByVisit(visitId: string) {
+    return db.select().from(visitCodes).where(eq(visitCodes.visitId, visitId));
+  }
+
+  async createVisitCode(code: InsertVisitCode) {
+    const [created] = await db.insert(visitCodes).values(code).returning();
+    return created;
+  }
+
+  async deleteVisitCodesByVisit(visitId: string) {
+    await db.delete(visitCodes).where(eq(visitCodes.visitId, visitId));
+  }
+
+  async updateVisitCode(id: string, updates: Partial<VisitCode>) {
+    const [updated] = await db.update(visitCodes).set(updates).where(eq(visitCodes.id, id)).returning();
+    return updated;
   }
 }
 

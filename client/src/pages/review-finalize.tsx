@@ -16,6 +16,11 @@ import {
   PenLine,
   ShieldCheck,
   ArrowRight,
+  Code2,
+  RefreshCw,
+  Check,
+  Trash2,
+  Lightbulb,
 } from "lucide-react";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -30,6 +35,50 @@ export default function ReviewFinalize() {
   const { data: bundle, isLoading } = useQuery<any>({
     queryKey: ["/api/visits", visitId, "bundle"],
     enabled: !!visitId,
+  });
+
+  const { data: codes = [] } = useQuery<any[]>({
+    queryKey: ["/api/visits", visitId, "codes"],
+    enabled: !!visitId,
+  });
+
+  const { data: recommendations = [] } = useQuery<any[]>({
+    queryKey: ["/api/visits", visitId, "recommendations"],
+    enabled: !!visitId,
+  });
+
+  const { data: overrides = [] } = useQuery<any[]>({
+    queryKey: ["/api/visits", visitId, "overrides"],
+    enabled: !!visitId,
+  });
+
+  const generateCodesMutation = useMutation({
+    mutationFn: async () => {
+      const resp = await apiRequest("POST", `/api/visits/${visitId}/generate-codes`, {});
+      return resp.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/visits", visitId, "codes"] });
+      toast({ title: "Codes regenerated" });
+    },
+  });
+
+  const verifyCodeMutation = useMutation({
+    mutationFn: async ({ id, verified }: { id: string; verified: boolean }) => {
+      await apiRequest("PATCH", `/api/codes/${id}`, { verified });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/visits", visitId, "codes"] });
+    },
+  });
+
+  const removeCodeMutation = useMutation({
+    mutationFn: async (id: string) => {
+      await apiRequest("PATCH", `/api/codes/${id}`, { removedByNp: true });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/visits", visitId, "codes"] });
+    },
   });
 
   const finalizeMutation = useMutation({
@@ -69,6 +118,14 @@ export default function ReviewFinalize() {
   const canFinalize = identityOk && vitalsOk && allChecklistDone && signature.trim().length > 0;
   const incompleteItems = checklist.filter((c: any) => c.status !== "complete" && c.status !== "unable_to_assess");
 
+  const activeCodes = codes.filter((c: any) => !c.removedByNp);
+  const pendingRecs = recommendations.filter((r: any) => r.status === "pending");
+  const dismissedRecs = recommendations.filter((r: any) => r.status === "dismissed");
+
+  const cptCodes = activeCodes.filter((c: any) => c.codeType === "CPT");
+  const hcpcsCodes = activeCodes.filter((c: any) => c.codeType === "HCPCS");
+  const icdCodes = activeCodes.filter((c: any) => c.codeType === "ICD-10");
+
   if (visit?.status === "finalized" || visit?.status === "ready_for_review") {
     return (
       <div className="space-y-6">
@@ -104,6 +161,123 @@ export default function ReviewFinalize() {
           </p>
         </div>
       </div>
+
+      {pendingRecs.length > 0 && (
+        <Card className="border-amber-300 dark:border-amber-600">
+          <CardHeader className="pb-3">
+            <div className="flex items-center gap-2">
+              <Lightbulb className="w-5 h-5" style={{ color: "#FEA002" }} />
+              <h2 className="text-base font-semibold" data-testid="text-pending-recommendations">
+                Unresolved Recommendations ({pendingRecs.length})
+              </h2>
+            </div>
+            <p className="text-sm text-muted-foreground">Review before finalizing</p>
+          </CardHeader>
+          <CardContent className="space-y-2">
+            {pendingRecs.map((r: any) => (
+              <div key={r.id} className="flex items-start gap-2 p-2 rounded-md border text-sm" data-testid={`pending-rec-${r.ruleId}`}>
+                <AlertTriangle className="w-4 h-4 flex-shrink-0 mt-0.5" style={{ color: "#FEA002" }} />
+                <div className="min-w-0">
+                  <span className="font-medium">{r.ruleName}</span>
+                  <p className="text-xs text-muted-foreground">{r.recommendation}</p>
+                </div>
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+      )}
+
+      <Card>
+        <CardHeader className="pb-3">
+          <div className="flex items-center justify-between gap-3 flex-wrap">
+            <div className="flex items-center gap-2">
+              <Code2 className="w-5 h-5" style={{ color: "#277493" }} />
+              <h2 className="text-base font-semibold" data-testid="text-coding-title">Auto-Generated Codes</h2>
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => generateCodesMutation.mutate()}
+              disabled={generateCodesMutation.isPending}
+              data-testid="button-regenerate-codes"
+            >
+              <RefreshCw className="w-3.5 h-3.5 mr-1" />
+              {generateCodesMutation.isPending ? "Generating..." : "Regenerate"}
+            </Button>
+          </div>
+          <p className="text-sm text-muted-foreground">
+            Review and verify codes before finalizing. Codes are auto-assigned based on visit data.
+          </p>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {activeCodes.length === 0 ? (
+            <p className="text-sm text-muted-foreground text-center py-4" data-testid="text-no-codes">
+              No codes generated yet. Save vitals and complete assessments, then regenerate.
+            </p>
+          ) : (
+            <>
+              {cptCodes.length > 0 && (
+                <CodeSection title="CPT Codes" codes={cptCodes} onVerify={verifyCodeMutation.mutate} onRemove={removeCodeMutation.mutate} />
+              )}
+              {hcpcsCodes.length > 0 && (
+                <CodeSection title="HCPCS Codes" codes={hcpcsCodes} onVerify={verifyCodeMutation.mutate} onRemove={removeCodeMutation.mutate} />
+              )}
+              {icdCodes.length > 0 && (
+                <CodeSection title="ICD-10 Codes" codes={icdCodes} onVerify={verifyCodeMutation.mutate} onRemove={removeCodeMutation.mutate} />
+              )}
+            </>
+          )}
+        </CardContent>
+      </Card>
+
+      {overrides.length > 0 && (
+        <Card>
+          <CardHeader className="pb-3">
+            <div className="flex items-center gap-2">
+              <AlertTriangle className="w-5 h-5 text-amber-500" />
+              <h2 className="text-base font-semibold" data-testid="text-overrides-title">Validation Overrides ({overrides.length})</h2>
+            </div>
+          </CardHeader>
+          <CardContent className="space-y-2">
+            {overrides.map((o: any) => (
+              <div key={o.id} className="flex items-start gap-2 p-2 rounded-md border text-sm" data-testid={`override-${o.field}`}>
+                <AlertTriangle className="w-4 h-4 flex-shrink-0 mt-0.5 text-amber-500" />
+                <div className="min-w-0">
+                  <span className="font-medium capitalize">{o.field.replace(/([A-Z])/g, " $1")}</span>
+                  <span className="text-muted-foreground"> - {o.warningMessage}</span>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    Override: {o.overrideReason}{o.overrideNote ? ` - ${o.overrideNote}` : ""}
+                  </p>
+                </div>
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+      )}
+
+      {dismissedRecs.length > 0 && (
+        <Card>
+          <CardHeader className="pb-3">
+            <div className="flex items-center gap-2">
+              <Lightbulb className="w-5 h-5 text-muted-foreground" />
+              <h2 className="text-base font-semibold">Dismissed Recommendations ({dismissedRecs.length})</h2>
+            </div>
+          </CardHeader>
+          <CardContent className="space-y-2">
+            {dismissedRecs.map((r: any) => (
+              <div key={r.id} className="flex items-start gap-2 p-2 rounded-md border text-sm opacity-70" data-testid={`dismissed-rec-${r.ruleId}`}>
+                <XCircle className="w-4 h-4 flex-shrink-0 mt-0.5 text-muted-foreground" />
+                <div className="min-w-0">
+                  <span className="font-medium">{r.ruleName}</span>
+                  <p className="text-xs text-muted-foreground">
+                    Dismissed: {r.dismissReason}{r.dismissNote ? ` - ${r.dismissNote}` : ""}
+                  </p>
+                </div>
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+      )}
 
       <Card>
         <CardHeader className="pb-3">
@@ -207,6 +381,63 @@ function GatingItem({ label, ok, link, status }: { label: string; ok: boolean; l
           </Button>
         </Link>
       )}
+    </div>
+  );
+}
+
+function CodeSection({
+  title,
+  codes,
+  onVerify,
+  onRemove,
+}: {
+  title: string;
+  codes: any[];
+  onVerify: (data: { id: string; verified: boolean }) => void;
+  onRemove: (id: string) => void;
+}) {
+  return (
+    <div>
+      <h3 className="text-sm font-medium mb-2">{title}</h3>
+      <div className="space-y-1.5">
+        {codes.map((code: any) => (
+          <div
+            key={code.id}
+            className="flex items-center justify-between gap-3 p-2 rounded-md border flex-wrap"
+            data-testid={`code-${code.codeType}-${code.code}`}
+          >
+            <div className="flex items-center gap-2 min-w-0">
+              <Badge variant={code.verified ? "default" : "secondary"} className="text-xs font-mono shrink-0">
+                {code.code}
+              </Badge>
+              <span className="text-sm truncate">{code.description}</span>
+              {code.source && (
+                <Badge variant="outline" className="text-xs capitalize shrink-0">
+                  {code.source}
+                </Badge>
+              )}
+            </div>
+            <div className="flex items-center gap-1">
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => onVerify({ id: code.id, verified: !code.verified })}
+                data-testid={`button-verify-${code.code}`}
+              >
+                <Check className={`w-4 h-4 ${code.verified ? "text-green-600" : "text-muted-foreground"}`} />
+              </Button>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => onRemove(code.id)}
+                data-testid={`button-remove-${code.code}`}
+              >
+                <Trash2 className="w-4 h-4 text-muted-foreground" />
+              </Button>
+            </div>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }

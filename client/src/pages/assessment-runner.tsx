@@ -85,9 +85,19 @@ export default function AssessmentRunner() {
         interpretation: interpretation?.label || null,
         status: opts.status,
       });
+
+      if (opts.status === "complete") {
+        await apiRequest("POST", `/api/visits/${visitId}/evaluate-rules`, {
+          source: "assessment",
+          data: { instrumentId: assessmentId, score: computedScore },
+        });
+        await apiRequest("POST", `/api/visits/${visitId}/generate-codes`, {});
+      }
     },
     onSuccess: (_, vars) => {
       queryClient.invalidateQueries({ queryKey: ["/api/visits", visitId] });
+      queryClient.invalidateQueries({ queryKey: ["/api/visits", visitId, "recommendations"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/visits", visitId, "codes"] });
       toast({ title: vars.status === "complete" ? "Assessment completed" : "Draft saved" });
       if (vars.status === "complete") setLocation(`/visits/${visitId}/intake`);
     },

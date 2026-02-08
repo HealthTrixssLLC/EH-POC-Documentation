@@ -484,6 +484,109 @@ export async function seedDatabase() {
     dueDate: nextWeek,
   });
 
+  // Clinical decision rules
+  await storage.createClinicalRule({
+    ruleId: "PHQ2_TO_PHQ9",
+    name: "PHQ-2 Positive Screen Escalation",
+    category: "assessment_escalation",
+    triggerSource: "assessment",
+    triggerCondition: { instrumentId: "PHQ-2", scoreThreshold: 3, operator: ">=" },
+    recommendedAction: "Administer PHQ-9 full depression assessment",
+    recommendedItemType: "assessment",
+    recommendedItemId: "PHQ-9",
+    priority: "high",
+    description: "PHQ-2 score >= 3 indicates positive depression screen requiring full PHQ-9 assessment",
+    active: true,
+  });
+
+  await storage.createClinicalRule({
+    ruleId: "BP_HYPERTENSION_SCREEN",
+    name: "Elevated Blood Pressure Alert",
+    category: "vitals_alert",
+    triggerSource: "vitals",
+    triggerCondition: { field: "systolic", threshold: 140, operator: ">=", orCondition: { field: "diastolic", threshold: 90, operator: ">=" } },
+    recommendedAction: "Evaluate for hypertension management - consider CBP measure if not already on checklist",
+    recommendedItemType: "measure",
+    recommendedItemId: "CBP",
+    priority: "high",
+    description: "Systolic >= 140 or Diastolic >= 90 indicates hypertension requiring follow-up",
+    active: true,
+  });
+
+  await storage.createClinicalRule({
+    ruleId: "BMI_OBESITY_SCREEN",
+    name: "Elevated BMI Alert",
+    category: "vitals_alert",
+    triggerSource: "vitals",
+    triggerCondition: { field: "bmi", threshold: 30, operator: ">=" },
+    recommendedAction: "Screen for diabetes risk and consider HbA1c testing",
+    recommendedItemType: "measure",
+    recommendedItemId: "CDC-A1C",
+    priority: "medium",
+    description: "BMI >= 30 indicates obesity and elevated diabetes risk",
+    active: true,
+  });
+
+  await storage.createClinicalRule({
+    ruleId: "LOW_O2_ALERT",
+    name: "Low Oxygen Saturation Alert",
+    category: "vitals_alert",
+    triggerSource: "vitals",
+    triggerCondition: { field: "oxygenSaturation", threshold: 92, operator: "<=" },
+    recommendedAction: "Assess respiratory status and consider pulmonary referral",
+    priority: "urgent",
+    description: "O2 saturation <= 92% requires immediate respiratory assessment",
+    active: true,
+  });
+
+  await storage.createClinicalRule({
+    ruleId: "HIGH_PAIN_ALERT",
+    name: "High Pain Level Alert",
+    category: "vitals_alert",
+    triggerSource: "vitals",
+    triggerCondition: { field: "painLevel", threshold: 7, operator: ">=" },
+    recommendedAction: "Perform detailed pain assessment and consider pain management referral",
+    priority: "high",
+    description: "Pain level >= 7 requires additional pain evaluation",
+    active: true,
+  });
+
+  await storage.createClinicalRule({
+    ruleId: "PRAPARE_HIGH_RISK",
+    name: "High Social Risk Referral",
+    category: "assessment_escalation",
+    triggerSource: "assessment",
+    triggerCondition: { instrumentId: "PRAPARE", scoreThreshold: 6, operator: ">=" },
+    recommendedAction: "Refer to social services for social determinants of health support",
+    priority: "high",
+    description: "PRAPARE score >= 6 indicates high social risk requiring social services referral",
+    active: true,
+  });
+
+  await storage.createClinicalRule({
+    ruleId: "TACHYCARDIA_ALERT",
+    name: "Tachycardia Alert",
+    category: "vitals_alert",
+    triggerSource: "vitals",
+    triggerCondition: { field: "heartRate", threshold: 100, operator: ">=" },
+    recommendedAction: "Evaluate for underlying causes of elevated heart rate",
+    priority: "medium",
+    description: "Heart rate >= 100 bpm indicates tachycardia requiring evaluation",
+    active: true,
+  });
+
+  await storage.createClinicalRule({
+    ruleId: "BRADYCARDIA_ALERT",
+    name: "Bradycardia Alert",
+    category: "vitals_alert",
+    triggerSource: "vitals",
+    triggerCondition: { field: "heartRate", threshold: 50, operator: "<=" },
+    recommendedAction: "Evaluate for underlying causes of low heart rate, review medications",
+    priority: "medium",
+    description: "Heart rate <= 50 bpm indicates bradycardia requiring evaluation",
+    active: true,
+  });
+
   // Audit events
   await storage.createAuditEvent({
     eventType: "phi_access",
@@ -505,4 +608,5 @@ export async function seedDatabase() {
   console.log(`  - 2 plan packs (MA Standard, ACA Comprehensive)`);
   console.log(`  - 6 plan targets`);
   console.log(`  - 2 sample care plan tasks`);
+  console.log(`  - 8 clinical decision rules`);
 }

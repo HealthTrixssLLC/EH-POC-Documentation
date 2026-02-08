@@ -38,6 +38,13 @@ client/src/pages/         - All page components
 ```
 
 ## Recent Changes
+- 2026-02-08: Added Demo Management page at /demo
+  - Database reset with full re-seed (deletes 23 tables in dependency order)
+  - FHIR Bundle export for all patients with download/copy functionality
+  - Sample import bundle with 2 demo patients for testing FHIR inbound
+  - 5 guided demo scenarios with step-by-step instructions
+  - Demo credentials reference card
+  - Accessible to ALL roles via sidebar "Support" section
 - 2026-02-08: Added Help & Support page at /help
   - Comprehensive documentation covering all 12 feature areas
   - Searchable with real-time filtering across all topics

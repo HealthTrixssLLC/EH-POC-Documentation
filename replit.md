@@ -38,6 +38,19 @@ client/src/pages/         - All page components
 ```
 
 ## Recent Changes
+- 2026-02-08: Redesigned Intake Dashboard with 3-tab layout
+  - Tab 1 "Tasks & Notes": Provider tasks (add/view), CDS recommendations with dismiss, auto-composed progress note (copies to clipboard)
+  - Tab 2 "Visit Objectives": Clear completion checklist with progress tracking, gate status for finalization, plan targets
+  - Tab 3 "Patient Context": Demographics, clinical alerts with severity, vitals grid with abnormal highlighting, assessment results with flagged scores, medication reconciliation summary
+  - New GET /api/visits/:id/overview endpoint aggregating all visit data with vitals/assessment flags and auto-generated progress note
+  - Care plan tasks integrated into main dashboard (no longer separate-only page)
+  - Progress note auto-composes from: identity, vitals, meds, assessments, measures, tasks, CDS recommendations
+- 2026-02-08: Added Medication Reconciliation feature
+  - New med_reconciliation table with full CRUD API
+  - Quick-add from patient medication history, manual entry for home meds
+  - Client-side Beers Criteria (10 categories) and drug interaction (10 pairs) checking
+  - Reconciliation status management (verified/new/modified/discontinued/held)
+  - Integrated into intake dashboard as required step
 - 2026-02-08: Added Demo Management page at /demo
   - Database reset with full re-seed (deletes 23 tables in dependency order)
   - FHIR Bundle export for all patients with download/copy functionality

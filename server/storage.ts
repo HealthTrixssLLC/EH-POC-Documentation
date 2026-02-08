@@ -121,6 +121,8 @@ export interface IStorage {
   getVitalsHistoryByMember(memberId: string): Promise<VitalsHistory[]>;
   createVitalsHistory(vitals: InsertVitalsHistory): Promise<VitalsHistory>;
 
+  getMeasureResultsByVisit(visitId: string): Promise<MeasureResult[]>;
+
   getMedReconciliationByVisit(visitId: string): Promise<MedReconciliation[]>;
   createMedReconciliation(med: InsertMedReconciliation): Promise<MedReconciliation>;
   updateMedReconciliation(id: string, updates: Partial<MedReconciliation>): Promise<MedReconciliation | undefined>;
@@ -270,6 +272,10 @@ export class DatabaseStorage implements IStorage {
     const [result] = await db.select().from(measureResults)
       .where(and(eq(measureResults.visitId, visitId), eq(measureResults.measureId, measureId)));
     return result;
+  }
+
+  async getMeasureResultsByVisit(visitId: string) {
+    return db.select().from(measureResults).where(eq(measureResults.visitId, visitId));
   }
 
   async createMeasureResult(result: InsertMeasureResult) {

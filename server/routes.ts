@@ -128,6 +128,180 @@ export async function registerRoutes(
     }
   });
 
+  // Visit overview - aggregated data for the 3-panel intake dashboard
+  app.get("/api/visits/:id/overview", async (req, res) => {
+    try {
+      const visit = await storage.getVisit(req.params.id);
+      if (!visit) return res.status(404).json({ message: "Visit not found" });
+
+      const [member, checklist, vitals, tasks, recommendations, medRecon, assessmentResponses, measureResults, codes, overrides] = await Promise.all([
+        storage.getMember(visit.memberId),
+        storage.getChecklistByVisit(visit.id),
+        storage.getVitalsByVisit(visit.id),
+        storage.getTasksByVisit(visit.id),
+        storage.getRecommendationsByVisit(visit.id),
+        storage.getMedReconciliationByVisit(visit.id),
+        storage.getAssessmentResponsesByVisit(visit.id),
+        storage.getMeasureResultsByVisit(visit.id),
+        storage.getCodesByVisit(visit.id),
+        storage.getOverridesByVisit(visit.id),
+      ]);
+
+      const targets = member ? await storage.getPlanTargets(member.id) : [];
+
+      // Compute vitals abnormal flags
+      const vitalsFlags: { field: string; value: number; label: string; severity: string; message: string }[] = [];
+      if (vitals) {
+        const ranges: { field: string; label: string; min?: number; max?: number; unit: string }[] = [
+          { field: "systolicBp", label: "Systolic BP", max: 130, unit: "mmHg" },
+          { field: "diastolicBp", label: "Diastolic BP", max: 80, unit: "mmHg" },
+          { field: "heartRate", label: "Heart Rate", min: 60, max: 100, unit: "bpm" },
+          { field: "respiratoryRate", label: "Respiratory Rate", min: 12, max: 20, unit: "/min" },
+          { field: "temperature", label: "Temperature", min: 97.0, max: 99.5, unit: "F" },
+          { field: "oxygenSaturation", label: "SpO2", min: 95, unit: "%" },
+          { field: "weight", label: "Weight", unit: "lbs" },
+          { field: "bmi", label: "BMI", max: 30, unit: "" },
+        ];
+        for (const r of ranges) {
+          const val = (vitals as any)[r.field];
+          if (val == null) continue;
+          const numVal = Number(val);
+          if (isNaN(numVal)) continue;
+          if (r.max != null && numVal > r.max) {
+            vitalsFlags.push({ field: r.field, value: numVal, label: r.label, severity: numVal > r.max * 1.15 ? "critical" : "warning", message: `${r.label} ${numVal}${r.unit} is above normal (>${r.max}${r.unit})` });
+          }
+          if (r.min != null && numVal < r.min) {
+            vitalsFlags.push({ field: r.field, value: numVal, label: r.label, severity: numVal < r.min * 0.85 ? "critical" : "warning", message: `${r.label} ${numVal}${r.unit} is below normal (<${r.min}${r.unit})` });
+          }
+        }
+      }
+
+      // Compute assessment flags
+      const assessmentFlags: { instrumentId: string; score: number; interpretation: string; severity: string }[] = [];
+      for (const ar of assessmentResponses) {
+        if (ar.status !== "complete") continue;
+        const score = ar.computedScore ?? 0;
+        const interp = ar.interpretation || "";
+        if (ar.instrumentId === "PHQ-2" && score >= 3) {
+          assessmentFlags.push({ instrumentId: ar.instrumentId, score, interpretation: interp, severity: "warning" });
+        } else if (ar.instrumentId === "PHQ-9" && score >= 10) {
+          assessmentFlags.push({ instrumentId: ar.instrumentId, score, interpretation: interp, severity: score >= 20 ? "critical" : "warning" });
+        } else if (ar.instrumentId === "PRAPARE") {
+          const riskItems = Object.values(ar.responses as Record<string, string>).filter(v => typeof v === "string" && (v.includes("Yes") || v.includes("Unsafe") || v.includes("Hard") || v.includes("Quite a bit") || v.includes("Somewhat"))).length;
+          if (riskItems >= 3) {
+            assessmentFlags.push({ instrumentId: ar.instrumentId, score: riskItems, interpretation: `${riskItems} social risk factors identified`, severity: riskItems >= 5 ? "critical" : "warning" });
+          }
+        }
+      }
+
+      // Build auto-composed progress note sections
+      const progressNote: { section: string; content: string; hasFlags: boolean }[] = [];
+
+      // Identity
+      progressNote.push({
+        section: "Identity Verification",
+        content: visit.identityVerified
+          ? `Patient identity verified via ${visit.identityMethod || "standard method"}.`
+          : "Identity verification pending.",
+        hasFlags: false,
+      });
+
+      // Vitals
+      if (vitals) {
+        const vParts: string[] = [];
+        if ((vitals as any).systolicBp) vParts.push(`BP ${(vitals as any).systolicBp}/${(vitals as any).diastolicBp} mmHg`);
+        if ((vitals as any).heartRate) vParts.push(`HR ${(vitals as any).heartRate} bpm`);
+        if ((vitals as any).respiratoryRate) vParts.push(`RR ${(vitals as any).respiratoryRate}/min`);
+        if ((vitals as any).temperature) vParts.push(`Temp ${(vitals as any).temperature}F`);
+        if ((vitals as any).oxygenSaturation) vParts.push(`SpO2 ${(vitals as any).oxygenSaturation}%`);
+        if ((vitals as any).weight) vParts.push(`Wt ${(vitals as any).weight} lbs`);
+        if ((vitals as any).bmi) vParts.push(`BMI ${(vitals as any).bmi}`);
+        progressNote.push({
+          section: "Vital Signs",
+          content: vParts.join(", ") + ".",
+          hasFlags: vitalsFlags.length > 0,
+        });
+      } else {
+        progressNote.push({ section: "Vital Signs", content: "Not yet recorded.", hasFlags: false });
+      }
+
+      // Medication Reconciliation
+      if (medRecon.length > 0) {
+        const verified = medRecon.filter(m => m.reconciliationStatus === "verified").length;
+        const newMeds = medRecon.filter(m => m.reconciliationStatus === "new").length;
+        const disc = medRecon.filter(m => m.reconciliationStatus === "discontinued").length;
+        const warnings = medRecon.filter(m => m.beersRisk || m.interactionFlag).length;
+        progressNote.push({
+          section: "Medication Reconciliation",
+          content: `${medRecon.length} medications reconciled: ${verified} verified, ${newMeds} new, ${disc} discontinued.${warnings > 0 ? ` ${warnings} safety warning(s) flagged.` : ""}`,
+          hasFlags: warnings > 0,
+        });
+      } else {
+        progressNote.push({ section: "Medication Reconciliation", content: "Not yet completed.", hasFlags: false });
+      }
+
+      // Assessments
+      for (const ar of assessmentResponses) {
+        if (ar.status === "complete") {
+          progressNote.push({
+            section: `Assessment: ${ar.instrumentId}`,
+            content: `Score: ${ar.computedScore ?? "N/A"}. Interpretation: ${ar.interpretation || "N/A"}.`,
+            hasFlags: assessmentFlags.some(f => f.instrumentId === ar.instrumentId),
+          });
+        }
+      }
+
+      // Measures
+      const checklistMeasures = checklist.filter((c: any) => c.itemType === "measure");
+      const completedMeasureCount = checklistMeasures.filter((c: any) => c.status === "complete" || c.status === "unable_to_assess").length;
+      progressNote.push({
+        section: "HEDIS Measures",
+        content: `${completedMeasureCount} of ${checklistMeasures.length} quality measures captured.`,
+        hasFlags: false,
+      });
+
+      // Tasks
+      if (tasks.length > 0) {
+        const taskSummary = tasks.map(t => `${t.title} (${t.priority} - ${t.status})`).join("; ");
+        progressNote.push({
+          section: "Care Plan Tasks",
+          content: `${tasks.length} task(s): ${taskSummary}.`,
+          hasFlags: tasks.some(t => t.priority === "urgent" || t.priority === "high"),
+        });
+      }
+
+      // CDS recommendations
+      const pendingRecs = recommendations.filter(r => r.status === "pending");
+      if (pendingRecs.length > 0) {
+        progressNote.push({
+          section: "Clinical Decision Support",
+          content: `${pendingRecs.length} active recommendation(s): ${pendingRecs.map(r => r.ruleName).join(", ")}.`,
+          hasFlags: true,
+        });
+      }
+
+      return res.json({
+        visit,
+        member,
+        checklist,
+        targets,
+        vitals,
+        tasks,
+        recommendations,
+        medRecon,
+        assessmentResponses,
+        measureResults,
+        codes,
+        overrides,
+        vitalsFlags,
+        assessmentFlags,
+        progressNote,
+      });
+    } catch (err: any) {
+      return res.status(500).json({ message: err.message });
+    }
+  });
+
   // Identity verification
   app.post("/api/visits/:id/verify-identity", async (req, res) => {
     try {

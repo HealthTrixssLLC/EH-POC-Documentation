@@ -1,8 +1,8 @@
-# Implementation Plan: ForEachHealth In-Home NP Visit Web App (POC)
+# Implementation Plan: Easy Health In-Home NP Visit Web App (POC)
 
 ## Project Overview
 
-**For Each Health** conducts in-home visits for Medicare Advantage (MA) and ACA plans. This web app POC will serve as the foundation for the full platform (web + future iOS app). It covers the core clinical visit workflow: pre-visit preparation, dynamic intake with assessments, finalization with gating, supervisor review, care coordination, and basic admin configuration.
+**Easy Health** conducts in-home visits for Medicare Advantage (MA) and ACA plans. This web app POC will serve as the foundation for the full platform (web + future iOS app). It covers the core clinical visit workflow: pre-visit preparation, dynamic intake with assessments, finalization with gating, supervisor review, care coordination, and basic admin configuration.
 
 The web app simulates the NP mobile experience in a responsive web format, enabling validation of all core workflows before native iOS development begins.
 
@@ -102,7 +102,7 @@ Based on the Branding Guidelines:
 Frontend (React + Vite)
 ├── Wouter routing
 ├── TanStack Query for data fetching
-├── Shadcn UI components with ForEachHealth branding
+├── Shadcn UI components with Easy Health branding
 ├── Form handling with react-hook-form + zod validation
 └── Role-based navigation via sidebar
 
@@ -189,7 +189,7 @@ Database (PostgreSQL)
 - [x] 7. Clinical note auto-generates from visit data
 - [x] 8. FHIR bundle export can be generated and downloaded
 - [x] 9. Audit trail captures PHI access events
-- [x] 10. UI follows ForEachHealth branding guidelines
+- [x] 10. UI follows Easy Health branding guidelines
 - [x] 11. Responsive design works on desktop and tablet viewports
 - [x] 12. Seed data makes the app look realistic on first load
 

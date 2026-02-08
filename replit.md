@@ -1,7 +1,7 @@
-# ForEachHealth - In-Home Clinical Visit Platform
+# Easy Health - In-Home Clinical Visit Platform
 
 ## Overview
-ForEachHealth is a web application POC for managing in-home Nurse Practitioner visits for Medicare Advantage and ACA plans. The platform covers the full clinical visit lifecycle: pre-visit preparation, clinical intake with standardized assessments, HEDIS measure tracking, finalization with gating validation, supervisor review, care coordination, and FHIR export.
+Easy Health is a web application POC for managing in-home Nurse Practitioner visits for Medicare Advantage and ACA plans. The platform covers the full clinical visit lifecycle: pre-visit preparation, clinical intake with standardized assessments, HEDIS measure tracking, finalization with gating validation, supervisor review, care coordination, and FHIR export.
 
 ## Architecture
 - **Frontend**: React + Vite + TypeScript with Wouter routing, TanStack Query, Shadcn UI
@@ -10,7 +10,7 @@ ForEachHealth is a web application POC for managing in-home Nurse Practitioner v
 - **Auth**: Session-based with role-based access control (client-side localStorage for POC)
 
 ## Key Design Decisions
-- **Branding**: ForEachHealth palette - Dark Blue (#2E456B), Orange (#FEA002), Dark Teal (#277493), Tan (#F3DBB1)
+- **Branding**: Easy Health palette - Dark Blue (#2E456B), Orange (#FEA002), Dark Teal (#277493), Tan (#F3DBB1)
 - **RBAC**: 5 roles - NP, Supervisor, Care Coordinator, Admin, Compliance
 - **Finalization Gating**: Visit cannot be signed unless all required assessments and measures are complete or have structured unable-to-assess reasons
 - **Assessment Scoring**: Deterministic scoring for PHQ-2, PHQ-9, PRAPARE, AWV with interpretation bands
@@ -43,4 +43,4 @@ client/src/pages/         - All page components
 ## User Preferences
 - Web POC first, iOS native app later
 - Focus on responsive web design
-- Use Shadcn UI components with ForEachHealth branding
+- Use Shadcn UI components with Easy Health branding

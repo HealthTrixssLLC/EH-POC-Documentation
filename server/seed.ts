@@ -10,12 +10,12 @@ export async function seedDatabase() {
   console.log("Seeding database...");
 
   // Users
-  const np1 = await storage.createUser({ username: "sarah.np", password: "password", fullName: "Sarah Johnson, NP", role: "np", email: "sarah@foreachhealth.com", active: true });
-  const np2 = await storage.createUser({ username: "michael.np", password: "password", fullName: "Michael Chen, NP", role: "np", email: "michael@foreachhealth.com", active: true });
-  const sup = await storage.createUser({ username: "dr.williams", password: "password", fullName: "Dr. Lisa Williams", role: "supervisor", email: "lisa@foreachhealth.com", active: true });
-  const coord = await storage.createUser({ username: "emma.coord", password: "password", fullName: "Emma Davis", role: "care_coordinator", email: "emma@foreachhealth.com", active: true });
-  const admin = await storage.createUser({ username: "admin", password: "password", fullName: "System Admin", role: "admin", email: "admin@foreachhealth.com", active: true });
-  await storage.createUser({ username: "compliance", password: "password", fullName: "Robert Taylor", role: "compliance", email: "robert@foreachhealth.com", active: true });
+  const np1 = await storage.createUser({ username: "sarah.np", password: "password", fullName: "Sarah Johnson, NP", role: "np", email: "sarah@easyhealth.com", active: true });
+  const np2 = await storage.createUser({ username: "michael.np", password: "password", fullName: "Michael Chen, NP", role: "np", email: "michael@easyhealth.com", active: true });
+  const sup = await storage.createUser({ username: "dr.williams", password: "password", fullName: "Dr. Lisa Williams", role: "supervisor", email: "lisa@easyhealth.com", active: true });
+  const coord = await storage.createUser({ username: "emma.coord", password: "password", fullName: "Emma Davis", role: "care_coordinator", email: "emma@easyhealth.com", active: true });
+  const admin = await storage.createUser({ username: "admin", password: "password", fullName: "System Admin", role: "admin", email: "admin@easyhealth.com", active: true });
+  await storage.createUser({ username: "compliance", password: "password", fullName: "Robert Taylor", role: "compliance", email: "robert@easyhealth.com", active: true });
 
   // Members
   const member1 = await storage.createMember({

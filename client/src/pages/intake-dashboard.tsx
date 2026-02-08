@@ -6,13 +6,12 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Progress } from "@/components/ui/progress";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Separator } from "@/components/ui/separator";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription } from "@/components/ui/dialog";
 import {
   ChevronLeft,
   ShieldCheck,
@@ -30,15 +29,11 @@ import {
   Clock,
   AlertTriangle,
   User,
-  Phone,
-  MapPin,
-  Shield,
-  FileWarning,
   Clipboard,
-  TrendingUp,
   Lightbulb,
   Copy,
   Check,
+  ExternalLink,
 } from "lucide-react";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -70,9 +65,9 @@ const stepIcons: Record<string, any> = {
   vitals: HeartPulse,
   assessments: ClipboardList,
   measures: Target,
-  careplan: FileText,
-  timeline: Activity,
   medications: Pill,
+  timeline: Activity,
+  careplan: FileText,
 };
 
 export default function IntakeDashboard() {
@@ -125,10 +120,12 @@ export default function IntakeDashboard() {
 
   if (isLoading) {
     return (
-      <div className="space-y-6">
+      <div className="p-6 space-y-6">
         <Skeleton className="h-8 w-48" />
-        <Skeleton className="h-12 w-full" />
-        <Skeleton className="h-96 w-full" />
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <Skeleton className="h-96" />
+          <Skeleton className="h-96" />
+        </div>
       </div>
     );
   }
@@ -210,6 +207,7 @@ export default function IntakeDashboard() {
 
   return (
     <div className="space-y-4">
+      {/* Header */}
       <div className="flex items-center justify-between gap-3 flex-wrap">
         <div className="flex items-center gap-3 flex-wrap">
           <Link href={`/visits/${visitId}/summary`}>
@@ -233,62 +231,258 @@ export default function IntakeDashboard() {
             </div>
           </div>
         </div>
-        <Link href={`/visits/${visitId}/finalize`}>
-          <Button data-testid="button-review-finalize" variant={gateReady ? "default" : "outline"} disabled={false}>
-            Review & Finalize <ArrowRight className="w-4 h-4 ml-2" />
-          </Button>
-        </Link>
+        <div className="flex items-center gap-2 flex-wrap">
+          <Link href={`/visits/${visitId}/intake/patient-context`}>
+            <Button variant="outline" size="sm" data-testid="button-patient-context">
+              <User className="w-4 h-4 mr-1" /> Patient Context
+              {allFlags.length > 0 && (
+                <Badge variant="destructive" className="ml-2 text-xs">{allFlags.length}</Badge>
+              )}
+            </Button>
+          </Link>
+          <Link href={`/visits/${visitId}/finalize`}>
+            <Button data-testid="button-review-finalize" variant={gateReady ? "default" : "outline"}>
+              Review & Finalize <ArrowRight className="w-4 h-4 ml-2" />
+            </Button>
+          </Link>
+        </div>
       </div>
 
       <Progress value={progressPct} className="h-2" data-testid="progress-bar" />
 
-      <Tabs defaultValue="tasks" className="w-full">
-        <TabsList className="grid w-full grid-cols-3" data-testid="intake-tabs">
-          <TabsTrigger value="tasks" data-testid="tab-tasks">
-            <FileText className="w-4 h-4 mr-2" /> Tasks & Notes
-            {(pendingTasks.length > 0 || pendingRecs.length > 0) && (
-              <Badge variant="secondary" className="ml-2 text-xs">{pendingTasks.length + pendingRecs.length}</Badge>
-            )}
-          </TabsTrigger>
-          <TabsTrigger value="objectives" data-testid="tab-objectives">
-            <Target className="w-4 h-4 mr-2" /> Visit Objectives
-            <Badge variant={gateReady ? "default" : "secondary"} className="ml-2 text-xs">
-              {requiredDone}/{requiredTotal}
-            </Badge>
-          </TabsTrigger>
-          <TabsTrigger value="context" data-testid="tab-context">
-            <User className="w-4 h-4 mr-2" /> Patient Context
-            {allFlags.length > 0 && (
-              <Badge variant="destructive" className="ml-2 text-xs">{allFlags.length}</Badge>
-            )}
-          </TabsTrigger>
-        </TabsList>
+      {/* Clinical Alerts Banner */}
+      {allFlags.length > 0 && (
+        <div className="flex items-start gap-2 p-3 rounded-md border" style={{ borderColor: "#FEA002", backgroundColor: "rgba(254, 160, 2, 0.05)" }}>
+          <AlertTriangle className="w-4 h-4 flex-shrink-0 mt-0.5" style={{ color: "#FEA002" }} />
+          <div className="flex-1 min-w-0">
+            <span className="text-sm font-medium">{allFlags.length} Clinical Alert{allFlags.length !== 1 ? "s" : ""}</span>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              {allFlags.slice(0, 3).map((f: any) => f.message).join(" | ")}
+              {allFlags.length > 3 && ` +${allFlags.length - 3} more`}
+            </p>
+          </div>
+          <Link href={`/visits/${visitId}/intake/patient-context`}>
+            <Button variant="ghost" size="sm" data-testid="button-view-alerts">
+              View <ExternalLink className="w-3 h-3 ml-1" />
+            </Button>
+          </Link>
+        </div>
+      )}
 
-        {/* ====== TAB 1: TASKS & NOTES ====== */}
-        <TabsContent value="tasks" className="mt-4 space-y-4">
+      {/* Two-Panel Layout: Objectives (Left) + Tasks & Notes (Right) */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
+
+        {/* ====== LEFT PANEL: VISIT OBJECTIVES ====== */}
+        <div className="lg:col-span-5 space-y-4">
+          <Card>
+            <CardHeader className="pb-2">
+              <div className="flex items-center justify-between gap-2 flex-wrap">
+                <div className="flex items-center gap-2">
+                  <Target className="w-4 h-4" style={{ color: "#2E456B" }} />
+                  <h2 className="text-sm font-semibold">Visit Objectives</h2>
+                </div>
+                <Badge variant={gateReady ? "default" : "secondary"} className="text-xs" data-testid="text-objective-progress">
+                  {requiredDone}/{requiredTotal}
+                </Badge>
+              </div>
+              {gateReady ? (
+                <div className="flex items-center gap-2 mt-1 text-xs" style={{ color: "#277493" }}>
+                  <CheckCircle2 className="w-3 h-3" />
+                  <span className="font-medium">Ready for finalization</span>
+                </div>
+              ) : (
+                <div className="flex items-center gap-2 mt-1 text-xs text-muted-foreground">
+                  <AlertCircle className="w-3 h-3" />
+                  <span>{requiredTotal - requiredDone} remaining</span>
+                </div>
+              )}
+            </CardHeader>
+            <CardContent className="space-y-1.5 pt-0">
+              {objectiveSteps.map((step) => {
+                const Icon = stepIcons[step.id.split("-")[0]] || ClipboardList;
+                return (
+                  <Link key={step.id} href={step.href}>
+                    <div className="flex items-center gap-3 p-2.5 rounded-md border hover-elevate cursor-pointer" data-testid={`objective-${step.id}`}>
+                      <div className="flex items-center justify-center w-7 h-7 rounded-md flex-shrink-0" style={{
+                        backgroundColor: step.done ? "#27749315" : "#2E456B08"
+                      }}>
+                        <Icon className="w-3.5 h-3.5" style={{ color: step.done ? "#277493" : "#2E456B" }} />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <span className="text-sm">{step.label}</span>
+                      </div>
+                      {step.done ? (
+                        <CheckCircle2 className="w-4 h-4 flex-shrink-0" style={{ color: "#277493" }} />
+                      ) : (
+                        <ArrowRight className="w-3.5 h-3.5 text-muted-foreground flex-shrink-0" />
+                      )}
+                    </div>
+                  </Link>
+                );
+              })}
+            </CardContent>
+          </Card>
+
+          {/* Entered Visit Data Summary */}
+          {vitals && (
+            <Card>
+              <CardHeader className="pb-2">
+                <div className="flex items-center justify-between gap-2 flex-wrap">
+                  <div className="flex items-center gap-2">
+                    <HeartPulse className="w-4 h-4" style={{ color: "#E74C3C" }} />
+                    <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Vitals Recorded</h3>
+                  </div>
+                  {vitalsFlags.length > 0 && <Badge variant="destructive" className="text-xs">{vitalsFlags.length} abnormal</Badge>}
+                </div>
+              </CardHeader>
+              <CardContent className="pt-0">
+                <div className="grid grid-cols-2 gap-2">
+                  {[
+                    { label: "BP", value: `${(vitals as any).systolicBp || "--"}/${(vitals as any).diastolicBp || "--"}`, unit: "mmHg", fields: ["systolicBp", "diastolicBp"] },
+                    { label: "HR", value: (vitals as any).heartRate || "--", unit: "bpm", fields: ["heartRate"] },
+                    { label: "SpO2", value: (vitals as any).oxygenSaturation || "--", unit: "%", fields: ["oxygenSaturation"] },
+                    { label: "Temp", value: (vitals as any).temperature || "--", unit: "F", fields: ["temperature"] },
+                    { label: "RR", value: (vitals as any).respiratoryRate || "--", unit: "/min", fields: ["respiratoryRate"] },
+                    { label: "BMI", value: (vitals as any).bmi || "--", unit: "", fields: ["bmi"] },
+                  ].map((v) => {
+                    const flagged = vitalsFlags.some((f: any) => v.fields.includes(f.field));
+                    return (
+                      <div key={v.label} className={`flex items-baseline gap-1.5 p-1.5 rounded text-sm ${flagged ? "text-destructive font-medium" : ""}`} data-testid={`vital-${v.fields[0]}`}>
+                        <span className="text-xs text-muted-foreground w-8">{v.label}</span>
+                        <span className="font-medium">{v.value}</span>
+                        <span className="text-xs text-muted-foreground">{v.unit}</span>
+                        {flagged && <AlertTriangle className="w-3 h-3 flex-shrink-0" style={{ color: "#E74C3C" }} />}
+                      </div>
+                    );
+                  })}
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Assessment Results */}
+          {assessmentResponses.filter((ar: any) => ar.status === "complete").length > 0 && (
+            <Card>
+              <CardHeader className="pb-2">
+                <div className="flex items-center gap-2">
+                  <ClipboardList className="w-4 h-4" style={{ color: "#277493" }} />
+                  <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Assessment Results</h3>
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-1.5 pt-0">
+                {assessmentResponses.filter((ar: any) => ar.status === "complete").map((ar: any) => {
+                  const flagged = assessmentFlags.some((f: any) => f.instrumentId === ar.instrumentId);
+                  return (
+                    <div key={ar.id} className="flex items-center justify-between gap-2 p-2 rounded-md border" data-testid={`assessment-result-${ar.instrumentId}`}>
+                      <div className="min-w-0">
+                        <span className="text-sm font-medium">{ar.instrumentId}</span>
+                        <p className="text-xs text-muted-foreground truncate">{ar.interpretation || "Completed"}</p>
+                      </div>
+                      <div className="flex items-center gap-1.5 flex-shrink-0">
+                        <span className="text-base font-bold" style={{ color: flagged ? "#FEA002" : "#277493" }}>{ar.computedScore ?? "--"}</span>
+                        {flagged && <AlertTriangle className="w-3 h-3" style={{ color: "#FEA002" }} />}
+                      </div>
+                    </div>
+                  );
+                })}
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Medication Summary */}
+          {medRecon.length > 0 && (
+            <Card>
+              <CardHeader className="pb-2">
+                <div className="flex items-center justify-between gap-2 flex-wrap">
+                  <div className="flex items-center gap-2">
+                    <Pill className="w-4 h-4" style={{ color: "#277493" }} />
+                    <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Medications</h3>
+                  </div>
+                  <span className="text-xs text-muted-foreground">{medRecon.length} reconciled</span>
+                </div>
+              </CardHeader>
+              <CardContent className="pt-0">
+                <div className="flex items-center gap-3 text-xs text-muted-foreground mb-2 flex-wrap">
+                  <span>{medRecon.filter((m: any) => m.status === "verified").length} verified</span>
+                  <span>{medRecon.filter((m: any) => m.status === "new").length} new</span>
+                  <span>{medRecon.filter((m: any) => m.status === "discontinued").length} discontinued</span>
+                  {medRecon.filter((m: any) => m.isBeersRisk || (m.interactionFlags && m.interactionFlags.length > 0)).length > 0 && (
+                    <Badge variant="destructive" className="text-xs">{medRecon.filter((m: any) => m.isBeersRisk || (m.interactionFlags && m.interactionFlags.length > 0)).length} warnings</Badge>
+                  )}
+                </div>
+                <div className="space-y-1">
+                  {medRecon.slice(0, 5).map((m: any) => (
+                    <div key={m.id} className="flex items-center justify-between gap-2 text-sm" data-testid={`med-summary-${m.id}`}>
+                      <span className="truncate text-xs">{m.medicationName} {m.dosage && <span className="text-muted-foreground">{m.dosage}</span>}</span>
+                      <div className="flex items-center gap-1 flex-shrink-0">
+                        <Badge variant="secondary" className="text-xs capitalize">{m.status}</Badge>
+                        {(m.isBeersRisk || (m.interactionFlags && m.interactionFlags.length > 0)) && <AlertTriangle className="w-3 h-3" style={{ color: "#FEA002" }} />}
+                      </div>
+                    </div>
+                  ))}
+                  {medRecon.length > 5 && <p className="text-xs text-muted-foreground text-center">+{medRecon.length - 5} more</p>}
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Plan Targets */}
+          {targets.length > 0 && (
+            <Card>
+              <CardHeader className="pb-2">
+                <div className="flex items-center gap-2">
+                  <Target className="w-4 h-4" style={{ color: "#FEA002" }} />
+                  <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Plan Targets</h3>
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-1.5 pt-0">
+                {targets.map((t: any) => (
+                  <div key={t.id} className="flex items-center gap-2 text-sm">
+                    <div className="w-2 h-2 rounded-full flex-shrink-0" style={{
+                      backgroundColor: t.priority === "high" ? "#E74C3C" : t.priority === "medium" ? "#FEA002" : "#277493"
+                    }} />
+                    <span className="text-xs">{t.description}</span>
+                  </div>
+                ))}
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Quick navigation */}
+          <div className="flex items-center gap-2 flex-wrap">
+            <Link href={`/visits/${visitId}/intake/timeline`}>
+              <Button variant="outline" size="sm" data-testid="button-open-timeline">
+                <Activity className="w-4 h-4 mr-1" /> Clinical Timeline
+              </Button>
+            </Link>
+            <Link href={`/visits/${visitId}/intake/careplan`}>
+              <Button variant="outline" size="sm" data-testid="button-open-careplan">
+                <FileText className="w-4 h-4 mr-1" /> Full Care Plan
+              </Button>
+            </Link>
+          </div>
+        </div>
+
+        {/* ====== RIGHT PANEL: TASKS & NOTES ====== */}
+        <div className="lg:col-span-7 space-y-4">
           {/* CDS Alerts */}
           {pendingRecs.length > 0 && (
             <Card>
               <CardHeader className="pb-2">
                 <div className="flex items-center gap-2">
                   <Lightbulb className="w-4 h-4" style={{ color: "#FEA002" }} />
-                  <h3 className="text-sm font-semibold">Clinical Decision Support</h3>
-                  <Badge variant="secondary" className="text-xs">{pendingRecs.length} pending</Badge>
+                  <h2 className="text-sm font-semibold">Clinical Decision Support</h2>
+                  <Badge variant="secondary" className="text-xs">{pendingRecs.length}</Badge>
                 </div>
               </CardHeader>
-              <CardContent className="space-y-2">
+              <CardContent className="space-y-2 pt-0">
                 {pendingRecs.map((rec: any) => (
-                  <div key={rec.id} className="flex items-start justify-between gap-3 p-3 rounded-md border border-amber-200 dark:border-amber-800" style={{ backgroundColor: "rgba(254, 160, 2, 0.05)" }} data-testid={`rec-${rec.id}`}>
+                  <div key={rec.id} className="flex items-start justify-between gap-3 p-3 rounded-md border" style={{ borderColor: "rgba(254, 160, 2, 0.3)", backgroundColor: "rgba(254, 160, 2, 0.05)" }} data-testid={`rec-${rec.id}`}>
                     <div className="flex-1 min-w-0 space-y-1">
                       <span className="text-sm font-medium" data-testid={`text-rec-name-${rec.id}`}>{rec.ruleName}</span>
                       <p className="text-xs text-muted-foreground">{rec.recommendation}</p>
                     </div>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => dismissRecMutation.mutate(rec.id)}
-                      data-testid={`button-dismiss-rec-${rec.id}`}
-                    >
+                    <Button variant="ghost" size="sm" onClick={() => dismissRecMutation.mutate(rec.id)} data-testid={`button-dismiss-rec-${rec.id}`}>
                       Noted
                     </Button>
                   </div>
@@ -298,117 +492,116 @@ export default function IntakeDashboard() {
           )}
 
           {/* Provider Tasks */}
-          <div className="flex items-center justify-between gap-3 flex-wrap">
-            <h3 className="text-sm font-semibold flex items-center gap-2">
-              <ClipboardList className="w-4 h-4" style={{ color: "#2E456B" }} /> Provider Tasks
-              {pendingTasks.length > 0 && <Badge variant="secondary" className="text-xs">{pendingTasks.length} pending</Badge>}
-            </h3>
-            <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-              <DialogTrigger asChild>
-                <Button size="sm" data-testid="button-add-task">
-                  <Plus className="w-4 h-4 mr-1" /> Add Task
-                </Button>
-              </DialogTrigger>
-              <DialogContent>
-                <DialogHeader>
-                  <DialogTitle>Create Care Plan Task</DialogTitle>
-                </DialogHeader>
-                <div className="space-y-4 pt-2">
-                  <div className="space-y-2">
-                    <Label>Task Type</Label>
-                    <Select value={newTask.taskType} onValueChange={(v) => setNewTask((p) => ({ ...p, taskType: v }))}>
-                      <SelectTrigger data-testid="select-task-type"><SelectValue /></SelectTrigger>
-                      <SelectContent>
-                        {taskTypes.map((t) => (<SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Title</Label>
-                    <Input value={newTask.title} onChange={(e) => setNewTask((p) => ({ ...p, title: e.target.value }))} placeholder="Task title" data-testid="input-task-title" />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Description</Label>
-                    <Textarea value={newTask.description} onChange={(e) => setNewTask((p) => ({ ...p, description: e.target.value }))} placeholder="Details..." data-testid="input-task-description" />
-                  </div>
-                  <div className="grid grid-cols-2 gap-3">
-                    <div className="space-y-2">
-                      <Label>Priority</Label>
-                      <Select value={newTask.priority} onValueChange={(v) => setNewTask((p) => ({ ...p, priority: v }))}>
-                        <SelectTrigger data-testid="select-task-priority"><SelectValue /></SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="low">Low</SelectItem>
-                          <SelectItem value="medium">Medium</SelectItem>
-                          <SelectItem value="high">High</SelectItem>
-                          <SelectItem value="urgent">Urgent</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div className="space-y-2">
-                      <Label>Due Date</Label>
-                      <Input type="date" value={newTask.dueDate} onChange={(e) => setNewTask((p) => ({ ...p, dueDate: e.target.value }))} data-testid="input-task-due-date" />
-                    </div>
-                  </div>
-                  <Button className="w-full" onClick={() => createTaskMutation.mutate()} disabled={!newTask.title || createTaskMutation.isPending} data-testid="button-create-task">
-                    {createTaskMutation.isPending ? "Creating..." : "Create Task"}
-                  </Button>
+          <Card>
+            <CardHeader className="pb-2">
+              <div className="flex items-center justify-between gap-2 flex-wrap">
+                <div className="flex items-center gap-2">
+                  <ClipboardList className="w-4 h-4" style={{ color: "#2E456B" }} />
+                  <h2 className="text-sm font-semibold">Provider Tasks</h2>
+                  {pendingTasks.length > 0 && <Badge variant="secondary" className="text-xs">{pendingTasks.length} pending</Badge>}
                 </div>
-              </DialogContent>
-            </Dialog>
-          </div>
-
-          {pendingTasks.length > 0 ? (
-            <div className="space-y-2">
-              {pendingTasks.map((task: any) => {
-                const StatusIcon = statusIcons[task.status] || Circle;
-                return (
-                  <Card key={task.id} data-testid={`task-card-${task.id}`}>
-                    <CardContent className="p-3">
-                      <div className="flex items-start gap-3">
-                        <StatusIcon className="w-4 h-4 flex-shrink-0 mt-0.5" style={{ color: task.status === "completed" ? "#277493" : "#ABAFA5" }} />
-                        <div className="flex-1 min-w-0 space-y-1">
-                          <div className="flex items-center justify-between gap-2 flex-wrap">
-                            <span className="text-sm font-medium" data-testid={`text-task-title-${task.id}`}>{task.title}</span>
-                            <div className="flex items-center gap-2">
-                              <Badge variant="secondary" className="text-xs capitalize">{task.taskType.replace(/_/g, " ")}</Badge>
-                              <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: priorityColors[task.priority] || "#ABAFA5" }} />
-                            </div>
-                          </div>
-                          {task.description && <p className="text-xs text-muted-foreground line-clamp-2">{task.description}</p>}
-                          {task.dueDate && (
-                            <span className="text-xs text-muted-foreground flex items-center gap-1">
-                              <Clock className="w-3 h-3" /> Due: {task.dueDate}
-                            </span>
-                          )}
+                <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+                  <DialogTrigger asChild>
+                    <Button size="sm" data-testid="button-add-task">
+                      <Plus className="w-4 h-4 mr-1" /> Add Task
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent>
+                    <DialogHeader>
+                      <DialogTitle>Create Care Plan Task</DialogTitle>
+                      <DialogDescription>Add a new task to the visit care plan.</DialogDescription>
+                    </DialogHeader>
+                    <div className="space-y-4 pt-2">
+                      <div className="space-y-2">
+                        <Label>Task Type</Label>
+                        <Select value={newTask.taskType} onValueChange={(v) => setNewTask((p) => ({ ...p, taskType: v }))}>
+                          <SelectTrigger data-testid="select-task-type"><SelectValue /></SelectTrigger>
+                          <SelectContent>
+                            {taskTypes.map((t) => (<SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Title</Label>
+                        <Input value={newTask.title} onChange={(e) => setNewTask((p) => ({ ...p, title: e.target.value }))} placeholder="Task title" data-testid="input-task-title" />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Description</Label>
+                        <Textarea value={newTask.description} onChange={(e) => setNewTask((p) => ({ ...p, description: e.target.value }))} placeholder="Details..." data-testid="input-task-description" />
+                      </div>
+                      <div className="grid grid-cols-2 gap-3">
+                        <div className="space-y-2">
+                          <Label>Priority</Label>
+                          <Select value={newTask.priority} onValueChange={(v) => setNewTask((p) => ({ ...p, priority: v }))}>
+                            <SelectTrigger data-testid="select-task-priority"><SelectValue /></SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="low">Low</SelectItem>
+                              <SelectItem value="medium">Medium</SelectItem>
+                              <SelectItem value="high">High</SelectItem>
+                              <SelectItem value="urgent">Urgent</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div className="space-y-2">
+                          <Label>Due Date</Label>
+                          <Input type="date" value={newTask.dueDate} onChange={(e) => setNewTask((p) => ({ ...p, dueDate: e.target.value }))} data-testid="input-task-due-date" />
                         </div>
                       </div>
-                    </CardContent>
-                  </Card>
-                );
-              })}
-            </div>
-          ) : (
-            <Card>
-              <CardContent className="flex flex-col items-center py-8">
-                <CheckCircle2 className="w-8 h-8 mb-2 text-muted-foreground opacity-30" />
-                <span className="text-sm text-muted-foreground">No pending tasks. Add tasks as you identify follow-up needs.</span>
-              </CardContent>
-            </Card>
-          )}
-
-          {completedTasks.length > 0 && (
-            <details className="text-sm">
-              <summary className="text-muted-foreground cursor-pointer mb-2">{completedTasks.length} completed task{completedTasks.length !== 1 ? "s" : ""}</summary>
-              <div className="space-y-2">
-                {completedTasks.map((task: any) => (
-                  <div key={task.id} className="flex items-center gap-2 p-2 rounded-md border opacity-60">
-                    <CheckCircle2 className="w-4 h-4 flex-shrink-0" style={{ color: "#277493" }} />
-                    <span className="text-sm line-through">{task.title}</span>
-                  </div>
-                ))}
+                      <Button className="w-full" onClick={() => createTaskMutation.mutate()} disabled={!newTask.title || createTaskMutation.isPending} data-testid="button-create-task">
+                        {createTaskMutation.isPending ? "Creating..." : "Create Task"}
+                      </Button>
+                    </div>
+                  </DialogContent>
+                </Dialog>
               </div>
-            </details>
-          )}
+            </CardHeader>
+            <CardContent className="space-y-2 pt-0">
+              {pendingTasks.length > 0 ? (
+                pendingTasks.map((task: any) => {
+                  const StatusIcon = statusIcons[task.status] || Circle;
+                  return (
+                    <div key={task.id} className="flex items-start gap-3 p-3 rounded-md border" data-testid={`task-card-${task.id}`}>
+                      <StatusIcon className="w-4 h-4 flex-shrink-0 mt-0.5" style={{ color: "#ABAFA5" }} />
+                      <div className="flex-1 min-w-0 space-y-1">
+                        <div className="flex items-center justify-between gap-2 flex-wrap">
+                          <span className="text-sm font-medium" data-testid={`text-task-title-${task.id}`}>{task.title}</span>
+                          <div className="flex items-center gap-2">
+                            <Badge variant="secondary" className="text-xs capitalize">{task.taskType.replace(/_/g, " ")}</Badge>
+                            <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: priorityColors[task.priority] || "#ABAFA5" }} />
+                          </div>
+                        </div>
+                        {task.description && <p className="text-xs text-muted-foreground line-clamp-2">{task.description}</p>}
+                        {task.dueDate && (
+                          <span className="text-xs text-muted-foreground flex items-center gap-1">
+                            <Clock className="w-3 h-3" /> Due: {task.dueDate}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })
+              ) : (
+                <div className="flex flex-col items-center py-6">
+                  <CheckCircle2 className="w-6 h-6 mb-2 text-muted-foreground opacity-30" />
+                  <span className="text-sm text-muted-foreground">No pending tasks</span>
+                </div>
+              )}
+
+              {completedTasks.length > 0 && (
+                <details className="text-sm">
+                  <summary className="text-muted-foreground cursor-pointer text-xs">{completedTasks.length} completed</summary>
+                  <div className="space-y-1 mt-2">
+                    {completedTasks.map((task: any) => (
+                      <div key={task.id} className="flex items-center gap-2 p-1.5 rounded-md opacity-60">
+                        <CheckCircle2 className="w-3 h-3 flex-shrink-0" style={{ color: "#277493" }} />
+                        <span className="text-xs line-through">{task.title}</span>
+                      </div>
+                    ))}
+                  </div>
+                </details>
+              )}
+            </CardContent>
+          </Card>
 
           <Separator />
 
@@ -418,7 +611,7 @@ export default function IntakeDashboard() {
               <div className="flex items-center justify-between gap-2 flex-wrap">
                 <div className="flex items-center gap-2">
                   <Clipboard className="w-4 h-4" style={{ color: "#277493" }} />
-                  <h3 className="text-sm font-semibold">Progress Note</h3>
+                  <h2 className="text-sm font-semibold">Progress Note</h2>
                   <span className="text-xs text-muted-foreground">(auto-composed)</span>
                 </div>
                 <Button variant="ghost" size="sm" onClick={copyNote} data-testid="button-copy-note">
@@ -427,9 +620,9 @@ export default function IntakeDashboard() {
                 </Button>
               </div>
             </CardHeader>
-            <CardContent className="space-y-3">
+            <CardContent className="space-y-3 pt-0">
               {progressNote.length > 0 ? progressNote.map((section: any, i: number) => (
-                <div key={i} className="space-y-1" data-testid={`note-section-${i}`}>
+                <div key={i} className="space-y-0.5" data-testid={`note-section-${i}`}>
                   <div className="flex items-center gap-2">
                     <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{section.section}</span>
                     {section.hasFlags && <AlertTriangle className="w-3 h-3" style={{ color: "#FEA002" }} />}
@@ -441,337 +634,8 @@ export default function IntakeDashboard() {
               )}
             </CardContent>
           </Card>
-
-          {/* Quick links */}
-          <div className="flex items-center gap-2 flex-wrap">
-            <Link href={`/visits/${visitId}/intake/careplan`}>
-              <Button variant="outline" size="sm" data-testid="button-open-careplan">
-                <FileText className="w-4 h-4 mr-1" /> Full Care Plan
-              </Button>
-            </Link>
-            <Link href={`/visits/${visitId}/intake/timeline`}>
-              <Button variant="outline" size="sm" data-testid="button-open-timeline">
-                <Activity className="w-4 h-4 mr-1" /> Clinical Timeline
-              </Button>
-            </Link>
-          </div>
-        </TabsContent>
-
-        {/* ====== TAB 2: VISIT OBJECTIVES ====== */}
-        <TabsContent value="objectives" className="mt-4 space-y-4">
-          <Card>
-            <CardContent className="p-4">
-              <div className="flex items-center justify-between gap-3 mb-2 flex-wrap">
-                <span className="text-sm font-medium">Completion Progress</span>
-                <span className="text-sm text-muted-foreground" data-testid="text-objective-progress">
-                  {requiredDone} of {requiredTotal} required items complete
-                </span>
-              </div>
-              <Progress value={requiredTotal > 0 ? Math.round((requiredDone / requiredTotal) * 100) : 0} className="h-2" />
-              {gateReady ? (
-                <div className="flex items-center gap-2 mt-3 text-sm" style={{ color: "#277493" }}>
-                  <CheckCircle2 className="w-4 h-4" />
-                  <span className="font-medium">All required objectives complete. Ready for finalization.</span>
-                </div>
-              ) : (
-                <div className="flex items-center gap-2 mt-3 text-sm text-muted-foreground">
-                  <AlertCircle className="w-4 h-4" />
-                  <span>{requiredTotal - requiredDone} required item{requiredTotal - requiredDone !== 1 ? "s" : ""} remaining before finalization</span>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-
-          <div className="space-y-2">
-            {objectiveSteps.map((step) => {
-              const Icon = stepIcons[step.id.split("-")[0]] || ClipboardList;
-              return (
-                <Link key={step.id} href={step.href}>
-                  <Card className="hover-elevate cursor-pointer" data-testid={`objective-${step.id}`}>
-                    <CardContent className="p-3">
-                      <div className="flex items-center gap-3">
-                        <div className="flex items-center justify-center w-8 h-8 rounded-md flex-shrink-0" style={{
-                          backgroundColor: step.done ? "#27749315" : "#2E456B10"
-                        }}>
-                          <Icon className="w-4 h-4" style={{ color: step.done ? "#277493" : "#2E456B" }} />
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <span className="text-sm font-medium">{step.label}</span>
-                          {(step as any).status && (
-                            <Badge variant="secondary" className="ml-2 text-xs capitalize">
-                              {(step as any).status.replace(/_/g, " ")}
-                            </Badge>
-                          )}
-                        </div>
-                        <div className="flex items-center gap-2 flex-shrink-0">
-                          {step.required && !step.done && <span className="text-xs text-muted-foreground">Required</span>}
-                          {step.done ? (
-                            <CheckCircle2 className="w-5 h-5" style={{ color: "#277493" }} />
-                          ) : (
-                            <ArrowRight className="w-4 h-4 text-muted-foreground" />
-                          )}
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                </Link>
-              );
-            })}
-          </div>
-
-          {/* Plan Targets */}
-          {targets.length > 0 && (
-            <Card>
-              <CardHeader className="pb-2">
-                <div className="flex items-center gap-2">
-                  <Target className="w-4 h-4" style={{ color: "#FEA002" }} />
-                  <h3 className="text-sm font-semibold">Plan Targets & Care Gaps</h3>
-                </div>
-              </CardHeader>
-              <CardContent className="space-y-2">
-                {targets.map((t: any) => (
-                  <div key={t.id} className="flex items-center gap-2 text-sm p-2 rounded-md border">
-                    <div className="w-2 h-2 rounded-full flex-shrink-0" style={{
-                      backgroundColor: t.priority === "high" ? "#E74C3C" : t.priority === "medium" ? "#FEA002" : "#277493"
-                    }} />
-                    <span className="text-sm">{t.description}</span>
-                  </div>
-                ))}
-              </CardContent>
-            </Card>
-          )}
-
-          <div className="flex justify-end">
-            <Link href={`/visits/${visitId}/finalize`}>
-              <Button data-testid="button-finalize-from-objectives" variant={gateReady ? "default" : "outline"}>
-                Review & Finalize <ArrowRight className="w-4 h-4 ml-2" />
-              </Button>
-            </Link>
-          </div>
-        </TabsContent>
-
-        {/* ====== TAB 3: PATIENT CONTEXT ====== */}
-        <TabsContent value="context" className="mt-4 space-y-4">
-          {/* Alerts Banner */}
-          {allFlags.length > 0 && (
-            <Card>
-              <CardHeader className="pb-2">
-                <div className="flex items-center gap-2">
-                  <AlertTriangle className="w-4 h-4" style={{ color: "#E74C3C" }} />
-                  <h3 className="text-sm font-semibold">Clinical Alerts</h3>
-                  <Badge variant="destructive" className="text-xs">{allFlags.length}</Badge>
-                </div>
-              </CardHeader>
-              <CardContent className="space-y-2">
-                {allFlags.map((flag: any, i: number) => (
-                  <div key={i} className="flex items-start gap-2 p-2 rounded-md border" style={{
-                    borderColor: flag.severity === "critical" ? "#E74C3C" : "#FEA002",
-                    backgroundColor: flag.severity === "critical" ? "rgba(231, 76, 60, 0.05)" : "rgba(254, 160, 2, 0.05)"
-                  }} data-testid={`flag-${i}`}>
-                    <AlertTriangle className="w-4 h-4 flex-shrink-0 mt-0.5" style={{ color: flag.severity === "critical" ? "#E74C3C" : "#FEA002" }} />
-                    <div>
-                      <span className="text-sm font-medium">{flag.label}</span>
-                      <p className="text-xs text-muted-foreground">{flag.message}</p>
-                    </div>
-                  </div>
-                ))}
-              </CardContent>
-            </Card>
-          )}
-
-          {/* Patient Demographics */}
-          {member && (
-            <Card>
-              <CardHeader className="pb-2">
-                <div className="flex items-center gap-2">
-                  <User className="w-4 h-4" style={{ color: "#2E456B" }} />
-                  <h3 className="text-sm font-semibold">Patient Information</h3>
-                </div>
-              </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <h4 className="text-lg font-bold" data-testid="text-context-name">{member.firstName} {member.lastName}</h4>
-                    <div className="space-y-1 text-sm text-muted-foreground">
-                      <p>DOB: {member.dob} | Gender: {member.gender || "N/A"}</p>
-                      <p>Member ID: {member.memberId}</p>
-                      {member.phone && <p className="flex items-center gap-1"><Phone className="w-3 h-3" /> {member.phone}</p>}
-                      {member.address && <p className="flex items-center gap-1"><MapPin className="w-3 h-3" /> {member.address}, {member.city}, {member.state} {member.zip}</p>}
-                    </div>
-                  </div>
-                  <div className="space-y-3">
-                    {member.conditions?.length > 0 && (
-                      <div>
-                        <span className="text-xs font-medium text-muted-foreground block mb-1">Conditions</span>
-                        <div className="flex flex-wrap gap-1">
-                          {member.conditions.map((c: string, i: number) => (
-                            <Badge key={i} variant="secondary" className="text-xs">{c}</Badge>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-                    {member.allergies?.length > 0 && (
-                      <div>
-                        <span className="text-xs font-medium text-muted-foreground flex items-center gap-1 mb-1">
-                          <FileWarning className="w-3 h-3" /> Allergies
-                        </span>
-                        <div className="flex flex-wrap gap-1">
-                          {member.allergies.map((a: string, i: number) => (
-                            <Badge key={i} variant="destructive" className="text-xs">{a}</Badge>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-                    {member.riskFlags?.length > 0 && (
-                      <div>
-                        <span className="text-xs font-medium text-muted-foreground flex items-center gap-1 mb-1">
-                          <Shield className="w-3 h-3" /> Risk Flags
-                        </span>
-                        <div className="flex flex-wrap gap-1">
-                          {member.riskFlags.map((r: string, i: number) => (
-                            <Badge key={i} variant="destructive" className="text-xs">{r}</Badge>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          )}
-
-          {/* Current Visit Data in Context */}
-          {vitals && (
-            <Card>
-              <CardHeader className="pb-2">
-                <div className="flex items-center gap-2">
-                  <HeartPulse className="w-4 h-4" style={{ color: "#E74C3C" }} />
-                  <h3 className="text-sm font-semibold">Current Visit Vitals</h3>
-                  {vitalsFlags.length > 0 && <Badge variant="destructive" className="text-xs">{vitalsFlags.length} abnormal</Badge>}
-                </div>
-              </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                  {[
-                    { label: "Blood Pressure", value: `${(vitals as any).systolicBp || "--"}/${(vitals as any).diastolicBp || "--"}`, unit: "mmHg", fields: ["systolicBp", "diastolicBp"] },
-                    { label: "Heart Rate", value: (vitals as any).heartRate || "--", unit: "bpm", fields: ["heartRate"] },
-                    { label: "SpO2", value: (vitals as any).oxygenSaturation || "--", unit: "%", fields: ["oxygenSaturation"] },
-                    { label: "Temperature", value: (vitals as any).temperature || "--", unit: "F", fields: ["temperature"] },
-                    { label: "Respiratory Rate", value: (vitals as any).respiratoryRate || "--", unit: "/min", fields: ["respiratoryRate"] },
-                    { label: "Weight", value: (vitals as any).weight || "--", unit: "lbs", fields: ["weight"] },
-                    { label: "BMI", value: (vitals as any).bmi || "--", unit: "", fields: ["bmi"] },
-                    { label: "Pain", value: (vitals as any).painLevel ?? "--", unit: "/10", fields: ["painLevel"] },
-                  ].map((v) => {
-                    const flagged = vitalsFlags.some((f: any) => v.fields.includes(f.field));
-                    return (
-                      <div key={v.label} className={`p-3 rounded-md border ${flagged ? "border-destructive" : ""}`} style={flagged ? { backgroundColor: "rgba(231, 76, 60, 0.05)" } : {}} data-testid={`vital-card-${v.fields[0]}`}>
-                        <span className="text-xs text-muted-foreground block">{v.label}</span>
-                        <span className={`text-lg font-bold ${flagged ? "text-destructive" : ""}`}>{v.value}</span>
-                        <span className="text-xs text-muted-foreground ml-1">{v.unit}</span>
-                        {flagged && <AlertTriangle className="w-3 h-3 inline-block ml-1" style={{ color: "#E74C3C" }} />}
-                      </div>
-                    );
-                  })}
-                </div>
-              </CardContent>
-            </Card>
-          )}
-
-          {/* Assessment Results in Context */}
-          {assessmentResponses.filter((ar: any) => ar.status === "complete").length > 0 && (
-            <Card>
-              <CardHeader className="pb-2">
-                <div className="flex items-center gap-2">
-                  <ClipboardList className="w-4 h-4" style={{ color: "#277493" }} />
-                  <h3 className="text-sm font-semibold">Assessment Results</h3>
-                </div>
-              </CardHeader>
-              <CardContent className="space-y-2">
-                {assessmentResponses.filter((ar: any) => ar.status === "complete").map((ar: any) => {
-                  const flagged = assessmentFlags.some((f: any) => f.instrumentId === ar.instrumentId);
-                  return (
-                    <div key={ar.id} className={`flex items-center justify-between gap-3 p-3 rounded-md border ${flagged ? "border-amber-400 dark:border-amber-700" : ""}`} style={flagged ? { backgroundColor: "rgba(254, 160, 2, 0.05)" } : {}} data-testid={`assessment-result-${ar.instrumentId}`}>
-                      <div className="flex-1 min-w-0">
-                        <span className="text-sm font-medium">{ar.instrumentId}</span>
-                        <p className="text-xs text-muted-foreground">{ar.interpretation || "Completed"}</p>
-                      </div>
-                      <div className="flex items-center gap-2 flex-shrink-0">
-                        <span className={`text-lg font-bold ${flagged ? "" : ""}`} style={flagged ? { color: "#FEA002" } : { color: "#277493" }}>{ar.computedScore ?? "--"}</span>
-                        {flagged && <AlertTriangle className="w-4 h-4" style={{ color: "#FEA002" }} />}
-                      </div>
-                    </div>
-                  );
-                })}
-              </CardContent>
-            </Card>
-          )}
-
-          {/* Medications in Context */}
-          {medRecon.length > 0 && (
-            <Card>
-              <CardHeader className="pb-2">
-                <div className="flex items-center gap-2">
-                  <Pill className="w-4 h-4" style={{ color: "#277493" }} />
-                  <h3 className="text-sm font-semibold">Medication Reconciliation Summary</h3>
-                </div>
-              </CardHeader>
-              <CardContent>
-                <div className="flex items-center gap-4 mb-3 text-sm flex-wrap">
-                  <span>{medRecon.length} total</span>
-                  <span className="text-muted-foreground">{medRecon.filter((m: any) => m.reconciliationStatus === "verified").length} verified</span>
-                  <span className="text-muted-foreground">{medRecon.filter((m: any) => m.reconciliationStatus === "new").length} new</span>
-                  {medRecon.filter((m: any) => m.beersRisk || m.interactionFlag).length > 0 && (
-                    <Badge variant="destructive" className="text-xs">{medRecon.filter((m: any) => m.beersRisk || m.interactionFlag).length} warnings</Badge>
-                  )}
-                </div>
-                <div className="space-y-1">
-                  {medRecon.slice(0, 6).map((m: any) => (
-                    <div key={m.id} className="flex items-center justify-between gap-2 text-sm p-2 rounded-md border" data-testid={`med-context-${m.id}`}>
-                      <div className="flex items-center gap-2 min-w-0">
-                        <span className="truncate">{m.medicationName}</span>
-                        {m.dosage && <span className="text-xs text-muted-foreground">{m.dosage}</span>}
-                      </div>
-                      <div className="flex items-center gap-1 flex-shrink-0">
-                        <Badge variant="secondary" className="text-xs capitalize">{m.reconciliationStatus}</Badge>
-                        {(m.beersRisk || m.interactionFlag) && <AlertTriangle className="w-3 h-3" style={{ color: "#FEA002" }} />}
-                      </div>
-                    </div>
-                  ))}
-                  {medRecon.length > 6 && <p className="text-xs text-muted-foreground text-center mt-2">+{medRecon.length - 6} more</p>}
-                </div>
-              </CardContent>
-            </Card>
-          )}
-
-          {/* Known Medications from Chart */}
-          {member?.medications?.length > 0 && (
-            <Card>
-              <CardHeader className="pb-2">
-                <div className="flex items-center gap-2">
-                  <Pill className="w-4 h-4" style={{ color: "#2E456B" }} />
-                  <h3 className="text-sm font-semibold">Chart Medications</h3>
-                </div>
-              </CardHeader>
-              <CardContent>
-                <div className="flex flex-wrap gap-1">
-                  {member.medications.map((m: string, i: number) => (
-                    <Badge key={i} variant="outline" className="text-xs">{m}</Badge>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-          )}
-
-          {/* Quick link to timeline */}
-          <div className="flex items-center gap-2 flex-wrap">
-            <Link href={`/visits/${visitId}/intake/timeline`}>
-              <Button variant="outline" size="sm" data-testid="button-context-timeline">
-                <TrendingUp className="w-4 h-4 mr-1" /> View Full Clinical Timeline
-              </Button>
-            </Link>
-          </div>
-        </TabsContent>
-      </Tabs>
+        </div>
+      </div>
     </div>
   );
 }

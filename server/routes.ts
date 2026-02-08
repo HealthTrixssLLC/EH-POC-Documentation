@@ -227,10 +227,10 @@ export async function registerRoutes(
 
       // Medication Reconciliation
       if (medRecon.length > 0) {
-        const verified = medRecon.filter(m => m.reconciliationStatus === "verified").length;
-        const newMeds = medRecon.filter(m => m.reconciliationStatus === "new").length;
-        const disc = medRecon.filter(m => m.reconciliationStatus === "discontinued").length;
-        const warnings = medRecon.filter(m => m.beersRisk || m.interactionFlag).length;
+        const verified = medRecon.filter(m => m.status === "verified").length;
+        const newMeds = medRecon.filter(m => m.status === "new").length;
+        const disc = medRecon.filter(m => m.status === "discontinued").length;
+        const warnings = medRecon.filter(m => m.isBeersRisk || (m.interactionFlags && m.interactionFlags.length > 0)).length;
         progressNote.push({
           section: "Medication Reconciliation",
           content: `${medRecon.length} medications reconciled: ${verified} verified, ${newMeds} new, ${disc} discontinued.${warnings > 0 ? ` ${warnings} safety warning(s) flagged.` : ""}`,

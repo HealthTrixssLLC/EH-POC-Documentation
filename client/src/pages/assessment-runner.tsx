@@ -98,6 +98,7 @@ export default function AssessmentRunner() {
       queryClient.invalidateQueries({ queryKey: ["/api/visits", visitId] });
       queryClient.invalidateQueries({ queryKey: ["/api/visits", visitId, "recommendations"] });
       queryClient.invalidateQueries({ queryKey: ["/api/visits", visitId, "codes"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/visits", visitId, "overview"] });
       toast({ title: vars.status === "complete" ? "Assessment completed" : "Draft saved" });
       if (vars.status === "complete") setLocation(`/visits/${visitId}/intake`);
     },

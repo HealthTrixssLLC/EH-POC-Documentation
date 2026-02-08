@@ -329,6 +329,7 @@ export default function MedReconciliation() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/visits", visitId, "med-reconciliation"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/visits", visitId, "overview"] });
       toast({ title: "Medication added to reconciliation" });
     },
     onError: (err: any) => {
@@ -343,6 +344,7 @@ export default function MedReconciliation() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/visits", visitId, "med-reconciliation"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/visits", visitId, "overview"] });
       setEditingId(null);
       toast({ title: "Medication updated" });
     },
@@ -357,6 +359,7 @@ export default function MedReconciliation() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/visits", visitId, "med-reconciliation"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/visits", visitId, "overview"] });
       toast({ title: "Medication removed" });
     },
     onError: (err: any) => {

@@ -129,6 +129,7 @@ export default function VitalsExam() {
       queryClient.invalidateQueries({ queryKey: ["/api/visits", visitId, "bundle"] });
       queryClient.invalidateQueries({ queryKey: ["/api/visits", visitId, "recommendations"] });
       queryClient.invalidateQueries({ queryKey: ["/api/visits", visitId, "codes"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/visits", visitId, "overview"] });
       toast({ title: "Vitals saved successfully" });
       setLocation(`/visits/${visitId}/intake`);
     },

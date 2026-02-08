@@ -54,6 +54,7 @@ export default function HedisMeasure() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/visits", visitId] });
+      queryClient.invalidateQueries({ queryKey: ["/api/visits", visitId, "overview"] });
       toast({ title: "Measure completed" });
       setLocation(`/visits/${visitId}/intake`);
     },
@@ -72,6 +73,7 @@ export default function HedisMeasure() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/visits", visitId] });
+      queryClient.invalidateQueries({ queryKey: ["/api/visits", visitId, "overview"] });
       toast({ title: "Marked as unable to assess" });
       setLocation(`/visits/${visitId}/intake`);
     },

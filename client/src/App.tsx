@@ -30,6 +30,7 @@ import FhirPlayground from "@/pages/fhir-playground";
 import HelpSupport from "@/pages/help-support";
 import DemoManagement from "@/pages/demo-management";
 import MedReconciliation from "@/pages/med-reconciliation";
+import PatientContext from "@/pages/patient-context";
 
 function Router() {
   return (
@@ -45,6 +46,7 @@ function Router() {
       <Route path="/visits/:id/intake/medications" component={MedReconciliation} />
       <Route path="/visits/:id/intake/careplan" component={CarePlan} />
       <Route path="/visits/:id/intake/timeline" component={PatientTimeline} />
+      <Route path="/visits/:id/intake/patient-context" component={PatientContext} />
       <Route path="/visits/:id/finalize" component={ReviewFinalize} />
       <Route path="/visits/:id/detail" component={VisitDetail} />
       <Route path="/reviews" component={SupervisorReviews} />

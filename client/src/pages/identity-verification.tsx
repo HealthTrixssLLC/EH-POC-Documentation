@@ -35,6 +35,7 @@ export default function IdentityVerification() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/visits", visitId, "bundle"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/visits", visitId, "overview"] });
       toast({ title: "Identity verified successfully" });
       setLocation(`/visits/${visitId}/intake`);
     },

@@ -38,11 +38,12 @@ client/src/pages/         - All page components
 ```
 
 ## Recent Changes
-- 2026-02-08: Redesigned Intake Dashboard with 3-tab layout
-  - Tab 1 "Tasks & Notes": Provider tasks (add/view), CDS recommendations with dismiss, auto-composed progress note (copies to clipboard)
-  - Tab 2 "Visit Objectives": Clear completion checklist with progress tracking, gate status for finalization, plan targets
-  - Tab 3 "Patient Context": Demographics, clinical alerts with severity, vitals grid with abnormal highlighting, assessment results with flagged scores, medication reconciliation summary
+- 2026-02-08: Redesigned Intake Dashboard with 2-panel side-by-side layout
+  - LEFT panel: Visit Objectives checklist + inline vitals/assessment/medication data summaries
+  - RIGHT panel: CDS recommendations with dismiss, Provider Tasks with add dialog, auto-composed Progress Note with copy
+  - Patient Context moved to dedicated page at /visits/:id/intake/patient-context (demographics, alerts, full vitals grid, assessments, meds)
   - New GET /api/visits/:id/overview endpoint aggregating all visit data with vitals/assessment flags and auto-generated progress note
+  - All sub-pages (vitals, identity, assessments, meds, measures) invalidate overview query for cross-panel data refresh
   - Care plan tasks integrated into main dashboard (no longer separate-only page)
   - Progress note auto-composes from: identity, vitals, meds, assessments, measures, tasks, CDS recommendations
 - 2026-02-08: Added Medication Reconciliation feature

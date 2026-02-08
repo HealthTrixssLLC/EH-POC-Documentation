@@ -24,58 +24,16 @@ Based on the Branding Guidelines:
 
 ### What IS included in the POC:
 
-1. **Authentication & Role-Based Access (RBAC)**
-   - Login with role selection (NP, Supervisor, Care Coordinator, Admin)
-   - Session management with role-based navigation
-   - Audit logging for PHI access events
-
-2. **Visit Management (SC-002, SC-003)**
-   - Visit list with filtering by status, date, NP
-   - Pre-visit summary with member demographics, history, plan targets, risk flags
-   - Required assessments & measures checklist with status tracking
-
-3. **Clinical Intake Workflow (SC-004 through SC-009)**
-   - Identity verification step
-   - Intake dashboard with checklist navigation
-   - Vitals & exam capture with validation
-   - Assessment runner for PRAPARE, PHQ-2, PHQ-9 with deterministic scoring
-   - HEDIS measure tasks with evidence capture and unable-to-assess reasons
-   - Care plan & task creation
-
-4. **Review & Finalize (SC-010)**
-   - Finalization gating - blocks signature if required items incomplete
-   - Deep-links to missing/incomplete items
-   - E-signature and attestation capture
-   - Visit status state machine (Draft -> Finalized -> Synced)
-
-5. **Supervisor Review Queue (SC-011, SC-012)**
-   - Review queue with completeness indicators
-   - Visit detail view with clinical note, assessments, measures, care plan tabs
-   - Approve / request correction workflow
-
-6. **Care Coordination Workspace (SC-013)**
-   - Task list with filtering and assignment
-   - Task outcomes and status updates
-   - Contact log for follow-ups
-
-7. **Admin Console (SC-014) - Basic**
-   - View/manage plan pack configurations
-   - View assessment instrument definitions (versioned)
-   - View HEDIS measure definitions
-
-8. **Clinical Note Generation**
-   - Auto-generated structured clinical note from visit data
-   - Sections: Chief Complaint, HPI, ROS, Exam, Assessment, Plan
-   - Assessments & measures section with completion status
-
-9. **Export & FHIR (Simulated)**
-   - Generate FHIR Bundle JSON export from finalized visits
-   - Download export file from web app
-   - Simulated EMR submission status tracking
-
-10. **Audit Trail**
-    - Log PHI access, edits, exports, and key actions
-    - Basic audit viewer for compliance role
+- [x] 1. **Authentication & Role-Based Access (RBAC)**
+- [x] 2. **Visit Management (SC-002, SC-003)**
+- [x] 3. **Clinical Intake Workflow (SC-004 through SC-009)**
+- [x] 4. **Review & Finalize (SC-010)**
+- [x] 5. **Supervisor Review Queue (SC-011, SC-012)**
+- [x] 6. **Care Coordination Workspace (SC-013)**
+- [x] 7. **Admin Console (SC-014) - Basic**
+- [x] 8. **Clinical Note Generation**
+- [x] 9. **Export & FHIR (Simulated)**
+- [x] 10. **Audit Trail**
 
 ### What is NOT included in the POC:
 
@@ -171,67 +129,69 @@ Database (PostgreSQL)
 ## Implementation Tasks
 
 ### Task 1: Schema & Frontend
-Define all data models and TypeScript interfaces in `shared/schema.ts`. Configure the branding design tokens (Dark Blue, Orange, Teal palette) in `tailwind.config.ts` and `index.html`. Build ALL React components and views for every screen listed above with exceptional visual quality:
-- Login page with role selection
-- Sidebar navigation with role-based menu items
-- Dashboard with role-specific cards and metrics
-- Visit list with status badges, filters, search
-- Pre-visit summary with member banner, history, plan targets, checklist
-- Intake dashboard with step-by-step checklist navigation
-- Identity verification form
-- Vitals & exam capture forms with validation
-- Assessment runner with question rendering, scoring, interpretation display
-- HEDIS measure task cards with evidence capture
-- Care plan task creation and management
-- Review & finalize with gating checklist, signature capture
-- Supervisor review queue with completeness indicators
-- Visit detail with tabbed sections (note, assessments, measures, care plan)
-- Care coordination workspace
-- Admin console (basic configuration viewer)
-- Audit log viewer with filters
-- All loading, empty, and error states
+- [x] Define all data models and TypeScript interfaces in `shared/schema.ts`
+- [x] Configure branding design tokens in `tailwind.config.ts` and `index.html`
+- [x] Login page with role selection
+- [x] Sidebar navigation with role-based menu items
+- [x] Dashboard with role-specific cards and metrics
+- [x] Visit list with status badges, filters, search
+- [x] Pre-visit summary with member banner, history, plan targets, checklist
+- [x] Intake dashboard with step-by-step checklist navigation
+- [x] Identity verification form
+- [x] Vitals & exam capture forms with validation
+- [x] Assessment runner with question rendering, scoring, interpretation display
+- [x] HEDIS measure task cards with evidence capture
+- [x] Care plan task creation and management
+- [x] Review & finalize with gating checklist, signature capture
+- [x] Supervisor review queue with completeness indicators
+- [x] Visit detail with tabbed sections (note, assessments, measures, care plan)
+- [x] Care coordination workspace
+- [x] Admin console (basic configuration viewer)
+- [x] Audit log viewer with filters
+- [x] All loading, empty, and error states
 
 ### Task 2: Backend
-Set up PostgreSQL database with Drizzle ORM migrations. Implement all API endpoints:
-- Auth: login, session management, RBAC middleware
-- Visits: CRUD, list, pre-visit bundle, draft save, finalize with gating
-- Assessments: definitions, responses, scoring validation
-- Measures: definitions, results, unable-to-assess
-- Care plan: tasks CRUD, outcomes
-- Reviews: submit decision, list queue
-- Clinical note: auto-generation from visit data
-- Exports: FHIR bundle generation, download
-- Audit: event logging, query
-- Admin: plan pack and config management
-- Seed data: 3 test members, sample visits, plan packs, instruments, measures
+- [ ] Set up PostgreSQL database with Drizzle ORM
+- [ ] Auth: login, session management, RBAC middleware
+- [ ] Visits: CRUD, list, pre-visit bundle, draft save, finalize with gating
+- [ ] Assessments: definitions, responses, scoring validation
+- [ ] Measures: definitions, results, unable-to-assess
+- [ ] Care plan: tasks CRUD, outcomes
+- [ ] Reviews: submit decision, list queue
+- [ ] Clinical note: auto-generation from visit data
+- [ ] Exports: FHIR bundle generation, download
+- [ ] Audit: event logging, query
+- [ ] Admin: plan pack and config management
+- [ ] Seed data: 3 test members, sample visits, plan packs, instruments, measures
 
 ### Task 3: Integration, Polish & Testing
-Connect all frontend components to backend APIs. Add error handling, loading states, and optimistic updates. Test all core workflows end-to-end:
-- NP can browse visits, view pre-visit summary, complete intake with assessments
-- Finalization gating blocks when items incomplete
-- Supervisor can review and approve/request corrections
-- Care coordinator can work tasks
-- Admin can view configurations
-- Audit events logged for PHI actions
-- Export download works
-- Full responsive design validation
+- [ ] Connect ALL frontend components to backend APIs
+- [ ] Add error handling, loading states, and optimistic updates
+- [ ] NP can browse visits, view pre-visit summary, complete intake with assessments
+- [ ] Finalization gating blocks when items incomplete
+- [ ] Supervisor can review and approve/request corrections
+- [ ] Care coordinator can work tasks
+- [ ] Admin can view configurations
+- [ ] Audit events logged for PHI actions
+- [ ] Export download works
+- [ ] Full responsive design validation
 
 ---
 
 ## Success Criteria for POC
 
-1. NP can complete a full visit workflow: pre-visit -> intake -> assessments -> finalize
-2. Assessment scoring works deterministically (PHQ-9, PHQ-2, PRAPARE)
-3. Finalization gating blocks signature when required items are incomplete
-4. Unable-to-assess reasons satisfy gating requirements
-5. Supervisor can review visits and approve/request corrections
-6. Care coordination tasks can be created, assigned, and tracked
-7. Clinical note auto-generates from visit data
-8. FHIR bundle export can be generated and downloaded
-9. Audit trail captures PHI access events
-10. UI follows ForEachHealth branding guidelines
-11. Responsive design works on desktop and tablet viewports
-12. Seed data makes the app look realistic on first load
+- [ ] 1. NP can complete a full visit workflow: pre-visit -> intake -> assessments -> finalize
+- [ ] 2. Assessment scoring works deterministically (PHQ-9, PHQ-2, PRAPARE)
+- [ ] 3. Finalization gating blocks signature when required items are incomplete
+- [ ] 4. Unable-to-assess reasons satisfy gating requirements
+- [ ] 5. Supervisor can review visits and approve/request corrections
+- [ ] 6. Care coordination tasks can be created, assigned, and tracked
+- [ ] 7. Clinical note auto-generates from visit data
+- [ ] 8. FHIR bundle export can be generated and downloaded
+- [ ] 9. Audit trail captures PHI access events
+- [ ] 10. UI follows ForEachHealth branding guidelines
+- [ ] 11. Responsive design works on desktop and tablet viewports
+- [ ] 12. Seed data makes the app look realistic on first load
 
 ---
 

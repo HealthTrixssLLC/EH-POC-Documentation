@@ -960,6 +960,67 @@ export async function registerRoutes(
     }
   });
 
+  // ========== Medication Reconciliation API ==========
+
+  app.get("/api/visits/:visitId/med-reconciliation", async (req, res) => {
+    try {
+      const meds = await storage.getMedReconciliationByVisit(req.params.visitId);
+      return res.json(meds);
+    } catch (err: any) {
+      return res.status(500).json({ message: err.message });
+    }
+  });
+
+  app.post("/api/visits/:visitId/med-reconciliation", async (req, res) => {
+    try {
+      const med = await storage.createMedReconciliation({
+        ...req.body,
+        visitId: req.params.visitId,
+        reconciledAt: new Date().toISOString(),
+      });
+      return res.status(201).json(med);
+    } catch (err: any) {
+      return res.status(500).json({ message: err.message });
+    }
+  });
+
+  app.post("/api/visits/:visitId/med-reconciliation/bulk", async (req, res) => {
+    try {
+      const items = req.body.medications || [];
+      const created = [];
+      for (const item of items) {
+        const med = await storage.createMedReconciliation({
+          ...item,
+          visitId: req.params.visitId,
+          reconciledAt: new Date().toISOString(),
+        });
+        created.push(med);
+      }
+      return res.status(201).json(created);
+    } catch (err: any) {
+      return res.status(500).json({ message: err.message });
+    }
+  });
+
+  app.put("/api/visits/:visitId/med-reconciliation/:id", async (req, res) => {
+    try {
+      const updated = await storage.updateMedReconciliation(req.params.id, req.body);
+      if (!updated) return res.status(404).json({ message: "Not found" });
+      return res.json(updated);
+    } catch (err: any) {
+      return res.status(500).json({ message: err.message });
+    }
+  });
+
+  app.delete("/api/visits/:visitId/med-reconciliation/:id", async (req, res) => {
+    try {
+      await storage.deleteMedReconciliation(req.params.id);
+      return res.json({ success: true });
+    } catch (err: any) {
+      return res.status(500).json({ message: err.message });
+    }
+  });
+
   // ========== FHIR R4 API ==========
 
   // --- Helper: convert member to FHIR Patient ---
@@ -1443,7 +1504,7 @@ export async function registerRoutes(
         "validation_overrides", "visit_recommendations", "visit_codes",
         "clinical_notes", "vitals_records", "measure_results",
         "assessment_responses", "required_checklists", "care_plan_tasks",
-        "lab_results", "medication_history", "vitals_history",
+        "med_reconciliation", "lab_results", "medication_history", "vitals_history",
         "plan_targets", "visits", "members",
         "clinical_rules", "plan_packs", "measure_definitions",
         "assessment_definitions", "users",

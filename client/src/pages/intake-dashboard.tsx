@@ -17,6 +17,7 @@ import {
   ArrowRight,
   AlertCircle,
   Activity,
+  Pill,
 } from "lucide-react";
 
 const stepIcons: Record<string, any> = {
@@ -26,6 +27,7 @@ const stepIcons: Record<string, any> = {
   measures: Target,
   careplan: FileText,
   timeline: Activity,
+  medications: Pill,
 };
 
 export default function IntakeDashboard() {
@@ -34,6 +36,11 @@ export default function IntakeDashboard() {
 
   const { data: bundle, isLoading } = useQuery<any>({
     queryKey: ["/api/visits", visitId, "bundle"],
+    enabled: !!visitId,
+  });
+
+  const { data: medRecon } = useQuery<any[]>({
+    queryKey: ["/api/visits", visitId, "med-reconciliation"],
     enabled: !!visitId,
   });
 
@@ -75,6 +82,13 @@ export default function IntakeDashboard() {
       label: "Vitals & Exam",
       href: `/visits/${visitId}/intake/vitals`,
       done: !!vitals,
+      required: true,
+    },
+    {
+      id: "medications",
+      label: "Medication Reconciliation",
+      href: `/visits/${visitId}/intake/medications`,
+      done: (medRecon?.length || 0) > 0,
       required: true,
     },
     ...assessmentItems.map((a: any) => ({

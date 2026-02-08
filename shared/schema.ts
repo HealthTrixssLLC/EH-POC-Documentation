@@ -432,6 +432,36 @@ export type LabCategory = typeof LAB_CATEGORIES[number];
 export const MEDICATION_CATEGORIES = ["cardiovascular", "diabetes", "respiratory", "mental_health", "pain", "thyroid", "anticoagulant", "gastrointestinal", "other"] as const;
 export type MedicationCategory = typeof MEDICATION_CATEGORIES[number];
 
+export const MED_RECON_STATUSES = ["verified", "new", "modified", "discontinued", "held"] as const;
+export type MedReconStatus = typeof MED_RECON_STATUSES[number];
+
+export const MED_RECON_SOURCES = ["history", "home", "patient_report", "external"] as const;
+export type MedReconSource = typeof MED_RECON_SOURCES[number];
+
+export const medReconciliation = pgTable("med_reconciliation", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  visitId: varchar("visit_id").notNull(),
+  memberId: varchar("member_id").notNull(),
+  medicationName: text("medication_name").notNull(),
+  genericName: text("generic_name"),
+  dosage: text("dosage"),
+  frequency: text("frequency"),
+  route: text("route"),
+  status: text("status").notNull().default("verified"),
+  source: text("source").notNull().default("history"),
+  isBeersRisk: boolean("is_beers_risk").default(false),
+  beersReason: text("beers_reason"),
+  interactionFlags: text("interaction_flags").array(),
+  category: text("category"),
+  notes: text("notes"),
+  reconciledBy: varchar("reconciled_by"),
+  reconciledAt: text("reconciled_at"),
+});
+
+export const insertMedReconciliationSchema = createInsertSchema(medReconciliation).omit({ id: true });
+export type InsertMedReconciliation = z.infer<typeof insertMedReconciliationSchema>;
+export type MedReconciliation = typeof medReconciliation.$inferSelect;
+
 export const ROLES = ["np", "supervisor", "care_coordinator", "admin", "compliance"] as const;
 export type Role = typeof ROLES[number];
 

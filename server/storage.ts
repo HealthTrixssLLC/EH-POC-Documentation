@@ -6,7 +6,7 @@ import {
   measureResults, vitalsRecords, clinicalNotes, carePlanTasks,
   reviewDecisions, exportArtifacts, auditEvents, planPacks,
   clinicalRules, visitRecommendations, validationOverrides, visitCodes,
-  labResults, medicationHistory, vitalsHistory,
+  labResults, medicationHistory, vitalsHistory, medReconciliation,
   type User, type InsertUser, type Member, type InsertMember,
   type Visit, type InsertVisit, type PlanTarget, type InsertPlanTarget,
   type AssessmentDefinition, type InsertAssessmentDefinition,
@@ -28,6 +28,7 @@ import {
   type LabResult, type InsertLabResult,
   type MedicationHistory, type InsertMedicationHistory,
   type VitalsHistory, type InsertVitalsHistory,
+  type MedReconciliation, type InsertMedReconciliation,
 } from "@shared/schema";
 
 export interface IStorage {
@@ -119,6 +120,11 @@ export interface IStorage {
   createMedicationHistory(med: InsertMedicationHistory): Promise<MedicationHistory>;
   getVitalsHistoryByMember(memberId: string): Promise<VitalsHistory[]>;
   createVitalsHistory(vitals: InsertVitalsHistory): Promise<VitalsHistory>;
+
+  getMedReconciliationByVisit(visitId: string): Promise<MedReconciliation[]>;
+  createMedReconciliation(med: InsertMedReconciliation): Promise<MedReconciliation>;
+  updateMedReconciliation(id: string, updates: Partial<MedReconciliation>): Promise<MedReconciliation | undefined>;
+  deleteMedReconciliation(id: string): Promise<void>;
 
   getMemberByMemberId(memberId: string): Promise<Member | undefined>;
   updateMember(id: string, updates: Partial<Member>): Promise<Member | undefined>;
@@ -494,6 +500,24 @@ export class DatabaseStorage implements IStorage {
   async createVitalsHistory(vitals: InsertVitalsHistory) {
     const [created] = await db.insert(vitalsHistory).values(vitals).returning();
     return created;
+  }
+
+  async getMedReconciliationByVisit(visitId: string) {
+    return db.select().from(medReconciliation).where(eq(medReconciliation.visitId, visitId));
+  }
+
+  async createMedReconciliation(med: InsertMedReconciliation) {
+    const [created] = await db.insert(medReconciliation).values(med).returning();
+    return created;
+  }
+
+  async updateMedReconciliation(id: string, updates: Partial<MedReconciliation>) {
+    const [updated] = await db.update(medReconciliation).set(updates).where(eq(medReconciliation.id, id)).returning();
+    return updated;
+  }
+
+  async deleteMedReconciliation(id: string) {
+    await db.delete(medReconciliation).where(eq(medReconciliation.id, id));
   }
 
   async getMemberByMemberId(memberId: string) {

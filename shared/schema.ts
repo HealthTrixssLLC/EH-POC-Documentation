@@ -462,6 +462,34 @@ export const insertMedReconciliationSchema = createInsertSchema(medReconciliatio
 export type InsertMedReconciliation = z.infer<typeof insertMedReconciliationSchema>;
 export type MedReconciliation = typeof medReconciliation.$inferSelect;
 
+export const EXCLUSION_REASONS = [
+  "Patient declined",
+  "Not clinically appropriate",
+  "Safety concern",
+  "Patient not present",
+  "Equipment unavailable",
+  "Time constraints",
+  "Already completed externally",
+  "Contraindicated",
+  "Deferred to specialist",
+  "Other (see notes)",
+] as const;
+
+export const objectiveExclusions = pgTable("objective_exclusions", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  visitId: varchar("visit_id").notNull(),
+  objectiveKey: text("objective_key").notNull(),
+  objectiveLabel: text("objective_label").notNull(),
+  reason: text("reason").notNull(),
+  notes: text("notes"),
+  excludedBy: varchar("excluded_by"),
+  excludedAt: text("excluded_at"),
+});
+
+export const insertObjectiveExclusionSchema = createInsertSchema(objectiveExclusions).omit({ id: true });
+export type InsertObjectiveExclusion = z.infer<typeof insertObjectiveExclusionSchema>;
+export type ObjectiveExclusion = typeof objectiveExclusions.$inferSelect;
+
 export const ROLES = ["np", "supervisor", "care_coordinator", "admin", "compliance"] as const;
 export type Role = typeof ROLES[number];
 

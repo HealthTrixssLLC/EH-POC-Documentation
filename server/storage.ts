@@ -29,6 +29,8 @@ import {
   type MedicationHistory, type InsertMedicationHistory,
   type VitalsHistory, type InsertVitalsHistory,
   type MedReconciliation, type InsertMedReconciliation,
+  objectiveExclusions,
+  type ObjectiveExclusion, type InsertObjectiveExclusion,
 } from "@shared/schema";
 
 export interface IStorage {
@@ -132,6 +134,10 @@ export interface IStorage {
   updateMember(id: string, updates: Partial<Member>): Promise<Member | undefined>;
   getAssessmentResponsesByVisit(visitId: string): Promise<AssessmentResponse[]>;
   getVisitsByMember(memberId: string): Promise<Visit[]>;
+
+  getExclusionsByVisit(visitId: string): Promise<ObjectiveExclusion[]>;
+  createExclusion(excl: InsertObjectiveExclusion): Promise<ObjectiveExclusion>;
+  deleteExclusion(id: string): Promise<void>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -542,6 +548,19 @@ export class DatabaseStorage implements IStorage {
 
   async getVisitsByMember(memberId: string) {
     return db.select().from(visits).where(eq(visits.memberId, memberId)).orderBy(desc(visits.createdAt));
+  }
+
+  async getExclusionsByVisit(visitId: string) {
+    return db.select().from(objectiveExclusions).where(eq(objectiveExclusions.visitId, visitId));
+  }
+
+  async createExclusion(excl: InsertObjectiveExclusion) {
+    const [created] = await db.insert(objectiveExclusions).values(excl).returning();
+    return created;
+  }
+
+  async deleteExclusion(id: string) {
+    await db.delete(objectiveExclusions).where(eq(objectiveExclusions.id, id));
   }
 }
 

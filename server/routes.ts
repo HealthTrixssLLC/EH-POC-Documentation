@@ -134,7 +134,7 @@ export async function registerRoutes(
       const visit = await storage.getVisit(req.params.id);
       if (!visit) return res.status(404).json({ message: "Visit not found" });
 
-      const [member, checklist, vitals, tasks, recommendations, medRecon, assessmentResponses, measureResults, codes, overrides, npUser] = await Promise.all([
+      const [member, checklist, vitals, tasks, recommendations, medRecon, assessmentResponses, measureResults, codes, overrides, npUser, exclusions] = await Promise.all([
         storage.getMember(visit.memberId),
         storage.getChecklistByVisit(visit.id),
         storage.getVitalsByVisit(visit.id),
@@ -146,6 +146,7 @@ export async function registerRoutes(
         storage.getCodesByVisit(visit.id),
         storage.getOverridesByVisit(visit.id),
         storage.getUser(visit.npUserId),
+        storage.getExclusionsByVisit(visit.id),
       ]);
 
       const targets = member ? await storage.getPlanTargets(member.id) : [];
@@ -530,7 +531,40 @@ export async function registerRoutes(
         vitalsFlags,
         assessmentFlags,
         progressNote,
+        exclusions,
       });
+    } catch (err: any) {
+      return res.status(500).json({ message: err.message });
+    }
+  });
+
+  // Objective exclusions
+  app.get("/api/visits/:id/exclusions", async (req, res) => {
+    try {
+      const exclusions = await storage.getExclusionsByVisit(req.params.id);
+      return res.json(exclusions);
+    } catch (err: any) {
+      return res.status(500).json({ message: err.message });
+    }
+  });
+
+  app.post("/api/visits/:id/exclusions", async (req, res) => {
+    try {
+      const excl = await storage.createExclusion({
+        ...req.body,
+        visitId: req.params.id,
+        excludedAt: new Date().toISOString(),
+      });
+      return res.json(excl);
+    } catch (err: any) {
+      return res.status(500).json({ message: err.message });
+    }
+  });
+
+  app.delete("/api/exclusions/:id", async (req, res) => {
+    try {
+      await storage.deleteExclusion(req.params.id);
+      return res.json({ success: true });
     } catch (err: any) {
       return res.status(500).json({ message: err.message });
     }
@@ -1913,7 +1947,7 @@ export async function registerRoutes(
         "clinical_notes", "vitals_records", "measure_results",
         "assessment_responses", "required_checklists", "care_plan_tasks",
         "med_reconciliation", "lab_results", "medication_history", "vitals_history",
-        "plan_targets", "visits", "members",
+        "objective_exclusions", "plan_targets", "visits", "members",
         "clinical_rules", "plan_packs", "measure_definitions",
         "assessment_definitions", "users",
       ];

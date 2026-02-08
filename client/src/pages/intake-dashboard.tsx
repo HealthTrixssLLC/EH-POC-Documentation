@@ -16,6 +16,7 @@ import {
   Circle,
   ArrowRight,
   AlertCircle,
+  Activity,
 } from "lucide-react";
 
 const stepIcons: Record<string, any> = {
@@ -24,6 +25,7 @@ const stepIcons: Record<string, any> = {
   assessments: ClipboardList,
   measures: Target,
   careplan: FileText,
+  timeline: Activity,
 };
 
 export default function IntakeDashboard() {
@@ -91,6 +93,13 @@ export default function IntakeDashboard() {
       status: m.status,
       required: true,
     })),
+    {
+      id: "timeline",
+      label: "Patient Clinical Timeline",
+      href: `/visits/${visitId}/intake/timeline`,
+      done: false,
+      required: false,
+    },
     {
       id: "careplan",
       label: "Care Plan & Tasks",

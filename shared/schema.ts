@@ -362,6 +362,76 @@ export const insertVisitCodeSchema = createInsertSchema(visitCodes).omit({ id: t
 export type InsertVisitCode = z.infer<typeof insertVisitCodeSchema>;
 export type VisitCode = typeof visitCodes.$inferSelect;
 
+export const labResults = pgTable("lab_results", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  memberId: varchar("member_id").notNull(),
+  testName: text("test_name").notNull(),
+  testCode: text("test_code"),
+  value: real("value").notNull(),
+  unit: text("unit").notNull(),
+  referenceMin: real("reference_min"),
+  referenceMax: real("reference_max"),
+  status: text("status"),
+  source: text("source").notNull().default("practice"),
+  collectedDate: text("collected_date").notNull(),
+  resultDate: text("result_date"),
+  orderingProvider: text("ordering_provider"),
+  category: text("category"),
+});
+
+export const insertLabResultSchema = createInsertSchema(labResults).omit({ id: true });
+export type InsertLabResult = z.infer<typeof insertLabResultSchema>;
+export type LabResult = typeof labResults.$inferSelect;
+
+export const medicationHistory = pgTable("medication_history", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  memberId: varchar("member_id").notNull(),
+  medicationName: text("medication_name").notNull(),
+  genericName: text("generic_name"),
+  dosage: text("dosage"),
+  frequency: text("frequency"),
+  route: text("route"),
+  prescriber: text("prescriber"),
+  startDate: text("start_date").notNull(),
+  endDate: text("end_date"),
+  status: text("status").notNull().default("active"),
+  source: text("source").notNull().default("practice"),
+  category: text("category"),
+  reason: text("reason"),
+});
+
+export const insertMedicationHistorySchema = createInsertSchema(medicationHistory).omit({ id: true });
+export type InsertMedicationHistory = z.infer<typeof insertMedicationHistorySchema>;
+export type MedicationHistory = typeof medicationHistory.$inferSelect;
+
+export const vitalsHistory = pgTable("vitals_history", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  memberId: varchar("member_id").notNull(),
+  measureDate: text("measure_date").notNull(),
+  systolic: integer("systolic"),
+  diastolic: integer("diastolic"),
+  heartRate: integer("heart_rate"),
+  oxygenSaturation: integer("oxygen_saturation"),
+  weight: real("weight"),
+  bmi: real("bmi"),
+  temperature: real("temperature"),
+  respiratoryRate: integer("respiratory_rate"),
+  source: text("source").notNull().default("practice"),
+});
+
+export const insertVitalsHistorySchema = createInsertSchema(vitalsHistory).omit({ id: true });
+export type InsertVitalsHistory = z.infer<typeof insertVitalsHistorySchema>;
+export type VitalsHistory = typeof vitalsHistory.$inferSelect;
+
+export const DATA_SOURCES = ["practice", "hie"] as const;
+export type DataSource = typeof DATA_SOURCES[number];
+
+export const LAB_CATEGORIES = ["metabolic", "lipid", "hematology", "thyroid", "renal", "hepatic", "cardiac", "diabetes"] as const;
+export type LabCategory = typeof LAB_CATEGORIES[number];
+
+export const MEDICATION_CATEGORIES = ["cardiovascular", "diabetes", "respiratory", "mental_health", "pain", "thyroid", "anticoagulant", "gastrointestinal", "other"] as const;
+export type MedicationCategory = typeof MEDICATION_CATEGORIES[number];
+
 export const ROLES = ["np", "supervisor", "care_coordinator", "admin", "compliance"] as const;
 export type Role = typeof ROLES[number];
 

@@ -25,6 +25,7 @@ import VisitDetail from "@/pages/visit-detail";
 import CareCoordination from "@/pages/care-coordination";
 import AdminConsole from "@/pages/admin-console";
 import AuditViewer from "@/pages/audit-viewer";
+import PatientTimeline from "@/pages/patient-timeline";
 
 function Router() {
   return (
@@ -38,6 +39,7 @@ function Router() {
       <Route path="/visits/:id/intake/assessment/:aid" component={AssessmentRunner} />
       <Route path="/visits/:id/intake/measure/:mid" component={HedisMeasure} />
       <Route path="/visits/:id/intake/careplan" component={CarePlan} />
+      <Route path="/visits/:id/intake/timeline" component={PatientTimeline} />
       <Route path="/visits/:id/finalize" component={ReviewFinalize} />
       <Route path="/visits/:id/detail" component={VisitDetail} />
       <Route path="/reviews" component={SupervisorReviews} />

@@ -930,5 +930,32 @@ export async function registerRoutes(
     }
   });
 
+  app.get("/api/members/:id/labs", async (req, res) => {
+    try {
+      const labs = await storage.getLabResultsByMember(req.params.id);
+      return res.json(labs);
+    } catch (err: any) {
+      return res.status(500).json({ message: err.message });
+    }
+  });
+
+  app.get("/api/members/:id/medications", async (req, res) => {
+    try {
+      const meds = await storage.getMedicationHistoryByMember(req.params.id);
+      return res.json(meds);
+    } catch (err: any) {
+      return res.status(500).json({ message: err.message });
+    }
+  });
+
+  app.get("/api/members/:id/vitals-history", async (req, res) => {
+    try {
+      const history = await storage.getVitalsHistoryByMember(req.params.id);
+      return res.json(history);
+    } catch (err: any) {
+      return res.status(500).json({ message: err.message });
+    }
+  });
+
   return httpServer;
 }

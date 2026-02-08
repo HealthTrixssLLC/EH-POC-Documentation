@@ -6,6 +6,7 @@ import {
   measureResults, vitalsRecords, clinicalNotes, carePlanTasks,
   reviewDecisions, exportArtifacts, auditEvents, planPacks,
   clinicalRules, visitRecommendations, validationOverrides, visitCodes,
+  labResults, medicationHistory, vitalsHistory,
   type User, type InsertUser, type Member, type InsertMember,
   type Visit, type InsertVisit, type PlanTarget, type InsertPlanTarget,
   type AssessmentDefinition, type InsertAssessmentDefinition,
@@ -24,6 +25,9 @@ import {
   type VisitRecommendation, type InsertVisitRecommendation,
   type ValidationOverride, type InsertValidationOverride,
   type VisitCode, type InsertVisitCode,
+  type LabResult, type InsertLabResult,
+  type MedicationHistory, type InsertMedicationHistory,
+  type VitalsHistory, type InsertVitalsHistory,
 } from "@shared/schema";
 
 export interface IStorage {
@@ -108,6 +112,13 @@ export interface IStorage {
   createVisitCode(code: InsertVisitCode): Promise<VisitCode>;
   deleteVisitCodesByVisit(visitId: string): Promise<void>;
   updateVisitCode(id: string, updates: Partial<VisitCode>): Promise<VisitCode>;
+
+  getLabResultsByMember(memberId: string): Promise<LabResult[]>;
+  createLabResult(lab: InsertLabResult): Promise<LabResult>;
+  getMedicationHistoryByMember(memberId: string): Promise<MedicationHistory[]>;
+  createMedicationHistory(med: InsertMedicationHistory): Promise<MedicationHistory>;
+  getVitalsHistoryByMember(memberId: string): Promise<VitalsHistory[]>;
+  createVitalsHistory(vitals: InsertVitalsHistory): Promise<VitalsHistory>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -451,6 +462,33 @@ export class DatabaseStorage implements IStorage {
   async updateVisitCode(id: string, updates: Partial<VisitCode>) {
     const [updated] = await db.update(visitCodes).set(updates).where(eq(visitCodes.id, id)).returning();
     return updated;
+  }
+
+  async getLabResultsByMember(memberId: string) {
+    return db.select().from(labResults).where(eq(labResults.memberId, memberId));
+  }
+
+  async createLabResult(lab: InsertLabResult) {
+    const [created] = await db.insert(labResults).values(lab).returning();
+    return created;
+  }
+
+  async getMedicationHistoryByMember(memberId: string) {
+    return db.select().from(medicationHistory).where(eq(medicationHistory.memberId, memberId));
+  }
+
+  async createMedicationHistory(med: InsertMedicationHistory) {
+    const [created] = await db.insert(medicationHistory).values(med).returning();
+    return created;
+  }
+
+  async getVitalsHistoryByMember(memberId: string) {
+    return db.select().from(vitalsHistory).where(eq(vitalsHistory.memberId, memberId));
+  }
+
+  async createVitalsHistory(vitals: InsertVitalsHistory) {
+    const [created] = await db.insert(vitalsHistory).values(vitals).returning();
+    return created;
   }
 }
 

@@ -122,6 +122,7 @@ export interface IStorage {
   createMedicationHistory(med: InsertMedicationHistory): Promise<MedicationHistory>;
   getVitalsHistoryByMember(memberId: string): Promise<VitalsHistory[]>;
   createVitalsHistory(vitals: InsertVitalsHistory): Promise<VitalsHistory>;
+  updateVitalsHistory(id: string, data: Partial<InsertVitalsHistory>): Promise<VitalsHistory>;
 
   getMeasureResultsByVisit(visitId: string): Promise<MeasureResult[]>;
 
@@ -512,6 +513,11 @@ export class DatabaseStorage implements IStorage {
   async createVitalsHistory(vitals: InsertVitalsHistory) {
     const [created] = await db.insert(vitalsHistory).values(vitals).returning();
     return created;
+  }
+
+  async updateVitalsHistory(id: string, data: Partial<InsertVitalsHistory>) {
+    const [updated] = await db.update(vitalsHistory).set(data).where(eq(vitalsHistory.id, id)).returning();
+    return updated;
   }
 
   async getMedReconciliationByVisit(visitId: string) {

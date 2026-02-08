@@ -606,9 +606,39 @@ export async function registerRoutes(
         await storage.updateVisit(req.params.id, { status: "in_progress" });
       }
 
+      const visit = await storage.getVisit(req.params.id);
+
+      // Sync today's vitals into vitals_history for clinical timeline
+      try {
+        if (visit) {
+          const today = new Date().toISOString().split("T")[0];
+          const existingHistory = await storage.getVitalsHistoryByMember(visit.memberId);
+          const todayEntry = existingHistory.find(h => h.measureDate === today && h.source === "practice");
+          const historyData: any = {
+            memberId: visit.memberId,
+            measureDate: today,
+            systolic: req.body.systolic ?? null,
+            diastolic: req.body.diastolic ?? null,
+            heartRate: req.body.heartRate ?? null,
+            oxygenSaturation: req.body.oxygenSaturation ?? null,
+            weight: req.body.weight ?? null,
+            bmi: req.body.bmi ?? null,
+            temperature: req.body.temperature ?? null,
+            respiratoryRate: req.body.respiratoryRate ?? null,
+            source: "practice",
+          };
+          if (todayEntry) {
+            await storage.updateVitalsHistory(todayEntry.id, historyData);
+          } else {
+            await storage.createVitalsHistory(historyData);
+          }
+        }
+      } catch (histErr) {
+        console.error("Sync vitals to history failed:", histErr);
+      }
+
       // Auto-evaluate clinically-driven measures after vitals save
       try {
-        const visit = await storage.getVisit(req.params.id);
         if (visit) {
           const allDefs = await storage.getAllMeasureDefinitions();
           const vitalsDefs = allDefs.filter(d => (d as any).evaluationType === "clinical_data" && (d as any).dataSource === "vitals");

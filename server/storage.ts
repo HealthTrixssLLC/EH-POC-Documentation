@@ -1,4 +1,4 @@
-import { eq, and, desc } from "drizzle-orm";
+import { eq, and, desc, inArray } from "drizzle-orm";
 import { db } from "./db";
 import {
   users, members, visits, planTargets, assessmentDefinitions,
@@ -86,6 +86,11 @@ export interface IStorage {
   getPlanPack(planId: string): Promise<PlanPack | undefined>;
   getAllPlanPacks(): Promise<PlanPack[]>;
   createPlanPack(pack: InsertPlanPack): Promise<PlanPack>;
+
+  getVisitsEnriched(): Promise<(Visit & { memberName: string; address: string })[]>;
+  getTasksEnriched(): Promise<(CarePlanTask & { memberName: string })[]>;
+  getReviewVisitsEnriched(): Promise<(Visit & { memberName: string; npName: string; reviewStatus: string | null })[]>;
+  getMemberMap(): Promise<Map<string, Member>>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -321,6 +326,64 @@ export class DatabaseStorage implements IStorage {
   async createPlanPack(pack: InsertPlanPack) {
     const [created] = await db.insert(planPacks).values(pack).returning();
     return created;
+  }
+
+  async getMemberMap() {
+    const allMembers = await db.select().from(members);
+    const map = new Map<string, Member>();
+    for (const m of allMembers) {
+      map.set(m.id, m);
+    }
+    return map;
+  }
+
+  async getVisitsEnriched() {
+    const [allVisits, memberMap] = await Promise.all([
+      this.getAllVisits(),
+      this.getMemberMap(),
+    ]);
+    return allVisits.map((v) => {
+      const member = memberMap.get(v.memberId);
+      return {
+        ...v,
+        memberName: member ? `${member.firstName} ${member.lastName}` : "Unknown",
+        address: member ? `${member.city || ""}, ${member.state || ""}` : "",
+      };
+    });
+  }
+
+  async getTasksEnriched() {
+    const [allTasks, memberMap] = await Promise.all([
+      this.getAllTasks(),
+      this.getMemberMap(),
+    ]);
+    return allTasks.map((t) => {
+      const member = memberMap.get(t.memberId);
+      return {
+        ...t,
+        memberName: member ? `${member.firstName} ${member.lastName}` : "",
+      };
+    });
+  }
+
+  async getReviewVisitsEnriched() {
+    const [allVisits, memberMap, allUsers] = await Promise.all([
+      this.getAllVisits(),
+      this.getMemberMap(),
+      this.getAllUsers(),
+    ]);
+    const userMap = new Map(allUsers.map((u) => [u.id, u]));
+    const reviewable = allVisits.filter((v) => v.status === "ready_for_review" || v.status === "finalized");
+    return reviewable.map((v) => {
+      const member = memberMap.get(v.memberId);
+      const np = userMap.get(v.npUserId);
+      return {
+        ...v,
+        memberName: member ? `${member.firstName} ${member.lastName}` : "Unknown",
+        npName: np?.fullName || "Unknown",
+        reviewStatus: null as string | null,
+      };
+    });
   }
 }
 

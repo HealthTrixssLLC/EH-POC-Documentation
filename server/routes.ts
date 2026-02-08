@@ -30,22 +30,24 @@ export async function registerRoutes(
   });
 
   // Dashboard stats
-  app.get("/api/dashboard/np", async (req, res) => {
+  app.get("/api/dashboard/np", async (_req, res) => {
     try {
-      const allVisits = await storage.getAllVisits();
-      const members = await storage.getAllMembers();
+      const [allVisits, memberMap, auditEvts] = await Promise.all([
+        storage.getAllVisits(),
+        storage.getMemberMap(),
+        storage.getAuditEvents(),
+      ]);
       const today = new Date().toISOString().split("T")[0];
       const todayVisits = allVisits.filter((v) => v.scheduledDate === today).length;
       const inProgress = allVisits.filter((v) => v.status === "in_progress").length;
       const completed = allVisits.filter((v) => v.status === "finalized" || v.status === "ready_for_review").length;
 
       const upcomingVisits = allVisits.filter((v) => v.status === "scheduled" || v.status === "in_progress").slice(0, 5).map((v) => {
-        const member = members.find((m) => m.id === v.memberId);
+        const member = memberMap.get(v.memberId);
         return { ...v, memberName: member ? `${member.firstName} ${member.lastName}` : "Unknown" };
       });
 
-      const auditEvents = await storage.getAuditEvents();
-      const recentActivity = auditEvents.slice(0, 5).map((e) => ({
+      const recentActivity = auditEvts.slice(0, 5).map((e) => ({
         description: e.details,
         timestamp: e.timestamp ? new Date(e.timestamp).toLocaleString() : "",
       }));
@@ -73,11 +75,13 @@ export async function registerRoutes(
 
   app.get("/api/dashboard/coordinator", async (_req, res) => {
     try {
-      const tasks = await storage.getAllTasks();
+      const [tasks, allMembers] = await Promise.all([
+        storage.getAllTasks(),
+        storage.getAllMembers(),
+      ]);
       const openTasks = tasks.filter((t) => t.status === "pending" || t.status === "in_progress").length;
       const completedTasks = tasks.filter((t) => t.status === "completed").length;
-      const members = await storage.getAllMembers();
-      return res.json({ openTasks, dueToday: 0, completedTasks, totalMembers: members.length });
+      return res.json({ openTasks, dueToday: 0, completedTasks, totalMembers: allMembers.length });
     } catch (err: any) {
       return res.status(500).json({ message: err.message });
     }
@@ -86,16 +90,7 @@ export async function registerRoutes(
   // Visits
   app.get("/api/visits", async (_req, res) => {
     try {
-      const allVisits = await storage.getAllVisits();
-      const members = await storage.getAllMembers();
-      const enriched = allVisits.map((v) => {
-        const member = members.find((m) => m.id === v.memberId);
-        return {
-          ...v,
-          memberName: member ? `${member.firstName} ${member.lastName}` : "Unknown",
-          address: member ? `${member.city || ""}, ${member.state || ""}` : "",
-        };
-      });
+      const enriched = await storage.getVisitsEnriched();
       return res.json(enriched);
     } catch (err: any) {
       return res.status(500).json({ message: err.message });
@@ -359,12 +354,7 @@ export async function registerRoutes(
   // All tasks (for care coordination)
   app.get("/api/tasks", async (_req, res) => {
     try {
-      const tasks = await storage.getAllTasks();
-      const members = await storage.getAllMembers();
-      const enriched = tasks.map((t) => {
-        const member = members.find((m) => m.id === t.memberId);
-        return { ...t, memberName: member ? `${member.firstName} ${member.lastName}` : "" };
-      });
+      const enriched = await storage.getTasksEnriched();
       return res.json(enriched);
     } catch (err: any) {
       return res.status(500).json({ message: err.message });
@@ -490,23 +480,7 @@ export async function registerRoutes(
   // Reviews
   app.get("/api/reviews", async (_req, res) => {
     try {
-      const reviewVisits = await storage.getVisitsForReview();
-      const allVisits = await storage.getAllVisits();
-      const finalizedVisits = allVisits.filter((v) => v.status === "ready_for_review" || v.status === "finalized");
-      const members = await storage.getAllMembers();
-      const users = await storage.getAllUsers();
-
-      const enriched = finalizedVisits.map((v) => {
-        const member = members.find((m) => m.id === v.memberId);
-        const np = users.find((u) => u.id === v.npUserId);
-        return {
-          ...v,
-          memberName: member ? `${member.firstName} ${member.lastName}` : "Unknown",
-          npName: np?.fullName || "Unknown",
-          reviewStatus: null as string | null,
-        };
-      });
-
+      const enriched = await storage.getReviewVisitsEnriched();
       return res.json(enriched);
     } catch (err: any) {
       return res.status(500).json({ message: err.message });

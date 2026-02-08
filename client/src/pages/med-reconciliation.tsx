@@ -43,6 +43,7 @@ import {
   X,
   ClipboardCheck,
   Activity,
+  CalendarIcon,
 } from "lucide-react";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -414,6 +415,8 @@ export default function MedReconciliation() {
       dosage: med.dosage || "",
       frequency: med.frequency || "",
       notes: med.notes || "",
+      startDate: med.startDate || "",
+      endDate: med.endDate || "",
     });
   };
 
@@ -690,9 +693,19 @@ export default function MedReconciliation() {
                             </Badge>
                           </div>
                           {!isEditing && (
-                            <span className="text-xs text-muted-foreground">
-                              {[med.dosage, med.frequency, med.route].filter(Boolean).join(" | ") || "No details"}
-                            </span>
+                            <>
+                              <span className="text-xs text-muted-foreground">
+                                {[med.dosage, med.frequency, med.route].filter(Boolean).join(" | ") || "No details"}
+                              </span>
+                              {(med.startDate || med.endDate) && (
+                                <span className="text-xs text-muted-foreground flex items-center gap-1">
+                                  <CalendarIcon className="w-3 h-3" />
+                                  {med.startDate && `Started: ${med.startDate}`}
+                                  {med.startDate && med.endDate && " — "}
+                                  {med.endDate && <span className={med.status === "discontinued" ? "text-red-600 dark:text-red-400 font-medium" : ""}>{`Ended: ${med.endDate}`}</span>}
+                                </span>
+                              )}
+                            </>
                           )}
                         </div>
                         <div className="flex items-center gap-1 flex-shrink-0">
@@ -728,7 +741,16 @@ export default function MedReconciliation() {
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
                           <div>
                             <Label className="text-xs">Status</Label>
-                            <Select value={editForm.status} onValueChange={(v) => setEditForm(f => ({ ...f, status: v }))}>
+                            <Select value={editForm.status} onValueChange={(v) => {
+                              const updates: Record<string, string> = { status: v };
+                              if ((v === "discontinued" || v === "held") && !editForm.endDate) {
+                                updates.endDate = new Date().toISOString().split("T")[0];
+                              }
+                              if (v !== "discontinued" && v !== "held") {
+                                updates.endDate = "";
+                              }
+                              setEditForm(f => ({ ...f, ...updates }));
+                            }}>
                               <SelectTrigger data-testid={`select-status-${med.id}`}>
                                 <SelectValue />
                               </SelectTrigger>
@@ -759,6 +781,29 @@ export default function MedReconciliation() {
                               data-testid={`input-edit-frequency-${med.id}`}
                             />
                           </div>
+                          <div>
+                            <Label className="text-xs">Start Date</Label>
+                            <Input
+                              type="date"
+                              value={editForm.startDate}
+                              onChange={(e) => setEditForm(f => ({ ...f, startDate: e.target.value }))}
+                              data-testid={`input-edit-start-date-${med.id}`}
+                            />
+                          </div>
+                          {(editForm.status === "discontinued" || editForm.status === "held") && (
+                            <div>
+                              <Label className="text-xs flex items-center gap-1">
+                                <CalendarIcon className="w-3 h-3" />
+                                End Date
+                              </Label>
+                              <Input
+                                type="date"
+                                value={editForm.endDate}
+                                onChange={(e) => setEditForm(f => ({ ...f, endDate: e.target.value }))}
+                                data-testid={`input-edit-end-date-${med.id}`}
+                              />
+                            </div>
+                          )}
                           <div>
                             <Label className="text-xs">Notes</Label>
                             <Input

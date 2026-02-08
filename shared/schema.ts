@@ -464,6 +464,8 @@ export const medReconciliation = pgTable("med_reconciliation", {
   interactionFlags: text("interaction_flags").array(),
   category: text("category"),
   notes: text("notes"),
+  startDate: text("start_date"),
+  endDate: text("end_date"),
   reconciledBy: varchar("reconciled_by"),
   reconciledAt: text("reconciled_at"),
 });

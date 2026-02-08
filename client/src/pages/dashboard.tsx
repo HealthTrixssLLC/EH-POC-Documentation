@@ -14,6 +14,8 @@ import {
   FileCheck,
   ArrowRight,
   Activity,
+  Settings,
+  Shield,
 } from "lucide-react";
 
 function StatCard({ title, value, icon: Icon, color, loading }: {

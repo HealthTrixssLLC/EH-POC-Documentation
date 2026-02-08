@@ -151,47 +151,47 @@ Database (PostgreSQL)
 - [x] All loading, empty, and error states
 
 ### Task 2: Backend
-- [ ] Set up PostgreSQL database with Drizzle ORM
-- [ ] Auth: login, session management, RBAC middleware
-- [ ] Visits: CRUD, list, pre-visit bundle, draft save, finalize with gating
-- [ ] Assessments: definitions, responses, scoring validation
-- [ ] Measures: definitions, results, unable-to-assess
-- [ ] Care plan: tasks CRUD, outcomes
-- [ ] Reviews: submit decision, list queue
-- [ ] Clinical note: auto-generation from visit data
-- [ ] Exports: FHIR bundle generation, download
-- [ ] Audit: event logging, query
-- [ ] Admin: plan pack and config management
-- [ ] Seed data: 3 test members, sample visits, plan packs, instruments, measures
+- [x] Set up PostgreSQL database with Drizzle ORM
+- [x] Auth: login, session management, RBAC middleware
+- [x] Visits: CRUD, list, pre-visit bundle, draft save, finalize with gating
+- [x] Assessments: definitions, responses, scoring validation
+- [x] Measures: definitions, results, unable-to-assess
+- [x] Care plan: tasks CRUD, outcomes
+- [x] Reviews: submit decision, list queue
+- [x] Clinical note: auto-generation from visit data
+- [x] Exports: FHIR bundle generation, download
+- [x] Audit: event logging, query
+- [x] Admin: plan pack and config management
+- [x] Seed data: 3 test members, sample visits, plan packs, instruments, measures
 
 ### Task 3: Integration, Polish & Testing
-- [ ] Connect ALL frontend components to backend APIs
-- [ ] Add error handling, loading states, and optimistic updates
-- [ ] NP can browse visits, view pre-visit summary, complete intake with assessments
-- [ ] Finalization gating blocks when items incomplete
-- [ ] Supervisor can review and approve/request corrections
-- [ ] Care coordinator can work tasks
-- [ ] Admin can view configurations
-- [ ] Audit events logged for PHI actions
-- [ ] Export download works
-- [ ] Full responsive design validation
+- [x] Connect ALL frontend components to backend APIs
+- [x] Add error handling, loading states, and optimistic updates
+- [x] NP can browse visits, view pre-visit summary, complete intake with assessments
+- [x] Finalization gating blocks when items incomplete
+- [x] Supervisor can review and approve/request corrections
+- [x] Care coordinator can work tasks
+- [x] Admin can view configurations
+- [x] Audit events logged for PHI actions
+- [x] Export download works
+- [x] Full responsive design validation
 
 ---
 
 ## Success Criteria for POC
 
-- [ ] 1. NP can complete a full visit workflow: pre-visit -> intake -> assessments -> finalize
-- [ ] 2. Assessment scoring works deterministically (PHQ-9, PHQ-2, PRAPARE)
-- [ ] 3. Finalization gating blocks signature when required items are incomplete
-- [ ] 4. Unable-to-assess reasons satisfy gating requirements
-- [ ] 5. Supervisor can review visits and approve/request corrections
-- [ ] 6. Care coordination tasks can be created, assigned, and tracked
-- [ ] 7. Clinical note auto-generates from visit data
-- [ ] 8. FHIR bundle export can be generated and downloaded
-- [ ] 9. Audit trail captures PHI access events
-- [ ] 10. UI follows ForEachHealth branding guidelines
-- [ ] 11. Responsive design works on desktop and tablet viewports
-- [ ] 12. Seed data makes the app look realistic on first load
+- [x] 1. NP can complete a full visit workflow: pre-visit -> intake -> assessments -> finalize
+- [x] 2. Assessment scoring works deterministically (PHQ-9, PHQ-2, PRAPARE)
+- [x] 3. Finalization gating blocks signature when required items are incomplete
+- [x] 4. Unable-to-assess reasons satisfy gating requirements
+- [x] 5. Supervisor can review visits and approve/request corrections
+- [x] 6. Care coordination tasks can be created, assigned, and tracked
+- [x] 7. Clinical note auto-generates from visit data
+- [x] 8. FHIR bundle export can be generated and downloaded
+- [x] 9. Audit trail captures PHI access events
+- [x] 10. UI follows ForEachHealth branding guidelines
+- [x] 11. Responsive design works on desktop and tablet viewports
+- [x] 12. Seed data makes the app look realistic on first load
 
 ---
 

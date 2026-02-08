@@ -24,6 +24,7 @@ import {
   LogOut,
   Stethoscope,
   FileJson,
+  FileText,
   HelpCircle,
   Database,
 } from "lucide-react";
@@ -47,6 +48,7 @@ const roleMenus: Record<string, Array<{ title: string; url: string; icon: any }>
     { title: "Dashboard", url: "/", icon: LayoutDashboard },
     { title: "Admin Console", url: "/admin", icon: Settings },
     { title: "FHIR Interop", url: "/admin/fhir", icon: FileJson },
+    { title: "Tech Docs", url: "/admin/tech-docs", icon: FileText },
     { title: "All Visits", url: "/visits", icon: ClipboardList },
   ],
   compliance: [

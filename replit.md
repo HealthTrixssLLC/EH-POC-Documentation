@@ -89,6 +89,14 @@ client/src/pages/         - All page components
   - Real-time rule evaluation after vitals save and assessment completion
   - Inline validation warnings with structured override reasons
   - Auto-generated codes visible on Review & Finalize page with verify/remove actions
+- 2026-02-08: Added Technical Documentation page (Admin only)
+  - Route: /admin/tech-docs with role guard (admin only, redirects others)
+  - End-to-end workflow SVG diagram: member list input → visit lifecycle → FHIR export
+  - Swim-lane activity diagram showing role handoffs (Admin, NP, Supervisor, Care Coordinator)
+  - Detailed interface specs: inbound (FHIR Patient/Bundle import, CSV schema), internal (visit data model), outbound (FHIR R4 export endpoints)
+  - Business rules docs: CDS rules, assessment scoring algorithms, medication safety checks
+  - Tabbed layout: Workflow, Activity Diagram, Interface Specs
+  - Added to Admin sidebar navigation and Admin Dashboard card grid
 - 2026-02-07: Initial POC build - schema, frontend, backend, seed data
 
 ## User Preferences

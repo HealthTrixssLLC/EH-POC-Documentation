@@ -31,6 +31,7 @@ import HelpSupport from "@/pages/help-support";
 import DemoManagement from "@/pages/demo-management";
 import MedReconciliation from "@/pages/med-reconciliation";
 import PatientContext from "@/pages/patient-context";
+import TechDocs from "@/pages/tech-docs";
 
 function Router() {
   return (
@@ -53,6 +54,7 @@ function Router() {
       <Route path="/coordination" component={CareCoordination} />
       <Route path="/admin" component={AdminConsole} />
       <Route path="/admin/fhir" component={FhirPlayground} />
+      <Route path="/admin/tech-docs" component={TechDocs} />
       <Route path="/audit" component={AuditViewer} />
       <Route path="/help" component={HelpSupport} />
       <Route path="/demo" component={DemoManagement} />

@@ -17,6 +17,7 @@ import {
   Settings,
   Shield,
   FileJson,
+  FileText,
 } from "lucide-react";
 
 function StatCard({ title, value, icon: Icon, color, loading }: {
@@ -258,6 +259,19 @@ function AdminDashboard() {
               <div>
                 <h3 className="font-semibold">FHIR Interoperability</h3>
                 <p className="text-sm text-muted-foreground">Import and export FHIR R4 clinical data</p>
+              </div>
+            </CardContent>
+          </Card>
+        </Link>
+        <Link href="/admin/tech-docs">
+          <Card className="hover-elevate cursor-pointer">
+            <CardContent className="p-6 flex items-center gap-4 flex-wrap">
+              <div className="flex items-center justify-center w-12 h-12 rounded-md" style={{ backgroundColor: "#27749315" }}>
+                <FileText className="w-6 h-6" style={{ color: "#277493" }} />
+              </div>
+              <div>
+                <h3 className="font-semibold">Technical Documentation</h3>
+                <p className="text-sm text-muted-foreground">Workflow diagrams, handoffs, and interface specs</p>
               </div>
             </CardContent>
           </Card>

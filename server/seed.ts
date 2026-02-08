@@ -268,6 +268,10 @@ export async function seedDatabase() {
     description: "Women 50-74 who had a mammogram in the past 2 years.",
     requiredEvidenceType: "Mammogram report or documentation of screening",
     allowedCaptureMethods: ["in_home_visit", "external_record", "hie_retrieval"],
+    evaluationType: "evidence_based",
+    dataSource: "external_record",
+    hcpcsCodes: ["G0202"],
+    icdCodes: ["Z12.31"],
     active: true,
   });
 
@@ -279,6 +283,10 @@ export async function seedDatabase() {
     description: "Adults 45-75 who received appropriate colorectal cancer screening.",
     requiredEvidenceType: "Colonoscopy, FIT, or stool DNA test documentation",
     allowedCaptureMethods: ["in_home_visit", "external_record", "hie_retrieval", "member_reported"],
+    evaluationType: "evidence_based",
+    dataSource: "external_record",
+    hcpcsCodes: ["G0121"],
+    icdCodes: ["Z12.11"],
     active: true,
   });
 
@@ -287,9 +295,20 @@ export async function seedDatabase() {
     name: "Diabetes: HbA1c Testing",
     version: "1.0",
     category: "Chronic Disease Management",
-    description: "Diabetic patients who had HbA1c testing in the measurement year.",
+    description: "Diabetic patients who had HbA1c testing in the measurement year. Auto-evaluates from lab results when HbA1c test data is available.",
     requiredEvidenceType: "Lab result showing HbA1c test",
     allowedCaptureMethods: ["in_home_visit", "external_record", "hie_retrieval"],
+    evaluationType: "clinical_data",
+    dataSource: "labs",
+    clinicalCriteria: {
+      labTest: "HbA1c",
+      controlledThreshold: 9.0,
+      goodControlThreshold: 7.0,
+      description: "HbA1c <7% = good control, 7-9% = moderate, >9% = poor control",
+    },
+    cptCodes: ["83036"],
+    cptIICodes: ["3044F", "3045F", "3046F"],
+    icdCodes: ["Z13.1", "E11.65"],
     active: true,
   });
 
@@ -298,9 +317,21 @@ export async function seedDatabase() {
     name: "Controlling High Blood Pressure",
     version: "1.0",
     category: "Chronic Disease Management",
-    description: "Patients 18-85 with hypertension whose BP was adequately controlled.",
-    requiredEvidenceType: "Blood pressure reading documentation",
+    description: "Patients 18-85 with hypertension whose BP was adequately controlled (<140/90). Auto-evaluates from vitals when blood pressure is recorded.",
+    requiredEvidenceType: "Blood pressure reading from vitals",
     allowedCaptureMethods: ["in_home_visit"],
+    evaluationType: "clinical_data",
+    dataSource: "vitals",
+    clinicalCriteria: {
+      systolicMax: 140,
+      diastolicMax: 90,
+      requiresBothReadings: true,
+      description: "Controlled = systolic <140 AND diastolic <90 mmHg",
+    },
+    cptCodes: ["99473"],
+    cptIICodes: ["3074F", "3075F"],
+    hcpcsCodes: ["G8476", "G8477"],
+    icdCodes: ["I10", "Z13.6"],
     active: true,
   });
 
@@ -312,6 +343,9 @@ export async function seedDatabase() {
     description: "Follow-up within 30 days after an emergency department visit.",
     requiredEvidenceType: "Follow-up visit documentation or contact record",
     allowedCaptureMethods: ["in_home_visit", "external_record", "member_reported"],
+    evaluationType: "evidence_based",
+    dataSource: "external_record",
+    cptCodes: ["99214"],
     active: true,
   });
 

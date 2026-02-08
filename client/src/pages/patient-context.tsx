@@ -160,7 +160,7 @@ export default function PatientContext() {
           <CardContent>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
               {[
-                { label: "Blood Pressure", value: `${(vitals as any).systolicBp || "--"}/${(vitals as any).diastolicBp || "--"}`, unit: "mmHg", fields: ["systolicBp", "diastolicBp"] },
+                { label: "Blood Pressure", value: `${(vitals as any).systolic || "--"}/${(vitals as any).diastolic || "--"}`, unit: "mmHg", fields: ["systolic", "diastolic"] },
                 { label: "Heart Rate", value: (vitals as any).heartRate || "--", unit: "bpm", fields: ["heartRate"] },
                 { label: "SpO2", value: (vitals as any).oxygenSaturation || "--", unit: "%", fields: ["oxygenSaturation"] },
                 { label: "Temperature", value: (vitals as any).temperature || "--", unit: "F", fields: ["temperature"] },

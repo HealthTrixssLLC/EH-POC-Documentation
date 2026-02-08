@@ -134,7 +134,7 @@ export async function registerRoutes(
       const visit = await storage.getVisit(req.params.id);
       if (!visit) return res.status(404).json({ message: "Visit not found" });
 
-      const [member, checklist, vitals, tasks, recommendations, medRecon, assessmentResponses, measureResults, codes, overrides, npUser, exclusions] = await Promise.all([
+      const [member, checklist, vitals, tasks, recommendations, medRecon, assessmentResponses, measureResults, codes, overrides, npUser, exclusions, allMeasureDefs] = await Promise.all([
         storage.getMember(visit.memberId),
         storage.getChecklistByVisit(visit.id),
         storage.getVitalsByVisit(visit.id),
@@ -147,6 +147,7 @@ export async function registerRoutes(
         storage.getOverridesByVisit(visit.id),
         storage.getUser(visit.npUserId),
         storage.getExclusionsByVisit(visit.id),
+        storage.getAllMeasureDefinitions(),
       ]);
 
       const targets = member ? await storage.getPlanTargets(member.id) : [];
@@ -155,8 +156,8 @@ export async function registerRoutes(
       const vitalsFlags: { field: string; value: number; label: string; severity: string; message: string }[] = [];
       if (vitals) {
         const ranges: { field: string; label: string; min?: number; max?: number; unit: string }[] = [
-          { field: "systolicBp", label: "Systolic BP", max: 130, unit: "mmHg" },
-          { field: "diastolicBp", label: "Diastolic BP", max: 80, unit: "mmHg" },
+          { field: "systolic", label: "Systolic BP", max: 130, unit: "mmHg" },
+          { field: "diastolic", label: "Diastolic BP", max: 80, unit: "mmHg" },
           { field: "heartRate", label: "Heart Rate", min: 60, max: 100, unit: "bpm" },
           { field: "respiratoryRate", label: "Respiratory Rate", min: 12, max: 20, unit: "/min" },
           { field: "temperature", label: "Temperature", min: 97.0, max: 99.5, unit: "F" },
@@ -258,7 +259,7 @@ export async function registerRoutes(
       // === OBJECTIVE: Physical Exam & Vital Signs (TAMPER: Exam) ===
       if (vitals) {
         const vParts: string[] = [];
-        if ((vitals as any).systolicBp) vParts.push(`BP: ${(vitals as any).systolicBp}/${(vitals as any).diastolicBp} mmHg`);
+        if ((vitals as any).systolic) vParts.push(`BP: ${(vitals as any).systolic}/${(vitals as any).diastolic} mmHg`);
         if ((vitals as any).heartRate) vParts.push(`HR: ${(vitals as any).heartRate} bpm`);
         if ((vitals as any).respiratoryRate) vParts.push(`RR: ${(vitals as any).respiratoryRate}/min`);
         if ((vitals as any).temperature) vParts.push(`Temp: ${(vitals as any).temperature}\u00B0F`);
@@ -344,7 +345,7 @@ export async function registerRoutes(
 
           if (vitals) {
             const relevantVitals: string[] = [];
-            if ((vitals as any).systolicBp) relevantVitals.push(`BP ${(vitals as any).systolicBp}/${(vitals as any).diastolicBp}`);
+            if ((vitals as any).systolic) relevantVitals.push(`BP ${(vitals as any).systolic}/${(vitals as any).diastolic}`);
             if ((vitals as any).heartRate) relevantVitals.push(`HR ${(vitals as any).heartRate}`);
             if ((vitals as any).weight) relevantVitals.push(`Wt ${(vitals as any).weight}`);
             if ((vitals as any).bmi) relevantVitals.push(`BMI ${(vitals as any).bmi}`);
@@ -425,10 +426,17 @@ export async function registerRoutes(
       if (measureResults.length > 0) {
         const measureLines = measureResults.map(mr => {
           const measureId = (mr as any).measureId || "Measure";
+          const mDef = allMeasureDefs.find(d => d.measureId === measureId);
+          const isClinical = (mDef as any)?.evaluationType === "clinical_data";
+          const evidence = (mr as any).evidenceMetadata || {};
           const result = (mr as any).result || (mr as any).status || "Completed";
           const value = (mr as any).value ? ` | Value: ${(mr as any).value}` : "";
-          const dateCompleted = (mr as any).completedAt || (mr as any).createdAt || visitDate;
-          return `  ${measureId}: ${result}${value} | Date: ${dateCompleted}`;
+          const dateCompleted = (mr as any).completedAt || visitDate;
+          const source = isClinical ? ` | Source: Clinical Data (${(mDef as any)?.dataSource || "auto"})` : "";
+          let codeLine = "";
+          if (evidence.cptII) codeLine += ` | CPT-II: ${evidence.cptII}`;
+          if (evidence.hcpcs) codeLine += ` | HCPCS: ${evidence.hcpcs}`;
+          return `  ${measureId}: ${result.replace(/_/g, " ")}${value}${source}${codeLine} | Date: ${dateCompleted}`;
         });
         measuresContent += `\n${measureLines.join("\n")}`;
       }
@@ -526,6 +534,7 @@ export async function registerRoutes(
         medRecon,
         assessmentResponses,
         measureResults,
+        measureDefinitions: allMeasureDefs,
         codes,
         overrides,
         vitalsFlags,
@@ -589,13 +598,65 @@ export async function registerRoutes(
   app.post("/api/visits/:id/vitals", async (req, res) => {
     try {
       const existing = await storage.getVitalsByVisit(req.params.id);
+      let vitalsResult;
       if (existing) {
-        const updated = await storage.updateVitals(existing.id, req.body);
-        return res.json(updated);
+        vitalsResult = await storage.updateVitals(existing.id, req.body);
+      } else {
+        vitalsResult = await storage.createVitals({ ...req.body, visitId: req.params.id, recordedAt: new Date().toISOString() });
+        await storage.updateVisit(req.params.id, { status: "in_progress" });
       }
-      const created = await storage.createVitals({ ...req.body, visitId: req.params.id, recordedAt: new Date().toISOString() });
-      await storage.updateVisit(req.params.id, { status: "in_progress" });
-      return res.json(created);
+
+      // Auto-evaluate clinically-driven measures after vitals save
+      try {
+        const visit = await storage.getVisit(req.params.id);
+        if (visit) {
+          const allDefs = await storage.getAllMeasureDefinitions();
+          const vitalsDefs = allDefs.filter(d => (d as any).evaluationType === "clinical_data" && (d as any).dataSource === "vitals");
+          const checklist = await storage.getChecklistByVisit(req.params.id);
+          for (const def of vitalsDefs) {
+            if (def.measureId === "CBP") {
+              const checkItem = checklist.find(c => c.itemType === "measure" && c.itemId === "CBP");
+              if (!checkItem) continue;
+              const systolic = req.body.systolic ?? req.body.systolicBp;
+              const diastolic = req.body.diastolic ?? req.body.diastolicBp;
+              if (systolic != null && diastolic != null) {
+                const criteria = (def as any).clinicalCriteria || {};
+                const sMax = criteria.systolicMax || 140;
+                const dMax = criteria.diastolicMax || 90;
+                const controlled = systolic < sMax && diastolic < dMax;
+                const evidence = {
+                  systolic, diastolic, controlled,
+                  threshold: `<${sMax}/<${dMax}`,
+                  evaluatedAt: new Date().toISOString(),
+                  source: "visit_vitals",
+                  cptII: controlled ? "3074F" : "3075F",
+                  hcpcs: controlled ? "G8476" : "G8477",
+                };
+                const existingMr = await storage.getMeasureResult(req.params.id, "CBP");
+                if (existingMr) {
+                  await storage.updateMeasureResult(existingMr.id, {
+                    status: "complete", captureMethod: "clinical_data_vitals",
+                    evidenceMetadata: evidence, completedAt: new Date().toISOString(),
+                  });
+                } else {
+                  await storage.createMeasureResult({
+                    visitId: req.params.id, measureId: "CBP", status: "complete",
+                    result: controlled ? "controlled" : "not_controlled",
+                    value: `${systolic}/${diastolic} mmHg`,
+                    captureMethod: "clinical_data_vitals", evidenceMetadata: evidence,
+                    completedAt: new Date().toISOString(), evaluatedAt: new Date().toISOString(),
+                  });
+                }
+                await storage.updateChecklistItem(checkItem.id, { status: "complete", completedAt: new Date().toISOString() });
+              }
+            }
+          }
+        }
+      } catch (evalErr) {
+        console.error("Auto-evaluate measures after vitals failed:", evalErr);
+      }
+
+      return res.json(vitalsResult);
     } catch (err: any) {
       return res.status(500).json({ message: err.message });
     }
@@ -783,6 +844,168 @@ export async function registerRoutes(
         });
       }
       return res.json({ success: true });
+    } catch (err: any) {
+      return res.status(500).json({ message: err.message });
+    }
+  });
+
+  // Evaluate clinically-driven measures for a visit
+  app.post("/api/visits/:id/measures/evaluate", async (req, res) => {
+    try {
+      const visit = await storage.getVisit(req.params.id);
+      if (!visit) return res.status(404).json({ message: "Visit not found" });
+
+      const allDefs = await storage.getAllMeasureDefinitions();
+      const clinicalDefs = allDefs.filter(d => (d as any).evaluationType === "clinical_data");
+      const checklist = await storage.getChecklistByVisit(req.params.id);
+      const vitals = await storage.getVitalsByVisit(req.params.id);
+      const member = await storage.getMember(visit.memberId);
+      const labs = member ? await storage.getLabResultsByMember(member.id) : [];
+
+      const results: any[] = [];
+
+      for (const def of clinicalDefs) {
+        const checkItem = checklist.find(c => c.itemType === "measure" && c.itemId === def.measureId);
+        if (!checkItem) continue;
+
+        const existing = await storage.getMeasureResult(req.params.id, def.measureId);
+
+        if ((def as any).dataSource === "vitals" && def.measureId === "CBP") {
+          if (!vitals) {
+            results.push({ measureId: "CBP", status: "awaiting_data", message: "Blood pressure not yet recorded. Complete vitals to auto-evaluate." });
+            continue;
+          }
+          const systolic = (vitals as any).systolic ?? (vitals as any).systolicBp;
+          const diastolic = (vitals as any).diastolic ?? (vitals as any).diastolicBp;
+          if (systolic == null || diastolic == null) {
+            results.push({ measureId: "CBP", status: "awaiting_data", message: "Blood pressure readings incomplete." });
+            continue;
+          }
+          const criteria = (def as any).clinicalCriteria || {};
+          const sMax = criteria.systolicMax || 140;
+          const dMax = criteria.diastolicMax || 90;
+          const controlled = systolic < sMax && diastolic < dMax;
+          const resultText = controlled ? "controlled" : "not_controlled";
+          const valueText = `${systolic}/${diastolic} mmHg`;
+          const evidence = {
+            systolic,
+            diastolic,
+            controlled,
+            threshold: `<${sMax}/<${dMax}`,
+            evaluatedAt: new Date().toISOString(),
+            source: "visit_vitals",
+            cptII: controlled ? "3074F" : "3075F",
+            hcpcs: controlled ? "G8476" : "G8477",
+          };
+
+          if (existing) {
+            await storage.updateMeasureResult(existing.id, {
+              status: "complete",
+              captureMethod: "clinical_data_vitals",
+              evidenceMetadata: evidence,
+              completedAt: new Date().toISOString(),
+            });
+          } else {
+            await storage.createMeasureResult({
+              visitId: req.params.id,
+              measureId: "CBP",
+              status: "complete",
+              result: resultText,
+              value: valueText,
+              captureMethod: "clinical_data_vitals",
+              evidenceMetadata: evidence,
+              completedAt: new Date().toISOString(),
+              evaluatedAt: new Date().toISOString(),
+            });
+          }
+          await storage.updateChecklistItem(checkItem.id, { status: "complete", completedAt: new Date().toISOString() });
+          results.push({
+            measureId: "CBP",
+            status: "complete",
+            result: resultText,
+            value: valueText,
+            controlled,
+            evidence,
+          });
+        }
+
+        if ((def as any).dataSource === "labs" && def.measureId === "CDC-A1C") {
+          const currentYear = new Date().getFullYear();
+          const a1cLabs = labs
+            .filter(l => l.testName.toLowerCase().includes("a1c") || l.testName.toLowerCase().includes("hemoglobin a1c") || l.testName.toLowerCase().includes("hba1c"))
+            .filter(l => {
+              const d = new Date(l.collectedDate);
+              return d.getFullYear() >= currentYear - 1;
+            })
+            .sort((a, b) => new Date(b.collectedDate).getTime() - new Date(a.collectedDate).getTime());
+
+          if (a1cLabs.length === 0) {
+            results.push({ measureId: "CDC-A1C", status: "awaiting_data", message: "No HbA1c lab results found in measurement year." });
+            continue;
+          }
+
+          const latest = a1cLabs[0];
+          const criteria = (def as any).clinicalCriteria || {};
+          const goodThreshold = criteria.goodControlThreshold || 7.0;
+          const controlThreshold = criteria.controlledThreshold || 9.0;
+          const a1cValue = latest.value;
+          let controlStatus: string;
+          let cptII: string;
+          if (a1cValue < goodThreshold) {
+            controlStatus = "good_control";
+            cptII = "3044F";
+          } else if (a1cValue <= controlThreshold) {
+            controlStatus = "moderate_control";
+            cptII = "3045F";
+          } else {
+            controlStatus = "poor_control";
+            cptII = "3046F";
+          }
+
+          const evidence = {
+            labValue: a1cValue,
+            labUnit: latest.unit,
+            collectedDate: latest.collectedDate,
+            source: latest.source,
+            controlStatus,
+            goodThreshold,
+            controlThreshold,
+            cptII,
+            evaluatedAt: new Date().toISOString(),
+          };
+
+          if (existing) {
+            await storage.updateMeasureResult(existing.id, {
+              status: "complete",
+              captureMethod: "clinical_data_labs",
+              evidenceMetadata: evidence,
+              completedAt: new Date().toISOString(),
+            });
+          } else {
+            await storage.createMeasureResult({
+              visitId: req.params.id,
+              measureId: "CDC-A1C",
+              status: "complete",
+              result: controlStatus,
+              value: `${a1cValue}${latest.unit ? ` ${latest.unit}` : "%"}`,
+              captureMethod: "clinical_data_labs",
+              evidenceMetadata: evidence,
+              completedAt: new Date().toISOString(),
+              evaluatedAt: new Date().toISOString(),
+            });
+          }
+          await storage.updateChecklistItem(checkItem.id, { status: "complete", completedAt: new Date().toISOString() });
+          results.push({
+            measureId: "CDC-A1C",
+            status: "complete",
+            result: controlStatus,
+            value: `${a1cValue}${latest.unit ? ` ${latest.unit}` : "%"}`,
+            evidence,
+          });
+        }
+      }
+
+      return res.json({ evaluated: results, evaluatedAt: new Date().toISOString() });
     } catch (err: any) {
       return res.status(500).json({ message: err.message });
     }
@@ -1295,18 +1518,52 @@ export async function registerRoutes(
         }
 
         if (item.itemType === "measure") {
+          const measureResult = await storage.getMeasureResult(req.params.id, item.itemId);
+          const evidence = (measureResult?.evidenceMetadata as any) || {};
+
           if (item.itemId === "BCS") {
             codes.push({ codeType: "HCPCS", code: "G0202", description: "Screening mammography reference", source: "measure" });
+            codes.push({ codeType: "ICD-10", code: "Z12.31", description: "Encounter for screening mammogram", source: "measure" });
           }
           if (item.itemId === "COL") {
             codes.push({ codeType: "HCPCS", code: "G0121", description: "Colorectal cancer screening", source: "measure" });
+            codes.push({ codeType: "ICD-10", code: "Z12.11", description: "Encounter for screening for malignant neoplasm of colon", source: "measure" });
           }
           if (item.itemId === "CDC-A1C") {
-            codes.push({ codeType: "CPT", code: "83036", description: "Hemoglobin A1c", source: "measure" });
-            codes.push({ codeType: "ICD-10", code: "Z13.1", description: "Encounter for screening for diabetes mellitus", source: "measure" });
+            codes.push({ codeType: "CPT", code: "83036", description: "Hemoglobin A1c", source: "measure_clinical" });
+            codes.push({ codeType: "ICD-10", code: "Z13.1", description: "Encounter for screening for diabetes mellitus", source: "measure_clinical" });
+            if (evidence.cptII) {
+              const cptIIDesc: Record<string, string> = {
+                "3044F": "HbA1c <7.0% - good glycemic control",
+                "3045F": "HbA1c 7.0-9.0% - moderate glycemic control",
+                "3046F": "HbA1c >9.0% - poor glycemic control",
+              };
+              codes.push({ codeType: "CPT-II", code: evidence.cptII, description: cptIIDesc[evidence.cptII] || `HbA1c performance measure`, source: "measure_clinical" });
+            }
+            if (evidence.labValue && evidence.labValue >= 7.0) {
+              codes.push({ codeType: "ICD-10", code: "E11.65", description: "Type 2 diabetes mellitus with hyperglycemia", source: "measure_clinical" });
+            }
           }
           if (item.itemId === "CBP") {
-            codes.push({ codeType: "ICD-10", code: "Z13.6", description: "Encounter for screening for cardiovascular disorders", source: "measure" });
+            codes.push({ codeType: "ICD-10", code: "I10", description: "Essential (primary) hypertension", source: "measure_clinical" });
+            codes.push({ codeType: "ICD-10", code: "Z13.6", description: "Encounter for screening for cardiovascular disorders", source: "measure_clinical" });
+            if (evidence.cptII) {
+              const controlled = evidence.controlled;
+              codes.push({
+                codeType: "CPT-II",
+                code: evidence.cptII,
+                description: controlled ? "BP <140/90 - controlled (HEDIS CBP numerator met)" : "BP >=140/90 - not controlled (HEDIS CBP numerator not met)",
+                source: "measure_clinical",
+              });
+            }
+            if (evidence.hcpcs) {
+              codes.push({
+                codeType: "HCPCS",
+                code: evidence.hcpcs,
+                description: evidence.controlled ? "Hypertension, BP controlled" : "Hypertension, BP not controlled",
+                source: "measure_clinical",
+              });
+            }
           }
         }
       }

@@ -143,6 +143,13 @@ export const measureDefinitions = pgTable("measure_definitions", {
   description: text("description"),
   requiredEvidenceType: text("required_evidence_type"),
   allowedCaptureMethods: text("allowed_capture_methods").array(),
+  evaluationType: text("evaluation_type").notNull().default("evidence_based"),
+  dataSource: text("data_source"),
+  clinicalCriteria: jsonb("clinical_criteria"),
+  cptCodes: text("cpt_codes").array(),
+  cptIICodes: text("cpt_ii_codes").array(),
+  hcpcsCodes: text("hcpcs_codes").array(),
+  icdCodes: text("icd_codes").array(),
   active: boolean("active").notNull().default(true),
 });
 
@@ -155,12 +162,15 @@ export const measureResults = pgTable("measure_results", {
   visitId: varchar("visit_id").notNull(),
   measureId: text("measure_id").notNull(),
   status: text("status").notNull().default("not_started"),
+  result: text("result"),
+  value: text("value"),
   captureMethod: text("capture_method"),
   evidenceMetadata: jsonb("evidence_metadata"),
   unableToAssessReason: text("unable_to_assess_reason"),
   unableToAssessNote: text("unable_to_assess_note"),
   performerId: varchar("performer_id"),
   completedAt: text("completed_at"),
+  evaluatedAt: text("evaluated_at"),
 });
 
 export const insertMeasureResultSchema = createInsertSchema(measureResults).omit({ id: true });

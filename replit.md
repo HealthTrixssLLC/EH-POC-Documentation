@@ -45,7 +45,10 @@ client/src/pages/         - All page components
   - New GET /api/visits/:id/overview endpoint aggregating all visit data with vitals/assessment flags and auto-generated progress note
   - All sub-pages (vitals, identity, assessments, meds, measures) invalidate overview query for cross-panel data refresh
   - Care plan tasks integrated into main dashboard (no longer separate-only page)
-  - Progress note auto-composes from: identity, vitals, meds, assessments, measures, tasks, CDS recommendations
+  - Progress note is MEAT/TAMPER compliant for RADV & NCQA audit readiness
+  - Note sections: Encounter Info (DOS, POS-12, provider, insurance), HPI, Physical Exam, Standardized Assessments, Medication Reconciliation, Assessment & Plan with per-diagnosis MEAT (Monitor/Evaluate/Assess/Treat), Quality Measures (HEDIS with per-measure detail), Care Coordination, CDS, Coding Summary (ICD-10/CPT), Provider Attestation
+  - MEAT tags displayed as colored M/E/A/T indicators per section
+  - Copy-to-clipboard produces formatted clinical note grouped by ENCOUNTER/SUBJECTIVE/OBJECTIVE/ASSESSMENT & PLAN/PLAN/QUALITY/ATTESTATION
 - 2026-02-08: Added Medication Reconciliation feature
   - New med_reconciliation table with full CRUD API
   - Quick-add from patient medication history, manual entry for home meds

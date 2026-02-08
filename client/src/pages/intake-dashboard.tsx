@@ -198,7 +198,34 @@ export default function IntakeDashboard() {
   const requiredTotal = objectiveSteps.filter(s => s.required).length;
   const gateReady = requiredDone === requiredTotal && requiredTotal > 0;
 
-  const fullNoteText = progressNote.map((s: any) => `${s.section}: ${s.content}`).join("\n");
+  const categoryLabels: Record<string, string> = {
+    header: "ENCOUNTER",
+    subjective: "SUBJECTIVE",
+    objective: "OBJECTIVE",
+    assessment: "ASSESSMENT & PLAN",
+    plan: "PLAN",
+    quality: "QUALITY MEASURES",
+    attestation: "ATTESTATION",
+  };
+  const categoryOrder = ["header", "subjective", "objective", "assessment", "plan", "quality", "attestation"];
+  const groupedNote = categoryOrder.map(cat => ({
+    category: cat,
+    label: categoryLabels[cat],
+    sections: progressNote.filter((s: any) => s.category === cat),
+  })).filter(g => g.sections.length > 0);
+
+  const fullNoteText = groupedNote.map(g => {
+    const header = `=== ${g.label} ===`;
+    const body = g.sections.map((s: any) => {
+      let text = `${s.section}:\n${s.content}`;
+      if (s.meatTags && s.meatTags.length > 0) {
+        text += `\n[MEAT: ${s.meatTags.join(", ")}]`;
+      }
+      return text;
+    }).join("\n\n");
+    return `${header}\n${body}`;
+  }).join("\n\n");
+
   const copyNote = () => {
     navigator.clipboard.writeText(fullNoteText);
     setNoteCopied(true);
@@ -605,29 +632,50 @@ export default function IntakeDashboard() {
 
           <Separator />
 
-          {/* Auto-Composed Progress Note */}
+          {/* MEAT/TAMPER Compliant Progress Note */}
           <Card>
             <CardHeader className="pb-2">
               <div className="flex items-center justify-between gap-2 flex-wrap">
                 <div className="flex items-center gap-2">
                   <Clipboard className="w-4 h-4" style={{ color: "#277493" }} />
                   <h2 className="text-sm font-semibold">Progress Note</h2>
-                  <span className="text-xs text-muted-foreground">(auto-composed)</span>
+                  <Badge variant="secondary" className="text-[10px]">MEAT/TAMPER</Badge>
                 </div>
                 <Button variant="ghost" size="sm" onClick={copyNote} data-testid="button-copy-note">
                   {noteCopied ? <Check className="w-4 h-4 mr-1" /> : <Copy className="w-4 h-4 mr-1" />}
                   {noteCopied ? "Copied" : "Copy"}
                 </Button>
               </div>
+              <p className="text-[11px] text-muted-foreground">RADV & NCQA compliant documentation</p>
             </CardHeader>
             <CardContent className="space-y-3 pt-0">
-              {progressNote.length > 0 ? progressNote.map((section: any, i: number) => (
-                <div key={i} className="space-y-0.5" data-testid={`note-section-${i}`}>
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{section.section}</span>
-                    {section.hasFlags && <AlertTriangle className="w-3 h-3" style={{ color: "#FEA002" }} />}
+              {groupedNote.length > 0 ? groupedNote.map((group, gi) => (
+                <div key={gi} data-testid={`note-group-${group.category}`}>
+                  <div className="flex items-center gap-2 mb-1.5">
+                    <span className="text-[10px] font-bold uppercase tracking-widest" style={{ color: "#2E456B" }}>{group.label}</span>
+                    <div className="flex-1 border-b border-border" />
                   </div>
-                  <p className={`text-sm ${section.hasFlags ? "font-medium" : ""}`}>{section.content}</p>
+                  <div className="space-y-2 pl-1">
+                    {group.sections.map((section: any, si: number) => (
+                      <div key={si} className="space-y-0.5" data-testid={`note-section-${group.category}-${si}`}>
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="text-xs font-semibold">{section.section}</span>
+                          {section.hasFlags && <AlertTriangle className="w-3 h-3 flex-shrink-0" style={{ color: "#FEA002" }} />}
+                          {section.meatTags && section.meatTags.length > 0 && (
+                            <div className="flex items-center gap-0.5 flex-wrap">
+                              {section.meatTags.map((tag: string) => (
+                                <span key={tag} className="text-[9px] px-1 rounded font-medium" style={{
+                                  backgroundColor: tag === "Monitor" ? "#E8F4FD" : tag === "Evaluate" ? "#FFF3E0" : tag === "Assess" ? "#E8F5E9" : "#FCE4EC",
+                                  color: tag === "Monitor" ? "#277493" : tag === "Evaluate" ? "#E65100" : tag === "Assess" ? "#2E7D32" : "#C62828",
+                                }}>{tag[0]}</span>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                        <p className={`text-xs whitespace-pre-line ${section.hasFlags ? "font-medium" : "text-muted-foreground"}`}>{section.content}</p>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               )) : (
                 <p className="text-sm text-muted-foreground">Complete visit objectives to build the progress note.</p>

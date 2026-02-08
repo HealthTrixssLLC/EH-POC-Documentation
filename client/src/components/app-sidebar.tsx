@@ -25,6 +25,7 @@ import {
   Stethoscope,
   FileJson,
   HelpCircle,
+  Database,
 } from "lucide-react";
 
 const roleMenus: Record<string, Array<{ title: string; url: string; icon: any }>> = {
@@ -125,6 +126,14 @@ export function AppSidebar() {
                   <Link href="/help" data-testid="link-help-support">
                     <HelpCircle className="w-4 h-4" />
                     <span>Help & Support</span>
+                  </Link>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+              <SidebarMenuItem>
+                <SidebarMenuButton asChild data-active={location === "/demo"}>
+                  <Link href="/demo" data-testid="link-demo-management">
+                    <Database className="w-4 h-4" />
+                    <span>Demo Management</span>
                   </Link>
                 </SidebarMenuButton>
               </SidebarMenuItem>

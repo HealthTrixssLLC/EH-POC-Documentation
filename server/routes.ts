@@ -1,6 +1,9 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
+import { db } from "./db";
+import { sql } from "drizzle-orm";
+import { seedDatabase } from "./seed";
 
 function evaluateCondition(value: number, threshold: number, operator: string): boolean {
   switch (operator) {
@@ -1426,6 +1429,196 @@ export async function registerRoutes(
       });
     } catch (err: any) {
       return res.status(500).json({ resourceType: "OperationOutcome", issue: [{ severity: "error", code: "exception", diagnostics: err.message }] });
+    }
+  });
+
+  // =====================================================
+  // Demo Management endpoints
+  // =====================================================
+
+  app.post("/api/demo/reset", async (_req, res) => {
+    try {
+      const tableNames = [
+        "audit_events", "export_artifacts", "review_decisions",
+        "validation_overrides", "visit_recommendations", "visit_codes",
+        "clinical_notes", "vitals_records", "measure_results",
+        "assessment_responses", "required_checklists", "care_plan_tasks",
+        "lab_results", "medication_history", "vitals_history",
+        "plan_targets", "visits", "members",
+        "clinical_rules", "plan_packs", "measure_definitions",
+        "assessment_definitions", "users",
+      ];
+
+      for (const table of tableNames) {
+        await db.execute(sql.raw(`DELETE FROM ${table}`));
+      }
+
+      await seedDatabase();
+
+      res.json({ success: true, message: "Database reset and re-seeded successfully" });
+    } catch (err: any) {
+      res.status(500).json({ success: false, message: err.message });
+    }
+  });
+
+  app.get("/api/demo/fhir-bundles", async (_req, res) => {
+    try {
+      const allMembers = await storage.getAllMembers();
+      const allVisits = await storage.getAllVisits();
+      const bundles: any[] = [];
+
+      for (const member of allMembers) {
+        const memberVisits = allVisits.filter((v: any) => v.memberId === member.id);
+        const patient = memberToFhirPatient(member);
+        const entries: any[] = [{ fullUrl: `urn:uuid:${member.id}`, resource: patient }];
+
+        for (const visit of memberVisits) {
+          const encounter = visitToFhirEncounter(visit, member);
+          entries.push({ fullUrl: `urn:uuid:${visit.id}`, resource: encounter });
+
+          const vitals = await storage.getVitalsByVisit(visit.id);
+          if (vitals) {
+            const observations = vitalsToFhirObservations(vitals, visit.id);
+            for (const obs of observations) {
+              entries.push({ fullUrl: `urn:uuid:${obs.id}`, resource: obs });
+            }
+          }
+
+          const codes = await storage.getCodesByVisit(visit.id);
+          if (codes.length > 0) {
+            const conditions = codesToFhirConditions(codes, visit.id, member.id);
+            for (const cond of conditions) {
+              entries.push({ fullUrl: `urn:uuid:${cond.id}`, resource: cond });
+            }
+          }
+        }
+
+        bundles.push({
+          memberId: member.memberId,
+          memberName: `${member.firstName} ${member.lastName}`,
+          visitCount: memberVisits.length,
+          bundle: {
+            resourceType: "Bundle",
+            type: "document",
+            timestamp: new Date().toISOString(),
+            entry: entries,
+          },
+        });
+      }
+
+      res.json(bundles);
+    } catch (err: any) {
+      res.status(500).json({ message: err.message });
+    }
+  });
+
+  app.get("/api/demo/fhir-bundle/:memberId", async (req, res) => {
+    try {
+      const member = await storage.getMemberByMemberId(req.params.memberId);
+      if (!member) return res.status(404).json({ message: "Member not found" });
+
+      const memberVisits = await storage.getVisitsByMember(member.id);
+      const patient = memberToFhirPatient(member);
+      const entries: any[] = [{ fullUrl: `urn:uuid:${member.id}`, resource: patient }];
+
+      for (const visit of memberVisits) {
+        const encounter = visitToFhirEncounter(visit, member);
+        entries.push({ fullUrl: `urn:uuid:${visit.id}`, resource: encounter });
+
+        const vitals = await storage.getVitalsByVisit(visit.id);
+        if (vitals) {
+          const observations = vitalsToFhirObservations(vitals, visit.id);
+          for (const obs of observations) {
+            entries.push({ fullUrl: `urn:uuid:${obs.id}`, resource: obs });
+          }
+        }
+
+        const codes = await storage.getCodesByVisit(visit.id);
+        if (codes.length > 0) {
+          const conditions = codesToFhirConditions(codes, visit.id, member.id);
+          for (const cond of conditions) {
+            entries.push({ fullUrl: `urn:uuid:${cond.id}`, resource: cond });
+          }
+        }
+      }
+
+      res.json({
+        resourceType: "Bundle",
+        type: "document",
+        timestamp: new Date().toISOString(),
+        entry: entries,
+      });
+    } catch (err: any) {
+      res.status(500).json({ message: err.message });
+    }
+  });
+
+  app.get("/api/demo/sample-import-bundle", async (_req, res) => {
+    try {
+      res.json({
+        resourceType: "Bundle",
+        type: "transaction",
+        timestamp: new Date().toISOString(),
+        entry: [
+          {
+            fullUrl: "urn:uuid:demo-patient-1",
+            resource: {
+              resourceType: "Patient",
+              identifier: [{ system: "urn:easy-health:member-id", value: "DEMO-IMPORT-001" }],
+              name: [{ family: "Anderson", given: ["James", "Robert"] }],
+              gender: "male",
+              birthDate: "1948-06-20",
+              address: [{ line: ["100 Demo Lane"], city: "Springfield", state: "IL", postalCode: "62704" }],
+              telecom: [
+                { system: "phone", value: "(555) 999-0001", use: "home" },
+                { system: "email", value: "james.anderson@demo.com" },
+              ],
+            },
+            request: { method: "POST", url: "Patient" },
+          },
+          {
+            fullUrl: "urn:uuid:demo-encounter-1",
+            resource: {
+              resourceType: "Encounter",
+              status: "planned",
+              class: { system: "http://terminology.hl7.org/CodeSystem/v3-ActCode", code: "HH", display: "Home Health" },
+              type: [{ coding: [{ system: "http://www.ama-assn.org/go/cpt", code: "99345", display: "Home visit - new patient" }] }],
+              subject: { reference: "urn:uuid:demo-patient-1" },
+              period: { start: new Date(Date.now() + 14 * 86400000).toISOString().split("T")[0] },
+            },
+            request: { method: "POST", url: "Encounter" },
+          },
+          {
+            fullUrl: "urn:uuid:demo-patient-2",
+            resource: {
+              resourceType: "Patient",
+              identifier: [{ system: "urn:easy-health:member-id", value: "DEMO-IMPORT-002" }],
+              name: [{ family: "Chen", given: ["Linda", "Mai"] }],
+              gender: "female",
+              birthDate: "1955-12-03",
+              address: [{ line: ["250 Sample Blvd"], city: "Springfield", state: "IL", postalCode: "62705" }],
+              telecom: [
+                { system: "phone", value: "(555) 999-0002", use: "home" },
+              ],
+            },
+            request: { method: "POST", url: "Patient" },
+          },
+          {
+            fullUrl: "urn:uuid:demo-encounter-2",
+            resource: {
+              resourceType: "Encounter",
+              status: "planned",
+              class: { system: "http://terminology.hl7.org/CodeSystem/v3-ActCode", code: "HH", display: "Home Health" },
+              type: [{ coding: [{ system: "http://www.ama-assn.org/go/cpt", code: "99345", display: "Home visit - new patient" }] }],
+              subject: { reference: "urn:uuid:demo-patient-2" },
+              period: { start: new Date(Date.now() + 21 * 86400000).toISOString().split("T")[0] },
+            },
+            request: { method: "POST", url: "Encounter" },
+          },
+        ],
+      });
+    } catch (err: any) {
+      res.status(500).json({ message: err.message });
     }
   });
 

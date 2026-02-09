@@ -107,6 +107,14 @@ client/src/pages/         - All page components
   - Re-scoring PHQ-2 correctly adds/removes PHQ-9; completed PHQ-9 preserved for clinical integrity
   - Vitals save now syncs to vitals_history for real-time clinical timeline updates
   - Fixed systolicBp/diastolicBp field name inconsistencies across overview, dashboard, and patient context
+- 2026-02-09: HEDIS screening-specific documentation forms for BCS and COL
+  - BCS: mammogram type picker (Screening, Diagnostic, Digital, 3D Tomosynthesis), date performed, optional result
+  - COL: screening type picker with variable lookback periods (10yr colonoscopy, 5yr flex sig, etc.), date performed, recommended result
+  - HEDIS guidance banners with age ranges and documentation requirements
+  - Screening metadata (type, date, result) persisted in measure_results.evidenceMetadata JSONB
+  - clinicalCriteria JSONB in measure_definitions stores screening types, lookback periods, hedisNote
+  - Complete button validation requires screeningType + screeningDate + captureMethod for screening measures
+  - Updated seed data with HEDIS-accurate age ranges (BCS: 40-74, COL: 45-75)
 - 2026-02-07: Initial POC build - schema, frontend, backend, seed data
 
 ## User Preferences

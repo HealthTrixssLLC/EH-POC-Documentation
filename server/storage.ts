@@ -424,21 +424,27 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getReviewVisitsEnriched() {
-    const [allVisits, memberMap, allUsers] = await Promise.all([
+    const [allVisits, memberMap, allUsers, allReviews] = await Promise.all([
       this.getAllVisits(),
       this.getMemberMap(),
       this.getAllUsers(),
+      db.select().from(reviewDecisions),
     ]);
     const userMap = new Map(allUsers.map((u) => [u.id, u]));
+    const reviewsByVisit = new Map<string, string>();
+    for (const r of allReviews) {
+      reviewsByVisit.set(r.visitId, r.decision);
+    }
     const reviewable = allVisits.filter((v) => v.status === "ready_for_review" || v.status === "finalized");
     return reviewable.map((v) => {
       const member = memberMap.get(v.memberId);
       const np = userMap.get(v.npUserId);
+      const latestDecision = reviewsByVisit.get(v.id) || null;
       return {
         ...v,
         memberName: member ? `${member.firstName} ${member.lastName}` : "Unknown",
         npName: np?.fullName || "Unknown",
-        reviewStatus: null as string | null,
+        reviewStatus: latestDecision === "approve" ? "approved" : latestDecision === "request_correction" ? "correction_requested" : null,
       };
     });
   }

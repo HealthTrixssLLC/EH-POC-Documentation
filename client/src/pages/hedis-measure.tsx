@@ -1,9 +1,10 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useRoute, Link, useLocation } from "wouter";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -11,7 +12,8 @@ import { Separator } from "@/components/ui/separator";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
   ChevronLeft, Target, CheckCircle2, Activity, HeartPulse, FlaskConical,
-  AlertTriangle, RefreshCw, FileText, ArrowRight, Zap, Ban, Clock
+  AlertTriangle, RefreshCw, FileText, ArrowRight, Zap, Ban, Clock,
+  CalendarIcon, Info, Search
 } from "lucide-react";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -51,16 +53,44 @@ export default function HedisMeasure() {
   const [unableReason, setUnableReason] = useState("");
   const [unableNote, setUnableNote] = useState("");
   const [showUnableForm, setShowUnableForm] = useState(false);
+  const [screeningType, setScreeningType] = useState("");
+  const [screeningDate, setScreeningDate] = useState("");
+  const [screeningResult, setScreeningResult] = useState("");
 
   useEffect(() => {
     if (existingResult?.captureMethod && !captureMethod) {
       setCaptureMethod(existingResult.captureMethod);
     }
+    if (existingResult?.evidenceMetadata) {
+      const meta = existingResult.evidenceMetadata as any;
+      if (meta.screeningType && !screeningType) setScreeningType(meta.screeningType);
+      if (meta.screeningDate && !screeningDate) setScreeningDate(meta.screeningDate);
+      if (meta.screeningResult && !screeningResult) setScreeningResult(meta.screeningResult);
+    }
   }, [existingResult]);
 
   const isClinical = definition?.evaluationType === "clinical_data";
+  const isScreeningMeasure = measureId === "BCS" || measureId === "COL";
   const vitals = overview?.vitals;
   const evidence = existingResult?.evidenceMetadata as any || {};
+
+  const criteria = definition?.clinicalCriteria as any || {};
+
+  const colScreeningTypes = useMemo(() => {
+    if (measureId !== "COL" || !criteria.screeningTypes) return [];
+    return (criteria.screeningTypes as any[]).map((s: any) => ({
+      type: s.type,
+      lookbackYears: s.lookbackYears,
+    }));
+  }, [measureId, criteria]);
+
+  const bcsScreeningTypes = useMemo(() => {
+    if (measureId !== "BCS" || !criteria.screeningTypes) return [];
+    return criteria.screeningTypes as string[];
+  }, [measureId, criteria]);
+
+  const selectedColScreening = colScreeningTypes.find((s: any) => s.type === screeningType);
+  const lookbackInfo = selectedColScreening ? `${selectedColScreening.lookbackYears}-year lookback` : "";
 
   const evaluateMutation = useMutation({
     mutationFn: async () => {
@@ -84,10 +114,22 @@ export default function HedisMeasure() {
 
   const saveMutation = useMutation({
     mutationFn: async () => {
+      const metadata: Record<string, any> = { notes, capturedAt: new Date().toISOString() };
+      if (isScreeningMeasure) {
+        metadata.screeningType = screeningType;
+        metadata.screeningDate = screeningDate;
+        metadata.screeningResult = screeningResult || null;
+        if (measureId === "COL" && selectedColScreening) {
+          metadata.lookbackYears = selectedColScreening.lookbackYears;
+        }
+        if (measureId === "BCS") {
+          metadata.lookbackMonths = criteria.lookbackMonths || 27;
+        }
+      }
       await apiRequest("POST", `/api/visits/${visitId}/measures`, {
         measureId,
         captureMethod,
-        evidenceMetadata: { notes, capturedAt: new Date().toISOString() },
+        evidenceMetadata: metadata,
         status: "complete",
       });
     },
@@ -445,11 +487,29 @@ export default function HedisMeasure() {
       {/* EVIDENCE-BASED MEASURE UI (BCS, COL, FMC etc.) */}
       {!isClinical && (
         <div className="space-y-4">
+          {/* HEDIS Info Banner for screening measures */}
+          {isScreeningMeasure && criteria.hedisNote && (
+            <div className="flex items-start gap-2 p-3 rounded-md border" style={{ borderColor: "#27749330", backgroundColor: "#27749308" }}>
+              <Info className="w-4 h-4 flex-shrink-0 mt-0.5" style={{ color: "#277493" }} />
+              <div className="text-xs text-muted-foreground">
+                <span className="font-semibold" style={{ color: "#277493" }}>HEDIS Guidance:</span>{" "}
+                {criteria.hedisNote}
+                {criteria.ageRange && <span className="ml-1">(Ages {criteria.ageRange})</span>}
+              </div>
+            </div>
+          )}
+
           <Card>
             <CardHeader className="pb-3">
               <div className="flex items-center gap-2">
-                <Target className="w-5 h-5" style={{ color: "#277493" }} />
-                <h2 className="text-base font-semibold">Evidence Capture</h2>
+                {isScreeningMeasure ? (
+                  <Search className="w-5 h-5" style={{ color: "#277493" }} />
+                ) : (
+                  <Target className="w-5 h-5" style={{ color: "#277493" }} />
+                )}
+                <h2 className="text-base font-semibold">
+                  {isScreeningMeasure ? "Screening Documentation" : "Evidence Capture"}
+                </h2>
               </div>
               {definition?.description && (
                 <p className="text-sm text-muted-foreground mt-1">{definition.description}</p>
@@ -482,6 +542,127 @@ export default function HedisMeasure() {
 
               <Separator />
 
+              {/* BCS-specific screening form */}
+              {measureId === "BCS" && (
+                <div className="space-y-3">
+                  <div className="space-y-2">
+                    <Label>Mammogram Type *</Label>
+                    <Select value={screeningType} onValueChange={setScreeningType}>
+                      <SelectTrigger data-testid="select-screening-type">
+                        <SelectValue placeholder="Select mammogram type" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {bcsScreeningTypes.map((t: string) => (
+                          <SelectItem key={t} value={t}>{t}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label className="flex items-center gap-1">
+                      <CalendarIcon className="w-3.5 h-3.5" />
+                      Date Performed *
+                    </Label>
+                    <Input
+                      type="date"
+                      value={screeningDate}
+                      onChange={(e) => setScreeningDate(e.target.value)}
+                      data-testid="input-screening-date"
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      Lookback window: 27 months from end of measurement year. Year-only is acceptable if exact date unknown.
+                    </p>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label className="flex items-center gap-1">
+                      Result / Finding
+                      <Badge variant="secondary" className="text-xs no-default-hover-elevate ml-1">Optional</Badge>
+                    </Label>
+                    <Select value={screeningResult} onValueChange={setScreeningResult}>
+                      <SelectTrigger data-testid="select-screening-result">
+                        <SelectValue placeholder="Not required for HEDIS compliance" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="normal">Normal</SelectItem>
+                        <SelectItem value="benign_finding">Benign Finding</SelectItem>
+                        <SelectItem value="abnormal_needs_followup">Abnormal - Needs Follow-up</SelectItem>
+                        <SelectItem value="incomplete">Incomplete</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <p className="text-xs text-muted-foreground">
+                      Result is not required for HEDIS BCS compliance. Only the date and type of mammogram are needed.
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              {/* COL-specific screening form */}
+              {measureId === "COL" && (
+                <div className="space-y-3">
+                  <div className="space-y-2">
+                    <Label>Screening Type *</Label>
+                    <Select value={screeningType} onValueChange={setScreeningType}>
+                      <SelectTrigger data-testid="select-screening-type">
+                        <SelectValue placeholder="Select screening type" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {colScreeningTypes.map((s: any) => (
+                          <SelectItem key={s.type} value={s.type}>
+                            {s.type} ({s.lookbackYears}-year lookback)
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    {lookbackInfo && (
+                      <p className="text-xs text-muted-foreground">
+                        <Clock className="w-3 h-3 inline mr-1" />
+                        {screeningType} has a {lookbackInfo} period.
+                        {selectedColScreening && selectedColScreening.lookbackYears >= 5 && " Year-only date is acceptable if exact date is unknown."}
+                      </p>
+                    )}
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label className="flex items-center gap-1">
+                      <CalendarIcon className="w-3.5 h-3.5" />
+                      Date Performed *
+                    </Label>
+                    <Input
+                      type="date"
+                      value={screeningDate}
+                      onChange={(e) => setScreeningDate(e.target.value)}
+                      data-testid="input-screening-date"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label className="flex items-center gap-1">
+                      Result / Finding
+                      <Badge variant="secondary" className="text-xs no-default-hover-elevate ml-1">Recommended</Badge>
+                    </Label>
+                    <Select value={screeningResult} onValueChange={setScreeningResult}>
+                      <SelectTrigger data-testid="select-screening-result">
+                        <SelectValue placeholder="Result not required if in medical history" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="normal">Normal - No polyps</SelectItem>
+                        <SelectItem value="polyps_removed">Polyps Found and Removed</SelectItem>
+                        <SelectItem value="adenoma_found">Adenoma Found</SelectItem>
+                        <SelectItem value="negative">Negative (FOBT/FIT/sDNA)</SelectItem>
+                        <SelectItem value="positive">Positive (FOBT/FIT/sDNA)</SelectItem>
+                        <SelectItem value="incomplete">Incomplete Exam</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <p className="text-xs text-muted-foreground">
+                      Result is recommended but not required if screening is documented in the patient's medical history. For member-reported screenings, result is not needed.
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              {/* Generic evidence fields (always shown) */}
               <div className="space-y-2">
                 <Label>Capture Method</Label>
                 <Select value={captureMethod} onValueChange={setCaptureMethod}>
@@ -497,17 +678,49 @@ export default function HedisMeasure() {
               </div>
 
               <div className="space-y-2">
-                <Label>Evidence Notes</Label>
+                <Label>{isScreeningMeasure ? "Additional Notes" : "Evidence Notes"}</Label>
                 <Textarea
                   value={notes}
                   onChange={(e) => setNotes(e.target.value)}
-                  placeholder="Document evidence findings and observations..."
-                  className="min-h-[100px]"
+                  placeholder={isScreeningMeasure
+                    ? "Additional documentation, location, provider, or clinical context..."
+                    : "Document evidence findings and observations..."}
+                  className="min-h-[80px]"
                   data-testid="input-evidence-notes"
                 />
               </div>
             </CardContent>
           </Card>
+
+          {/* Existing screening evidence display when completed */}
+          {isComplete && isScreeningMeasure && evidence.screeningType && (
+            <Card>
+              <CardContent className="p-4">
+                <div className="flex items-center gap-2 mb-2">
+                  <Search className="w-4 h-4" style={{ color: "#277493" }} />
+                  <span className="text-sm font-semibold">Screening Documentation</span>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  <div className="p-2 rounded-md border">
+                    <span className="text-xs text-muted-foreground">Type</span>
+                    <p className="text-sm font-medium">{evidence.screeningType}</p>
+                  </div>
+                  <div className="p-2 rounded-md border">
+                    <span className="text-xs text-muted-foreground">Date Performed</span>
+                    <p className="text-sm font-medium">{evidence.screeningDate || "Not specified"}</p>
+                  </div>
+                  <div className="p-2 rounded-md border">
+                    <span className="text-xs text-muted-foreground">Result</span>
+                    <p className="text-sm font-medium">
+                      {evidence.screeningResult
+                        ? evidence.screeningResult.replace(/_/g, " ").replace(/\b\w/g, (c: string) => c.toUpperCase())
+                        : "Not required"}
+                    </p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          )}
 
           {!isComplete && !showUnableForm && (
             <div className="flex items-center justify-between gap-3 flex-wrap">
@@ -516,7 +729,7 @@ export default function HedisMeasure() {
               </Button>
               <Button
                 onClick={() => saveMutation.mutate()}
-                disabled={!captureMethod || saveMutation.isPending}
+                disabled={!captureMethod || (isScreeningMeasure && (!screeningType || !screeningDate)) || saveMutation.isPending}
                 data-testid="button-complete-measure"
               >
                 <CheckCircle2 className="w-4 h-4 mr-2" />

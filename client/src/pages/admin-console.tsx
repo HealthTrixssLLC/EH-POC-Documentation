@@ -33,6 +33,9 @@ import {
   ChevronUp,
   ToggleLeft,
   Settings2,
+  Loader2,
+  Activity,
+  CheckCircle2,
 } from "lucide-react";
 
 const SEVERITY_COLORS: Record<string, string> = {
@@ -640,6 +643,8 @@ function AiProviderConfig() {
 
 function ProviderCard({ provider, onUpdate, isPending }: { provider: any; onUpdate: (u: any) => void; isPending: boolean }) {
   const [editing, setEditing] = useState(false);
+  const [testResult, setTestResult] = useState<any>(null);
+  const { toast } = useToast();
   const [form, setForm] = useState({
     displayName: provider.displayName,
     providerType: provider.providerType,
@@ -648,6 +653,24 @@ function ProviderCard({ provider, onUpdate, isPending }: { provider: any; onUpda
     modelName: provider.modelName,
     extractionModel: provider.extractionModel,
     active: provider.active,
+  });
+
+  const testMutation = useMutation({
+    mutationFn: async () => {
+      return apiRequest("POST", `/api/ai-providers/${provider.id}/test`);
+    },
+    onSuccess: (data: any) => {
+      setTestResult(data);
+      if (data.success) {
+        toast({ title: "Connection successful", description: `Model: ${data.model} | ${data.latencyMs}ms` });
+      } else {
+        toast({ title: "Connection failed", description: data.error, variant: "destructive" });
+      }
+    },
+    onError: (err: any) => {
+      setTestResult({ success: false, error: err.message });
+      toast({ title: "Test failed", description: err.message, variant: "destructive" });
+    },
   });
 
   const featureFlags = provider.featureFlags || {};
@@ -713,6 +736,47 @@ function ProviderCard({ provider, onUpdate, isPending }: { provider: any; onUpda
                   </Badge>
                 ))}
               </div>
+            </div>
+            <div className="sm:col-span-2 pt-1">
+              <div className="flex items-center gap-2 flex-wrap">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => { setTestResult(null); testMutation.mutate(); }}
+                  disabled={testMutation.isPending}
+                  data-testid={`button-test-provider-${provider.id}`}
+                >
+                  {testMutation.isPending ? (
+                    <Loader2 className="w-3 h-3 mr-1 animate-spin" />
+                  ) : (
+                    <Activity className="w-3 h-3 mr-1" />
+                  )}
+                  {testMutation.isPending ? "Testing..." : "Test Connection"}
+                </Button>
+                {testResult && (
+                  <div className="flex items-center gap-1.5">
+                    {testResult.success ? (
+                      <Badge variant="default" className="text-xs" data-testid={`badge-test-success-${provider.id}`}>
+                        <CheckCircle2 className="w-3 h-3 mr-1" /> Passed ({testResult.latencyMs}ms)
+                      </Badge>
+                    ) : (
+                      <Badge variant="destructive" className="text-xs" data-testid={`badge-test-fail-${provider.id}`}>
+                        <XCircle className="w-3 h-3 mr-1" /> Failed
+                      </Badge>
+                    )}
+                  </div>
+                )}
+              </div>
+              {testResult && !testResult.success && (
+                <p className="text-xs text-destructive mt-1.5" data-testid={`text-test-error-${provider.id}`}>
+                  {testResult.error}
+                </p>
+              )}
+              {testResult?.success && (
+                <p className="text-xs text-muted-foreground mt-1.5" data-testid={`text-test-details-${provider.id}`}>
+                  Model: {testResult.model} | Response: "{testResult.reply}"
+                </p>
+              )}
             </div>
           </div>
         ) : (

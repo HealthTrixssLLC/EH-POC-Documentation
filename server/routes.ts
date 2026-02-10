@@ -2759,6 +2759,96 @@ export async function registerRoutes(
     }
   });
 
+  app.post("/api/ai-providers/:id/test", async (req, res) => {
+    try {
+      const configs = await storage.getAiProviderConfigs();
+      const config = configs.find(c => c.id === req.params.id);
+      if (!config) return res.status(404).json({ message: "Provider config not found" });
+
+      const apiKey = process.env[config.apiKeySecretName];
+      if (!apiKey) {
+        return res.json({
+          success: false,
+          error: `API key secret "${config.apiKeySecretName}" is not set. Add it to your environment secrets.`,
+          latencyMs: 0,
+        });
+      }
+
+      const providerType = config.providerType;
+      const baseUrl = config.baseUrl || (providerType === "anthropic" ? "https://api.anthropic.com" : "https://api.openai.com/v1");
+      const model = config.extractionModel || config.modelName;
+
+      const startTime = Date.now();
+
+      try {
+        let response: Response;
+
+        if (providerType === "anthropic") {
+          response = await fetch(`${baseUrl}/v1/messages`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "x-api-key": apiKey,
+              "anthropic-version": "2023-06-01",
+            },
+            body: JSON.stringify({
+              model,
+              max_tokens: 20,
+              messages: [{ role: "user", content: "Reply with exactly: OK" }],
+            }),
+          });
+        } else {
+          response = await fetch(`${baseUrl}/chat/completions`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "Authorization": `Bearer ${apiKey}`,
+            },
+            body: JSON.stringify({
+              model,
+              max_tokens: 20,
+              messages: [{ role: "user", content: "Reply with exactly: OK" }],
+            }),
+          });
+        }
+
+        const latencyMs = Date.now() - startTime;
+
+        if (!response.ok) {
+          const errBody = await response.text();
+          let parsed: any;
+          try { parsed = JSON.parse(errBody); } catch { parsed = null; }
+          const errMsg = parsed?.error?.message || parsed?.error?.type || errBody.slice(0, 200);
+          return res.json({ success: false, error: `API returned ${response.status}: ${errMsg}`, latencyMs });
+        }
+
+        const body = await response.json();
+        let reply = "";
+        if (providerType === "anthropic") {
+          reply = body.content?.[0]?.text || "";
+        } else {
+          reply = body.choices?.[0]?.message?.content || "";
+        }
+
+        return res.json({
+          success: true,
+          reply: reply.trim(),
+          model: body.model || model,
+          latencyMs,
+        });
+      } catch (fetchErr: any) {
+        const latencyMs = Date.now() - startTime;
+        return res.json({
+          success: false,
+          error: `Connection failed: ${fetchErr.message}`,
+          latencyMs,
+        });
+      }
+    } catch (err: any) {
+      return res.status(500).json({ message: err.message });
+    }
+  });
+
   // =====================================================
   // Voice Capture & Transcription endpoints
   // =====================================================

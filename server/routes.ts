@@ -2797,6 +2797,20 @@ export async function registerRoutes(
               messages: [{ role: "user", content: "Reply with exactly: OK" }],
             }),
           });
+        } else if (providerType === "azure_openai") {
+          const azureBase = baseUrl.replace(/\/+$/, "");
+          const apiVersion = "2024-02-01";
+          response = await fetch(`${azureBase}/openai/deployments/${model}/chat/completions?api-version=${apiVersion}`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "api-key": apiKey,
+            },
+            body: JSON.stringify({
+              max_tokens: 20,
+              messages: [{ role: "user", content: "Reply with exactly: OK" }],
+            }),
+          });
         } else {
           response = await fetch(`${baseUrl}/chat/completions`, {
             method: "POST",

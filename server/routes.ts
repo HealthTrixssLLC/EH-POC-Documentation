@@ -3023,12 +3023,266 @@ ${transcript.text}`;
   });
 
   // =====================================================
+  // Phase 3: Visit Alerts (CR-001-12)
+  // =====================================================
+
+  app.get("/api/visits/:id/alerts", async (req, res) => {
+    try {
+      const alerts = await storage.getAlertsByVisit(req.params.id);
+      return res.json(alerts);
+    } catch (err: any) {
+      return res.status(500).json({ message: err.message });
+    }
+  });
+
+  app.post("/api/visits/:id/alerts", async (req, res) => {
+    try {
+      const lockMsg = await checkVisitLock(req.params.id);
+      if (lockMsg) return res.status(403).json({ message: lockMsg });
+      const alert = await storage.createVisitAlert({
+        visitId: req.params.id,
+        ...req.body,
+        triggeredAt: new Date().toISOString(),
+      });
+      return res.json(alert);
+    } catch (err: any) {
+      return res.status(500).json({ message: err.message });
+    }
+  });
+
+  app.patch("/api/alerts/:id", async (req, res) => {
+    try {
+      const updated = await storage.updateVisitAlert(req.params.id, req.body);
+      if (!updated) return res.status(404).json({ message: "Alert not found" });
+      return res.json(updated);
+    } catch (err: any) {
+      return res.status(500).json({ message: err.message });
+    }
+  });
+
+  app.post("/api/alerts/:id/acknowledge", async (req, res) => {
+    try {
+      const updated = await storage.updateVisitAlert(req.params.id, {
+        status: "acknowledged",
+        acknowledgedBy: req.body.userId,
+        acknowledgedByName: req.body.userName,
+        acknowledgedAt: new Date().toISOString(),
+      });
+      if (!updated) return res.status(404).json({ message: "Alert not found" });
+      await storage.createAuditEvent({
+        eventType: "alert_acknowledged",
+        userId: req.body.userId || "system",
+        userName: req.body.userName || "System",
+        userRole: "np",
+        details: `Alert '${updated.ruleName}' acknowledged for visit`,
+        resourceType: "visit_alert",
+        resourceId: updated.id,
+      });
+      return res.json(updated);
+    } catch (err: any) {
+      return res.status(500).json({ message: err.message });
+    }
+  });
+
+  app.post("/api/alerts/:id/dismiss", async (req, res) => {
+    try {
+      const updated = await storage.updateVisitAlert(req.params.id, {
+        status: "dismissed",
+        dismissedBy: req.body.userId,
+        dismissedByName: req.body.userName,
+        dismissedAt: new Date().toISOString(),
+        dismissReason: req.body.reason,
+        actionTaken: req.body.actionTaken,
+      });
+      if (!updated) return res.status(404).json({ message: "Alert not found" });
+      await storage.createAuditEvent({
+        eventType: "alert_dismissed",
+        userId: req.body.userId || "system",
+        userName: req.body.userName || "System",
+        userRole: "np",
+        details: `Alert '${updated.ruleName}' dismissed: ${req.body.reason || "no reason"}`,
+        resourceType: "visit_alert",
+        resourceId: updated.id,
+      });
+      return res.json(updated);
+    } catch (err: any) {
+      return res.status(500).json({ message: err.message });
+    }
+  });
+
+  // =====================================================
+  // Phase 3: Clinical Rules Management (CR-001-12)
+  // =====================================================
+
+  app.put("/api/clinical-rules/:id", async (req, res) => {
+    try {
+      const updated = await storage.updateClinicalRule(req.params.id, req.body);
+      if (!updated) return res.status(404).json({ message: "Rule not found" });
+      return res.json(updated);
+    } catch (err: any) {
+      return res.status(500).json({ message: err.message });
+    }
+  });
+
+  // =====================================================
+  // Phase 3: Plan Pack Management (CR-001-15)
+  // =====================================================
+
+  app.put("/api/plan-packs/:id", async (req, res) => {
+    try {
+      const updated = await storage.updatePlanPack(req.params.id, req.body);
+      if (!updated) return res.status(404).json({ message: "Plan pack not found" });
+      return res.json(updated);
+    } catch (err: any) {
+      return res.status(500).json({ message: err.message });
+    }
+  });
+
+  // =====================================================
+  // Phase 3: Note Edits & Signatures (CR-001-16)
+  // =====================================================
+
+  app.get("/api/visits/:id/note-edits", async (req, res) => {
+    try {
+      const edits = await storage.getNoteEditsByVisit(req.params.id);
+      return res.json(edits);
+    } catch (err: any) {
+      return res.status(500).json({ message: err.message });
+    }
+  });
+
+  app.post("/api/visits/:id/note-edits", async (req, res) => {
+    try {
+      const lockMsg = await checkVisitLock(req.params.id);
+      if (lockMsg) return res.status(403).json({ message: lockMsg });
+      const edit = await storage.createNoteEdit({
+        visitId: req.params.id,
+        ...req.body,
+        editedAt: new Date().toISOString(),
+      });
+      await storage.createAuditEvent({
+        eventType: "note_edited",
+        userId: req.body.editedBy || "system",
+        userName: req.body.editedByName || "System",
+        userRole: "np",
+        details: `Progress note section '${req.body.section}' edited`,
+        resourceType: "clinical_note",
+        resourceId: edit.id,
+      });
+      return res.json(edit);
+    } catch (err: any) {
+      return res.status(500).json({ message: err.message });
+    }
+  });
+
+  app.get("/api/visits/:id/note-signatures", async (req, res) => {
+    try {
+      const sigs = await storage.getNoteSignaturesByVisit(req.params.id);
+      return res.json(sigs);
+    } catch (err: any) {
+      return res.status(500).json({ message: err.message });
+    }
+  });
+
+  app.post("/api/visits/:id/note-signatures", async (req, res) => {
+    try {
+      const sig = await storage.createNoteSignature({
+        visitId: req.params.id,
+        ...req.body,
+        signedAt: new Date().toISOString(),
+      });
+      await storage.createAuditEvent({
+        eventType: "note_signed",
+        userId: req.body.signedBy || "system",
+        userName: req.body.signedByName || "System",
+        userRole: req.body.role || "np",
+        details: `Progress note signed (${req.body.signatureType}) by ${req.body.signedByName}`,
+        resourceType: "note_signature",
+        resourceId: sig.id,
+      });
+      return res.json(sig);
+    } catch (err: any) {
+      return res.status(500).json({ message: err.message });
+    }
+  });
+
+  // =====================================================
+  // Phase 3: CPT Evidence Mapping (CR-001-17)
+  // =====================================================
+
+  app.get("/api/visits/:id/code-evidence", async (req, res) => {
+    try {
+      const codes = await storage.getCodesByVisit(req.params.id);
+      const vitals = await storage.getVitalsByVisit(req.params.id);
+      const assessments = await storage.getAssessmentResponsesByVisit(req.params.id);
+      const measures = await storage.getMeasureResultsByVisit(req.params.id);
+      const meds = await storage.getMedReconciliationByVisit(req.params.id);
+      
+      const enrichedCodes = codes.map((code: any) => {
+        const evidence: any = { requirements: [], satisfiedBy: [], missing: [] };
+        
+        if (code.codeType === "CPT") {
+          if (code.code === "99345" || code.code === "99350" || code.code === "99341") {
+            evidence.requirements = ["Vitals documented", "Assessment completed", "Care plan created"];
+            if (vitals) evidence.satisfiedBy.push("Vitals documented");
+            else evidence.missing.push("Vitals documented");
+            if (assessments.length > 0) evidence.satisfiedBy.push("Assessment completed");
+            else evidence.missing.push("Assessment completed");
+          }
+          if (code.code === "G0438" || code.code === "G0439") {
+            evidence.requirements = ["Health Risk Assessment", "Depression screening", "Functional assessment"];
+            const hasPhq = assessments.some((a: any) => a.instrumentId?.includes("phq"));
+            const hasPrapare = assessments.some((a: any) => a.instrumentId?.includes("prapare"));
+            if (hasPhq) evidence.satisfiedBy.push("Depression screening");
+            else evidence.missing.push("Depression screening");
+            if (hasPrapare) evidence.satisfiedBy.push("Health Risk Assessment");
+            else evidence.missing.push("Health Risk Assessment");
+          }
+          if (code.code === "96127") {
+            evidence.requirements = ["Standardized screening instrument completed"];
+            if (assessments.length > 0) evidence.satisfiedBy.push("Standardized screening instrument completed");
+            else evidence.missing.push("Standardized screening instrument completed");
+          }
+        }
+        if (code.codeType === "HCPCS") {
+          if (code.code === "G2010" || code.code === "G2012") {
+            evidence.requirements = ["Virtual check-in documented"];
+            evidence.satisfiedBy.push("Virtual check-in documented");
+          }
+        }
+        if (code.codeType === "ICD-10") {
+          evidence.requirements = ["Supporting clinical evidence"];
+          if (vitals) evidence.satisfiedBy.push("Vitals support");
+          if (assessments.length > 0) evidence.satisfiedBy.push("Assessment support");
+        }
+        
+        const evidenceStatus = evidence.missing.length === 0 
+          ? "fully_supported" 
+          : evidence.satisfiedBy.length > 0 
+            ? "partially_supported" 
+            : "missing_evidence";
+        
+        return {
+          ...code,
+          evidenceMap: evidence,
+          evidenceStatus,
+        };
+      });
+      
+      return res.json(enrichedCodes);
+    } catch (err: any) {
+      return res.status(500).json({ message: err.message });
+    }
+  });
+
+  // =====================================================
   // Demo Management endpoints
   // =====================================================
 
   app.post("/api/demo/reset", async (_req, res) => {
     try {
       const tableNames = [
+        "visit_alerts", "note_edits", "note_signatures",
         "extracted_fields", "transcripts", "voice_recordings",
         "ai_provider_config",
         "review_sign_offs", "visit_consents",

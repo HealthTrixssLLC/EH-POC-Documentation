@@ -43,7 +43,8 @@ import {
 } from "lucide-react";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
-import type { ReasonCode } from "@shared/schema";
+import { useAuth } from "@/lib/auth";
+import type { ReasonCode, VisitAlert } from "@shared/schema";
 
 const taskTypes = [
   { value: "referral", label: "Referral" },
@@ -159,6 +160,40 @@ export default function IntakeDashboard() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/visits", visitId, "overview"] });
       toast({ title: "Exclusion removed" });
+    },
+  });
+
+  const { user } = useAuth();
+
+  const { data: visitAlerts = [] } = useQuery<VisitAlert[]>({
+    queryKey: ["/api/visits", visitId, "alerts"],
+    enabled: !!visitId,
+  });
+
+  const acknowledgeAlertMutation = useMutation({
+    mutationFn: async (alertId: string) => {
+      await apiRequest("POST", `/api/alerts/${alertId}/acknowledge`, {
+        userId: user?.id,
+        userName: user?.fullName,
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/visits", visitId, "alerts"] });
+      toast({ title: "Alert acknowledged" });
+    },
+  });
+
+  const dismissAlertMutation = useMutation({
+    mutationFn: async ({ alertId, reason }: { alertId: string; reason: string }) => {
+      await apiRequest("POST", `/api/alerts/${alertId}/dismiss`, {
+        userId: user?.id,
+        userName: user?.fullName,
+        reason,
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/visits", visitId, "alerts"] });
+      toast({ title: "Alert dismissed" });
     },
   });
 
@@ -697,8 +732,78 @@ export default function IntakeDashboard() {
           </Card>
         </div>
 
-        {/* ====== RIGHT PANEL: CDS + OBJECTIVES + RESULTS ====== */}
+        {/* ====== RIGHT PANEL: ALERTS + CDS + OBJECTIVES + RESULTS ====== */}
         <div className="lg:col-span-7 space-y-4">
+
+          {/* Visit Alerts Panel */}
+          {(() => {
+            const activeAlerts = visitAlerts.filter((a) => a.status === "active");
+            if (activeAlerts.length === 0) return null;
+            const severityStyles: Record<string, { bg: string; border: string; icon: string }> = {
+              emergency: { bg: "rgba(220, 38, 38, 0.08)", border: "rgba(220, 38, 38, 0.4)", icon: "#DC2626" },
+              critical: { bg: "rgba(234, 88, 12, 0.08)", border: "rgba(234, 88, 12, 0.4)", icon: "#EA580C" },
+              warning: { bg: "rgba(254, 160, 2, 0.08)", border: "rgba(254, 160, 2, 0.4)", icon: "#FEA002" },
+              info: { bg: "rgba(39, 116, 147, 0.08)", border: "rgba(39, 116, 147, 0.4)", icon: "#277493" },
+            };
+            return (
+              <Card>
+                <CardHeader className="pb-2">
+                  <div className="flex items-center gap-2">
+                    <AlertTriangle className="w-4 h-4" style={{ color: "#E74C3C" }} />
+                    <h2 className="text-sm font-semibold">Visit Alerts</h2>
+                    <Badge variant="destructive" className="text-xs">{activeAlerts.length}</Badge>
+                  </div>
+                </CardHeader>
+                <CardContent className="space-y-2 pt-0">
+                  {activeAlerts.map((alert) => {
+                    const style = severityStyles[alert.severity] || severityStyles.warning;
+                    return (
+                      <div
+                        key={alert.id}
+                        className="p-3 rounded-md border"
+                        style={{ borderColor: style.border, backgroundColor: style.bg }}
+                        data-testid={`alert-${alert.id}`}
+                      >
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="flex-1 min-w-0 space-y-1">
+                            <div className="flex items-center gap-2">
+                              <AlertCircle className="w-3.5 h-3.5 flex-shrink-0" style={{ color: style.icon }} />
+                              <span className="text-sm font-medium" data-testid={`text-alert-name-${alert.id}`}>{alert.ruleName}</span>
+                              <Badge variant="outline" className="text-[10px] uppercase">{alert.severity}</Badge>
+                            </div>
+                            <p className="text-xs text-muted-foreground">{alert.message}</p>
+                            {alert.recommendedAction && (
+                              <p className="text-xs" style={{ color: style.icon }}>Action: {alert.recommendedAction}</p>
+                            )}
+                          </div>
+                          <div className="flex items-center gap-1 flex-shrink-0">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-7 text-xs"
+                              onClick={() => acknowledgeAlertMutation.mutate(alert.id)}
+                              data-testid={`button-acknowledge-alert-${alert.id}`}
+                            >
+                              <Check className="w-3 h-3 mr-1" /> Noted
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-7 text-xs"
+                              onClick={() => dismissAlertMutation.mutate({ alertId: alert.id, reason: "Reviewed and addressed" })}
+                              data-testid={`button-dismiss-alert-${alert.id}`}
+                            >
+                              <XCircle className="w-3 h-3 mr-1" /> Dismiss
+                            </Button>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </CardContent>
+              </Card>
+            );
+          })()}
 
           {/* CDS Alerts - Top of Right */}
           {pendingRecs.length > 0 && (

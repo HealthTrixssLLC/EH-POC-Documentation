@@ -85,6 +85,9 @@ function LabTooltip({ active, payload, label }: any) {
       <p className="font-medium">{formatDateFull(label)}</p>
       <div className="flex items-center gap-2 mt-1">
         <SourceBadge source={data?.source || "practice"} />
+        {data?.actorName && (
+          <span className="text-xs text-muted-foreground">by {data.actorName}</span>
+        )}
       </div>
       {payload.map((p: any, i: number) => (
         <p key={i} className="mt-1">
@@ -109,6 +112,9 @@ function VitalsTooltip({ active, payload, label }: any) {
       <p className="font-medium">{formatDateFull(label)}</p>
       <div className="flex items-center gap-2 mt-1">
         <SourceBadge source={data?.source || "practice"} />
+        {data?.actorName && (
+          <span className="text-xs text-muted-foreground">by {data.actorName}</span>
+        )}
       </div>
       {payload.map((p: any, i: number) => (
         <p key={i} className="mt-1" style={{ color: p.color }}>

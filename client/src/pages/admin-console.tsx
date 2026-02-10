@@ -9,6 +9,8 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Separator } from "@/components/ui/separator";
+import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useAuth } from "@/lib/auth";
@@ -25,23 +27,38 @@ import {
   Save,
   Plus,
   XCircle,
+  Zap,
+  Shield,
+  ChevronDown,
+  ChevronUp,
+  ToggleLeft,
+  Settings2,
 } from "lucide-react";
+
+const SEVERITY_COLORS: Record<string, string> = {
+  info: "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200",
+  warning: "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200",
+  critical: "bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200",
+  emergency: "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200",
+};
 
 export default function AdminConsole() {
   const { data: planPacks, isLoading: loadingPacks } = useQuery<any[]>({ queryKey: ["/api/admin/plan-packs"] });
   const { data: assessments, isLoading: loadingAssessments } = useQuery<any[]>({ queryKey: ["/api/admin/assessment-definitions"] });
   const { data: measures, isLoading: loadingMeasures } = useQuery<any[]>({ queryKey: ["/api/admin/measure-definitions"] });
+  const { data: clinicalRules, isLoading: loadingRules } = useQuery<any[]>({ queryKey: ["/api/clinical-rules"] });
 
   return (
     <div className="space-y-6">
       <div>
         <h1 className="text-xl font-bold" data-testid="text-admin-title">Admin Console</h1>
-        <p className="text-sm text-muted-foreground mt-1">Configuration management for plan packs, assessments, measures, and AI providers</p>
+        <p className="text-sm text-muted-foreground mt-1">Configuration management for plan packs, clinical rules, assessments, measures, and AI providers</p>
       </div>
 
       <Tabs defaultValue="packs">
         <TabsList className="flex-wrap">
           <TabsTrigger value="packs" data-testid="tab-plan-packs"><Package className="w-3 h-3 mr-1" /> Plan Packs</TabsTrigger>
+          <TabsTrigger value="rules" data-testid="tab-clinical-rules"><Zap className="w-3 h-3 mr-1" /> Clinical Rules</TabsTrigger>
           <TabsTrigger value="assessments" data-testid="tab-assessments"><ClipboardList className="w-3 h-3 mr-1" /> Assessments</TabsTrigger>
           <TabsTrigger value="measures" data-testid="tab-measures"><Target className="w-3 h-3 mr-1" /> Measures</TabsTrigger>
           <TabsTrigger value="ai" data-testid="tab-ai-providers"><Bot className="w-3 h-3 mr-1" /> AI Providers</TabsTrigger>
@@ -52,39 +69,7 @@ export default function AdminConsole() {
             Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-20 w-full" />)
           ) : planPacks?.length ? (
             planPacks.map((pack: any) => (
-              <Card key={pack.id}>
-                <CardContent className="p-4">
-                  <div className="flex items-center justify-between gap-3 flex-wrap">
-                    <div className="flex flex-col gap-0.5 min-w-0">
-                      <span className="text-sm font-semibold" data-testid={`text-pack-name-${pack.id}`}>{pack.planName}</span>
-                      <span className="text-xs text-muted-foreground">Plan ID: {pack.planId} | Type: {pack.visitType?.replace(/_/g, " ")}</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Badge variant={pack.active ? "default" : "secondary"} className="text-xs">
-                        {pack.active ? "Active" : "Inactive"}
-                      </Badge>
-                    </div>
-                  </div>
-                  <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    <div>
-                      <span className="text-xs font-medium text-muted-foreground">Required Assessments</span>
-                      <div className="flex flex-wrap gap-1 mt-1">
-                        {pack.requiredAssessments?.map((a: string) => (
-                          <Badge key={a} variant="outline" className="text-xs">{a}</Badge>
-                        ))}
-                      </div>
-                    </div>
-                    <div>
-                      <span className="text-xs font-medium text-muted-foreground">Required Measures</span>
-                      <div className="flex flex-wrap gap-1 mt-1">
-                        {pack.requiredMeasures?.map((m: string) => (
-                          <Badge key={m} variant="outline" className="text-xs">{m}</Badge>
-                        ))}
-                      </div>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
+              <PlanPackCard key={pack.id} pack={pack} />
             ))
           ) : (
             <Card>
@@ -96,24 +81,29 @@ export default function AdminConsole() {
           )}
         </TabsContent>
 
+        <TabsContent value="rules" className="mt-4 space-y-3">
+          {loadingRules ? (
+            Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-24 w-full" />)
+          ) : clinicalRules?.length ? (
+            clinicalRules.map((rule: any) => (
+              <ClinicalRuleCard key={rule.id} rule={rule} />
+            ))
+          ) : (
+            <Card>
+              <CardContent className="flex flex-col items-center py-12 text-muted-foreground">
+                <Zap className="w-8 h-8 mb-2 opacity-40" />
+                <span className="text-sm">No clinical rules configured</span>
+              </CardContent>
+            </Card>
+          )}
+        </TabsContent>
+
         <TabsContent value="assessments" className="mt-4 space-y-3">
           {loadingAssessments ? (
             Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-16 w-full" />)
           ) : assessments?.length ? (
             assessments.map((a: any) => (
-              <Card key={a.id}>
-                <CardContent className="p-4 flex items-center justify-between gap-3 flex-wrap">
-                  <div className="flex flex-col gap-0.5 min-w-0">
-                    <span className="text-sm font-semibold">{a.name}</span>
-                    <span className="text-xs text-muted-foreground">
-                      ID: {a.instrumentId} | Version: {a.version} | Category: {a.category}
-                    </span>
-                  </div>
-                  <Badge variant={a.active ? "default" : "secondary"} className="text-xs">
-                    {a.active ? "Active" : "Inactive"}
-                  </Badge>
-                </CardContent>
-              </Card>
+              <AssessmentCard key={a.id} assessment={a} />
             ))
           ) : (
             <Card>
@@ -160,6 +150,375 @@ export default function AdminConsole() {
         </TabsContent>
       </Tabs>
     </div>
+  );
+}
+
+function PlanPackCard({ pack }: { pack: any }) {
+  const [expanded, setExpanded] = useState(false);
+  const { toast } = useToast();
+  const modules = pack.moduleEnables || {};
+  const flags = pack.featureFlags || {};
+
+  const updateMutation = useMutation({
+    mutationFn: async (updates: any) => {
+      return apiRequest("PUT", `/api/plan-packs/${pack.id}`, updates);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/plan-packs"] });
+      toast({ title: "Plan pack updated" });
+    },
+    onError: (err: any) => {
+      toast({ title: "Update failed", description: err.message, variant: "destructive" });
+    },
+  });
+
+  return (
+    <Card data-testid={`card-plan-pack-${pack.id}`}>
+      <CardContent className="p-4">
+        <div className="flex items-center justify-between gap-3 flex-wrap">
+          <div className="flex flex-col gap-0.5 min-w-0">
+            <span className="text-sm font-semibold" data-testid={`text-pack-name-${pack.id}`}>{pack.planName}</span>
+            <span className="text-xs text-muted-foreground">Plan ID: {pack.planId} | Type: {pack.visitType?.replace(/_/g, " ")} | Version: {pack.version || "1.0"}</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <Badge variant={pack.active ? "default" : "secondary"} className="text-xs">
+              {pack.active ? "Active" : "Inactive"}
+            </Badge>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => setExpanded(!expanded)}
+              data-testid={`button-expand-pack-${pack.id}`}
+            >
+              {expanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+            </Button>
+          </div>
+        </div>
+
+        {pack.description && (
+          <p className="text-xs text-muted-foreground mt-1">{pack.description}</p>
+        )}
+
+        <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div>
+            <span className="text-xs font-medium text-muted-foreground">Required Assessments</span>
+            <div className="flex flex-wrap gap-1 mt-1">
+              {pack.requiredAssessments?.map((a: string) => (
+                <Badge key={a} variant="outline" className="text-xs">{a}</Badge>
+              ))}
+            </div>
+          </div>
+          <div>
+            <span className="text-xs font-medium text-muted-foreground">Required Measures</span>
+            <div className="flex flex-wrap gap-1 mt-1">
+              {pack.requiredMeasures?.map((m: string) => (
+                <Badge key={m} variant="outline" className="text-xs">{m}</Badge>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        {expanded && (
+          <>
+            <Separator className="my-3" />
+            <div className="space-y-3">
+              <div>
+                <span className="text-xs font-medium text-muted-foreground flex items-center gap-1">
+                  <Settings2 className="w-3 h-3" /> Module Configuration
+                </span>
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 mt-2">
+                  {Object.entries(modules).map(([key, val]) => (
+                    <div key={key} className="flex items-center gap-2">
+                      <Switch
+                        checked={val as boolean}
+                        onCheckedChange={(checked) => {
+                          updateMutation.mutate({
+                            moduleEnables: { ...modules, [key]: checked },
+                          });
+                        }}
+                        data-testid={`switch-module-${key}`}
+                      />
+                      <Label className="text-xs capitalize">{key.replace(/([A-Z])/g, " $1").trim()}</Label>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div>
+                <span className="text-xs font-medium text-muted-foreground flex items-center gap-1">
+                  <ToggleLeft className="w-3 h-3" /> Feature Flags
+                </span>
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 mt-2">
+                  {Object.entries(flags).map(([key, val]) => (
+                    <div key={key} className="flex items-center gap-2">
+                      <Switch
+                        checked={val as boolean}
+                        onCheckedChange={(checked) => {
+                          updateMutation.mutate({
+                            featureFlags: { ...flags, [key]: checked },
+                          });
+                        }}
+                        data-testid={`switch-flag-${key}`}
+                      />
+                      <Label className="text-xs capitalize">{key.replace(/([A-Z])/g, " $1").trim()}</Label>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2 flex-wrap">
+                <Badge variant="outline" className="text-xs">
+                  NOPP: {pack.noppRequired ? "Required" : "Optional"}
+                </Badge>
+                <Badge variant="outline" className="text-xs">
+                  ID Verification: {pack.identityVerificationRequired ? "Required" : "Optional"}
+                </Badge>
+              </div>
+            </div>
+          </>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+function ClinicalRuleCard({ rule }: { rule: any }) {
+  const [editing, setEditing] = useState(false);
+  const { toast } = useToast();
+  const [form, setForm] = useState({
+    name: rule.name,
+    severity: rule.severity || "warning",
+    documentationPrompt: rule.documentationPrompt || "",
+    active: rule.active,
+    priority: rule.priority,
+  });
+
+  const updateMutation = useMutation({
+    mutationFn: async (updates: any) => {
+      return apiRequest("PUT", `/api/clinical-rules/${rule.id}`, updates);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/clinical-rules"] });
+      toast({ title: "Clinical rule updated" });
+      setEditing(false);
+    },
+    onError: (err: any) => {
+      toast({ title: "Update failed", description: err.message, variant: "destructive" });
+    },
+  });
+
+  const severityClass = SEVERITY_COLORS[rule.severity || "warning"] || SEVERITY_COLORS.warning;
+  const condition = rule.triggerCondition || {};
+
+  return (
+    <Card data-testid={`card-rule-${rule.id}`}>
+      <CardContent className="p-4 space-y-2">
+        <div className="flex items-center justify-between gap-3 flex-wrap">
+          <div className="flex items-center gap-2 min-w-0">
+            <Zap className="w-4 h-4 shrink-0 text-muted-foreground" />
+            <span className="text-sm font-semibold" data-testid={`text-rule-name-${rule.id}`}>{rule.name}</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <Badge className={`text-xs ${severityClass}`} data-testid={`badge-severity-${rule.id}`}>
+              {(rule.severity || "warning").toUpperCase()}
+            </Badge>
+            <Badge variant={rule.active ? "default" : "secondary"} className="text-xs">
+              {rule.active ? "Active" : "Inactive"}
+            </Badge>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setEditing(!editing)}
+              data-testid={`button-edit-rule-${rule.id}`}
+            >
+              {editing ? "Cancel" : "Edit"}
+            </Button>
+          </div>
+        </div>
+
+        <p className="text-xs text-muted-foreground">{rule.description}</p>
+
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-xs">
+          <div>
+            <span className="text-muted-foreground">Trigger:</span>{" "}
+            <span className="font-medium">{rule.triggerSource}</span>
+            {condition.field && <span className="text-muted-foreground"> ({condition.field} {condition.operator} {condition.threshold})</span>}
+            {condition.instrumentId && <span className="text-muted-foreground"> ({condition.instrumentId} score {condition.operator} {condition.scoreThreshold})</span>}
+          </div>
+          <div>
+            <span className="text-muted-foreground">Priority:</span>{" "}
+            <span className="font-medium capitalize">{rule.priority}</span>
+          </div>
+          <div>
+            <span className="text-muted-foreground">Category:</span>{" "}
+            <span className="font-medium">{rule.category?.replace(/_/g, " ")}</span>
+          </div>
+        </div>
+
+        {rule.recommendedAction && (
+          <div className="text-xs">
+            <span className="text-muted-foreground">Action:</span>{" "}
+            <span>{rule.recommendedAction}</span>
+          </div>
+        )}
+
+        {rule.documentationPrompt && !editing && (
+          <div className="text-xs bg-muted p-2 rounded-md">
+            <span className="text-muted-foreground">Documentation Prompt:</span>{" "}
+            <span>{rule.documentationPrompt}</span>
+          </div>
+        )}
+
+        {editing && (
+          <div className="space-y-3 mt-2 p-3 bg-muted rounded-md">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <Label className="text-xs">Rule Name</Label>
+                <Input
+                  value={form.name}
+                  onChange={(e) => setForm({ ...form, name: e.target.value })}
+                  className="mt-1"
+                  data-testid="input-rule-name"
+                />
+              </div>
+              <div>
+                <Label className="text-xs">Severity</Label>
+                <Select value={form.severity} onValueChange={(v) => setForm({ ...form, severity: v })}>
+                  <SelectTrigger className="mt-1" data-testid="select-rule-severity">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="info">Info</SelectItem>
+                    <SelectItem value="warning">Warning</SelectItem>
+                    <SelectItem value="critical">Critical</SelectItem>
+                    <SelectItem value="emergency">Emergency</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label className="text-xs">Priority</Label>
+                <Select value={form.priority} onValueChange={(v) => setForm({ ...form, priority: v })}>
+                  <SelectTrigger className="mt-1" data-testid="select-rule-priority">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="low">Low</SelectItem>
+                    <SelectItem value="medium">Medium</SelectItem>
+                    <SelectItem value="high">High</SelectItem>
+                    <SelectItem value="urgent">Urgent</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="flex items-center gap-2 self-end">
+                <Switch
+                  checked={form.active}
+                  onCheckedChange={(v) => setForm({ ...form, active: v })}
+                  data-testid="switch-rule-active"
+                />
+                <Label className="text-xs">Active</Label>
+              </div>
+            </div>
+            <div>
+              <Label className="text-xs">Documentation Prompt</Label>
+              <Textarea
+                value={form.documentationPrompt}
+                onChange={(e) => setForm({ ...form, documentationPrompt: e.target.value })}
+                placeholder="What the clinician should document when this rule fires..."
+                className="mt-1 text-xs"
+                rows={2}
+                data-testid="input-rule-doc-prompt"
+              />
+            </div>
+            <div className="flex items-center gap-2 flex-wrap">
+              <Button
+                size="sm"
+                onClick={() => updateMutation.mutate(form)}
+                disabled={updateMutation.isPending}
+                data-testid="button-save-rule"
+              >
+                <Save className="w-3 h-3 mr-1" /> Save
+              </Button>
+              <Button variant="ghost" size="sm" onClick={() => setEditing(false)}>Cancel</Button>
+            </div>
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+function AssessmentCard({ assessment }: { assessment: any }) {
+  const [expanded, setExpanded] = useState(false);
+  const branching = assessment.branchingRules;
+  const hasBranching = branching && (branching.followUpAssessments?.length > 0 || branching.conditionalQuestions?.length > 0);
+
+  return (
+    <Card data-testid={`card-assessment-${assessment.id}`}>
+      <CardContent className="p-4">
+        <div className="flex items-center justify-between gap-3 flex-wrap">
+          <div className="flex flex-col gap-0.5 min-w-0">
+            <div className="flex items-center gap-2">
+              <span className="text-sm font-semibold">{assessment.name}</span>
+              {hasBranching && (
+                <Badge variant="outline" className="text-xs" style={{ borderColor: "#277493", color: "#277493" }}>
+                  Branching
+                </Badge>
+              )}
+            </div>
+            <span className="text-xs text-muted-foreground">
+              ID: {assessment.instrumentId} | Version: {assessment.version} | Category: {assessment.category}
+            </span>
+          </div>
+          <div className="flex items-center gap-2">
+            <Badge variant={assessment.active ? "default" : "secondary"} className="text-xs">
+              {assessment.active ? "Active" : "Inactive"}
+            </Badge>
+            {hasBranching && (
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => setExpanded(!expanded)}
+                data-testid={`button-expand-assessment-${assessment.id}`}
+              >
+                {expanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+              </Button>
+            )}
+          </div>
+        </div>
+
+        {expanded && branching && (
+          <>
+            <Separator className="my-2" />
+            <div className="space-y-2">
+              {branching.followUpAssessments?.length > 0 && (
+                <div>
+                  <span className="text-xs font-medium text-muted-foreground">Follow-Up Assessments</span>
+                  {branching.followUpAssessments.map((f: any, i: number) => (
+                    <div key={i} className="flex items-center gap-2 mt-1 text-xs">
+                      <Badge variant="outline" className="text-xs">{f.instrumentId}</Badge>
+                      <span className="text-muted-foreground">when score {f.condition?.operator} {f.condition?.scoreThreshold}</span>
+                      <span>{f.label}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+              {branching.conditionalQuestions?.length > 0 && (
+                <div>
+                  <span className="text-xs font-medium text-muted-foreground">Conditional Prompts</span>
+                  {branching.conditionalQuestions.map((c: any, i: number) => (
+                    <div key={i} className="text-xs mt-1 p-2 bg-muted rounded-md">
+                      <span className="font-medium">Q{c.questionId?.replace("q", "")}</span>
+                      <span className="text-muted-foreground"> = "{c.condition?.answer}":</span>{" "}
+                      <span>{c.prompt}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </>
+        )}
+      </CardContent>
+    </Card>
   );
 }
 

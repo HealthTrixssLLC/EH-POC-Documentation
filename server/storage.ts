@@ -49,6 +49,10 @@ import {
   type Transcript, type InsertTranscript,
   extractedFields,
   type ExtractedField, type InsertExtractedField,
+  visitAlerts, noteEdits, noteSignatures,
+  type VisitAlert, type InsertVisitAlert,
+  type NoteEdit, type InsertNoteEdit,
+  type NoteSignature, type InsertNoteSignature,
 } from "@shared/schema";
 
 export interface IStorage {
@@ -198,6 +202,25 @@ export interface IStorage {
   createExtractedField(field: InsertExtractedField): Promise<ExtractedField>;
   updateExtractedField(id: string, updates: Partial<ExtractedField>): Promise<ExtractedField | undefined>;
   createExtractedFields(fields: InsertExtractedField[]): Promise<ExtractedField[]>;
+
+  // Visit Alerts (CR-001-12)
+  getAlertsByVisit(visitId: string): Promise<VisitAlert[]>;
+  createVisitAlert(alert: InsertVisitAlert): Promise<VisitAlert>;
+  updateVisitAlert(id: string, updates: Partial<VisitAlert>): Promise<VisitAlert | undefined>;
+
+  // Note Edits (CR-001-16)
+  getNoteEditsByVisit(visitId: string): Promise<NoteEdit[]>;
+  createNoteEdit(edit: InsertNoteEdit): Promise<NoteEdit>;
+
+  // Note Signatures (CR-001-16)
+  getNoteSignaturesByVisit(visitId: string): Promise<NoteSignature[]>;
+  createNoteSignature(sig: InsertNoteSignature): Promise<NoteSignature>;
+
+  // Plan Pack updates (CR-001-15)
+  updatePlanPack(id: string, updates: Partial<PlanPack>): Promise<PlanPack | undefined>;
+
+  // Clinical Rule updates (CR-001-12)
+  updateClinicalRule(id: string, updates: Partial<ClinicalRule>): Promise<ClinicalRule | undefined>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -792,6 +815,53 @@ export class DatabaseStorage implements IStorage {
   async createExtractedFields(fields: InsertExtractedField[]) {
     if (fields.length === 0) return [];
     return db.insert(extractedFields).values(fields).returning();
+  }
+
+  // Visit Alerts (CR-001-12)
+  async getAlertsByVisit(visitId: string) {
+    return db.select().from(visitAlerts).where(eq(visitAlerts.visitId, visitId));
+  }
+
+  async createVisitAlert(alert: InsertVisitAlert) {
+    const [created] = await db.insert(visitAlerts).values(alert).returning();
+    return created;
+  }
+
+  async updateVisitAlert(id: string, updates: Partial<VisitAlert>) {
+    const [updated] = await db.update(visitAlerts).set(updates).where(eq(visitAlerts.id, id)).returning();
+    return updated;
+  }
+
+  // Note Edits (CR-001-16)
+  async getNoteEditsByVisit(visitId: string) {
+    return db.select().from(noteEdits).where(eq(noteEdits.visitId, visitId));
+  }
+
+  async createNoteEdit(edit: InsertNoteEdit) {
+    const [created] = await db.insert(noteEdits).values(edit).returning();
+    return created;
+  }
+
+  // Note Signatures (CR-001-16)
+  async getNoteSignaturesByVisit(visitId: string) {
+    return db.select().from(noteSignatures).where(eq(noteSignatures.visitId, visitId));
+  }
+
+  async createNoteSignature(sig: InsertNoteSignature) {
+    const [created] = await db.insert(noteSignatures).values(sig).returning();
+    return created;
+  }
+
+  // Plan Pack updates (CR-001-15)
+  async updatePlanPack(id: string, updates: Partial<PlanPack>) {
+    const [updated] = await db.update(planPacks).set(updates).where(eq(planPacks.id, id)).returning();
+    return updated;
+  }
+
+  // Clinical Rule updates (CR-001-12)
+  async updateClinicalRule(id: string, updates: Partial<ClinicalRule>) {
+    const [updated] = await db.update(clinicalRules).set(updates).where(eq(clinicalRules.id, id)).returning();
+    return updated;
   }
 }
 

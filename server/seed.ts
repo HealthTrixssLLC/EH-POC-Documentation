@@ -31,6 +31,8 @@ export async function seedDatabase() {
     state: "IL",
     zip: "62701",
     insurancePlan: "MA-PLAN-001",
+    planPackId: "MA-PLAN-001",
+    planPackVersion: "1.0",
     pcp: "Dr. James Wilson",
     conditions: ["Type 2 Diabetes", "Hypertension", "Osteoarthritis"],
     medications: ["Metformin 500mg", "Lisinopril 10mg", "Acetaminophen PRN"],
@@ -51,6 +53,8 @@ export async function seedDatabase() {
     state: "IL",
     zip: "62702",
     insurancePlan: "MA-PLAN-001",
+    planPackId: "MA-PLAN-001",
+    planPackVersion: "1.0",
     pcp: "Dr. Maria Garcia",
     conditions: ["COPD", "Congestive Heart Failure", "Depression"],
     medications: ["Albuterol inhaler", "Furosemide 40mg", "Sertraline 50mg", "Lisinopril 20mg"],
@@ -70,6 +74,8 @@ export async function seedDatabase() {
     state: "IL",
     zip: "62703",
     insurancePlan: "ACA-PLAN-001",
+    planPackId: "ACA-PLAN-001",
+    planPackVersion: "1.0",
     pcp: "Dr. David Lee",
     conditions: ["Breast cancer (remission)", "Hypothyroidism", "Anxiety"],
     medications: ["Levothyroxine 75mcg", "Buspirone 10mg"],
@@ -111,6 +117,11 @@ export async function seedDatabase() {
       { min: 0, max: 2, label: "Negative screen", severity: "none" },
       { min: 3, max: 6, label: "Positive screen - administer PHQ-9", severity: "moderate" },
     ],
+    branchingRules: {
+      followUpAssessments: [
+        { instrumentId: "PHQ-9", condition: { scoreThreshold: 3, operator: ">=" }, label: "PHQ-9 Full Depression Assessment" },
+      ],
+    },
     active: true,
   });
 
@@ -218,6 +229,14 @@ export async function seedDatabase() {
       { min: 3, max: 5, label: "Moderate social risk", severity: "moderate" },
       { min: 6, max: 10, label: "High social risk", severity: "severe" },
     ],
+    branchingRules: {
+      conditionalQuestions: [
+        { questionId: "q5", condition: { answer: "yes" }, prompt: "Food insecurity identified - assess for nutrition assistance programs (SNAP, food bank)" },
+        { questionId: "q4", condition: { answer: "concern" }, prompt: "Housing instability - assess for housing support resources" },
+        { questionId: "q4", condition: { answer: "none" }, prompt: "Homelessness identified - immediate housing referral needed" },
+      ],
+      followUpAssessments: [],
+    },
     active: true,
   });
 
@@ -383,6 +402,9 @@ export async function seedDatabase() {
     noppRequired: true,
     version: "1.0",
     active: true,
+    description: "Standard Medicare Advantage annual wellness visit package with comprehensive screenings and HEDIS measures",
+    moduleEnables: { vitals: true, assessments: true, medications: true, measures: true, voiceCapture: true, careplan: true, timeline: true },
+    featureFlags: { requireMedReconciliation: true, autoCodeGeneration: true, cdsAlerts: true },
   });
 
   await storage.createPlanPack({
@@ -396,6 +418,9 @@ export async function seedDatabase() {
     noppRequired: true,
     version: "1.0",
     active: true,
+    description: "ACA plan comprehensive visit package with preventive screenings and social determinants assessment",
+    moduleEnables: { vitals: true, assessments: true, medications: true, measures: true, voiceCapture: true, careplan: true, timeline: true },
+    featureFlags: { requireMedReconciliation: true, autoCodeGeneration: true, cdsAlerts: true },
   });
 
   // Reason Codes
@@ -891,6 +916,8 @@ export async function seedDatabase() {
     recommendedItemType: "assessment",
     recommendedItemId: "PHQ-9",
     priority: "high",
+    severity: "warning",
+    documentationPrompt: "Document PHQ-2 score and rationale for PHQ-9 escalation",
     description: "PHQ-2 score >= 3 indicates positive depression screen requiring full PHQ-9 assessment",
     active: true,
   });
@@ -905,6 +932,8 @@ export async function seedDatabase() {
     recommendedItemType: "measure",
     recommendedItemId: "CBP",
     priority: "high",
+    severity: "critical",
+    documentationPrompt: "Document BP readings, current antihypertensives, and management plan",
     description: "Systolic >= 140 or Diastolic >= 90 indicates hypertension requiring follow-up",
     active: true,
   });
@@ -919,6 +948,8 @@ export async function seedDatabase() {
     recommendedItemType: "measure",
     recommendedItemId: "CDC-A1C",
     priority: "medium",
+    severity: "warning",
+    documentationPrompt: "Document BMI, dietary assessment, and weight management discussion",
     description: "BMI >= 30 indicates obesity and elevated diabetes risk",
     active: true,
   });
@@ -931,6 +962,8 @@ export async function seedDatabase() {
     triggerCondition: { field: "oxygenSaturation", threshold: 92, operator: "<=" },
     recommendedAction: "Assess respiratory status and consider pulmonary referral",
     priority: "urgent",
+    severity: "emergency",
+    documentationPrompt: "Document O2 level, respiratory assessment, and immediate interventions taken",
     description: "O2 saturation <= 92% requires immediate respiratory assessment",
     active: true,
   });
@@ -943,6 +976,8 @@ export async function seedDatabase() {
     triggerCondition: { field: "painLevel", threshold: 7, operator: ">=" },
     recommendedAction: "Perform detailed pain assessment and consider pain management referral",
     priority: "high",
+    severity: "critical",
+    documentationPrompt: "Document pain location, quality, duration, and pain management plan",
     description: "Pain level >= 7 requires additional pain evaluation",
     active: true,
   });
@@ -955,6 +990,8 @@ export async function seedDatabase() {
     triggerCondition: { instrumentId: "PRAPARE", scoreThreshold: 6, operator: ">=" },
     recommendedAction: "Refer to social services for social determinants of health support",
     priority: "high",
+    severity: "warning",
+    documentationPrompt: "Document identified social risks and referral resources provided",
     description: "PRAPARE score >= 6 indicates high social risk requiring social services referral",
     active: true,
   });
@@ -967,6 +1004,8 @@ export async function seedDatabase() {
     triggerCondition: { field: "heartRate", threshold: 100, operator: ">=" },
     recommendedAction: "Evaluate for underlying causes of elevated heart rate",
     priority: "medium",
+    severity: "warning",
+    documentationPrompt: "Document heart rate, rhythm assessment, and contributing factors",
     description: "Heart rate >= 100 bpm indicates tachycardia requiring evaluation",
     active: true,
   });
@@ -979,6 +1018,8 @@ export async function seedDatabase() {
     triggerCondition: { field: "heartRate", threshold: 50, operator: "<=" },
     recommendedAction: "Evaluate for underlying causes of low heart rate, review medications",
     priority: "medium",
+    severity: "warning",
+    documentationPrompt: "Document heart rate, medication review, and symptom assessment",
     description: "Heart rate <= 50 bpm indicates bradycardia requiring evaluation",
     active: true,
   });

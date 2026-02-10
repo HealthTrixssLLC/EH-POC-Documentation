@@ -45,6 +45,21 @@ export default function ReviewFinalize() {
     enabled: !!visitId,
   });
 
+  const { data: codeEvidence = [] } = useQuery<any[]>({
+    queryKey: ["/api/visits", visitId, "code-evidence"],
+    enabled: !!visitId,
+  });
+
+  const { data: noteSignatures = [] } = useQuery<any[]>({
+    queryKey: ["/api/visits", visitId, "note-signatures"],
+    enabled: !!visitId,
+  });
+
+  const { data: noteEdits = [] } = useQuery<any[]>({
+    queryKey: ["/api/visits", visitId, "note-edits"],
+    enabled: !!visitId,
+  });
+
   const { data: recommendations = [] } = useQuery<any[]>({
     queryKey: ["/api/visits", visitId, "recommendations"],
     enabled: !!visitId,
@@ -240,13 +255,13 @@ export default function ReviewFinalize() {
           ) : (
             <>
               {cptCodes.length > 0 && (
-                <CodeSection title="CPT Codes" codes={cptCodes} onVerify={verifyCodeMutation.mutate} onRemove={removeCodeMutation.mutate} />
+                <CodeSection title="CPT Codes" codes={cptCodes} onVerify={verifyCodeMutation.mutate} onRemove={removeCodeMutation.mutate} evidenceMap={codeEvidence} />
               )}
               {hcpcsCodes.length > 0 && (
-                <CodeSection title="HCPCS Codes" codes={hcpcsCodes} onVerify={verifyCodeMutation.mutate} onRemove={removeCodeMutation.mutate} />
+                <CodeSection title="HCPCS Codes" codes={hcpcsCodes} onVerify={verifyCodeMutation.mutate} onRemove={removeCodeMutation.mutate} evidenceMap={codeEvidence} />
               )}
               {icdCodes.length > 0 && (
-                <CodeSection title="ICD-10 Codes" codes={icdCodes} onVerify={verifyCodeMutation.mutate} onRemove={removeCodeMutation.mutate} />
+                <CodeSection title="ICD-10 Codes" codes={icdCodes} onVerify={verifyCodeMutation.mutate} onRemove={removeCodeMutation.mutate} evidenceMap={codeEvidence} />
               )}
             </>
           )}
@@ -522,6 +537,57 @@ export default function ReviewFinalize() {
         </Card>
       )}
 
+      {(noteEdits.length > 0 || noteSignatures.length > 0) && (
+        <Card>
+          <CardHeader className="pb-3">
+            <div className="flex items-center gap-2">
+              <Info className="w-5 h-5" style={{ color: "#277493" }} />
+              <h2 className="text-base font-semibold" data-testid="text-note-audit-title">Note Audit Trail</h2>
+              {noteEdits.length > 0 && <Badge variant="secondary" className="text-xs">{noteEdits.length} edit{noteEdits.length !== 1 ? "s" : ""}</Badge>}
+            </div>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            {noteSignatures.length > 0 && (
+              <div>
+                <span className="text-xs font-medium text-muted-foreground">Signatures</span>
+                <div className="space-y-1.5 mt-1">
+                  {noteSignatures.map((sig: any) => (
+                    <div key={sig.id} className="flex items-center gap-2 p-2 rounded-md border text-xs" data-testid={`sig-${sig.id}`}>
+                      <ShieldCheck className="w-3.5 h-3.5 flex-shrink-0" style={{ color: "#277493" }} />
+                      <span className="font-medium">{sig.signedByName}</span>
+                      <Badge variant="outline" className="text-[10px] capitalize">{sig.signatureType?.replace(/_/g, " ")}</Badge>
+                      <Badge variant="outline" className="text-[10px] capitalize">{sig.role}</Badge>
+                      <span className="text-muted-foreground ml-auto">{sig.signedAt ? new Date(sig.signedAt).toLocaleString() : ""}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+            {noteEdits.length > 0 && (
+              <div>
+                <span className="text-xs font-medium text-muted-foreground">Edit History</span>
+                <div className="space-y-1.5 mt-1">
+                  {noteEdits.map((edit: any) => (
+                    <div key={edit.id} className="p-2 rounded-md border text-xs" data-testid={`edit-${edit.id}`}>
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <PenLine className="w-3 h-3 text-muted-foreground flex-shrink-0" />
+                        <span className="font-medium">{edit.editedByName}</span>
+                        <span className="text-muted-foreground">edited</span>
+                        <Badge variant="outline" className="text-[10px] capitalize">{edit.section?.replace(/_/g, " ")}</Badge>
+                        <span className="text-muted-foreground ml-auto">{edit.editedAt ? new Date(edit.editedAt).toLocaleString() : ""}</span>
+                      </div>
+                      {edit.editReason && (
+                        <p className="text-muted-foreground mt-1">Reason: {edit.editReason}</p>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
+
       <Card>
         <CardHeader className="pb-3">
           <div className="flex items-center gap-2">
@@ -563,53 +629,96 @@ function CodeSection({
   codes,
   onVerify,
   onRemove,
+  evidenceMap = [],
 }: {
   title: string;
   codes: any[];
   onVerify: (data: { id: string; verified: boolean }) => void;
   onRemove: (id: string) => void;
+  evidenceMap?: any[];
 }) {
+  const [expandedCode, setExpandedCode] = useState<string | null>(null);
+
   return (
     <div>
       <h3 className="text-sm font-medium mb-2">{title}</h3>
       <div className="space-y-1.5">
-        {codes.map((code: any) => (
-          <div
-            key={code.id}
-            className="flex items-center justify-between gap-3 p-2 rounded-md border flex-wrap"
-            data-testid={`code-${code.codeType}-${code.code}`}
-          >
-            <div className="flex items-center gap-2 min-w-0">
-              <Badge variant={code.verified ? "default" : "secondary"} className="text-xs font-mono shrink-0">
-                {code.code}
-              </Badge>
-              <span className="text-sm truncate">{code.description}</span>
-              {code.source && (
-                <Badge variant="outline" className="text-xs capitalize shrink-0">
-                  {code.source}
-                </Badge>
+        {codes.map((code: any) => {
+          const evidence = evidenceMap.find((e: any) => e.id === code.id);
+          const evidenceStatus = evidence?.evidenceStatus;
+          const statusColor = evidenceStatus === "fully_supported" ? "#277493" : evidenceStatus === "partially_supported" ? "#FEA002" : evidenceStatus === "missing_evidence" ? "#E74C3C" : undefined;
+          const isExpanded = expandedCode === code.id;
+
+          return (
+            <div key={code.id} className="rounded-md border" data-testid={`code-${code.codeType}-${code.code}`}>
+              <div className="flex items-center justify-between gap-3 p-2 flex-wrap">
+                <div className="flex items-center gap-2 min-w-0">
+                  <Badge variant={code.verified ? "default" : "secondary"} className="text-xs font-mono shrink-0">
+                    {code.code}
+                  </Badge>
+                  <span className="text-sm truncate">{code.description}</span>
+                  {code.source && (
+                    <Badge variant="outline" className="text-xs capitalize shrink-0">
+                      {code.source}
+                    </Badge>
+                  )}
+                  {evidenceStatus && (
+                    <Badge
+                      variant="outline"
+                      className="text-[10px] shrink-0 cursor-pointer"
+                      style={{ borderColor: statusColor, color: statusColor }}
+                      onClick={() => setExpandedCode(isExpanded ? null : code.id)}
+                      data-testid={`badge-evidence-${code.code}`}
+                    >
+                      {evidenceStatus === "fully_supported" ? "Supported" : evidenceStatus === "partially_supported" ? "Partial" : "Missing"}
+                    </Badge>
+                  )}
+                </div>
+                <div className="flex items-center gap-1">
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => onVerify({ id: code.id, verified: !code.verified })}
+                    data-testid={`button-verify-${code.code}`}
+                  >
+                    <Check className={`w-4 h-4 ${code.verified ? "text-green-600" : "text-muted-foreground"}`} />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => onRemove(code.id)}
+                    data-testid={`button-remove-${code.code}`}
+                  >
+                    <Trash2 className="w-4 h-4 text-muted-foreground" />
+                  </Button>
+                </div>
+              </div>
+              {isExpanded && evidence?.evidenceMap && (
+                <div className="px-3 pb-3 space-y-1.5 border-t">
+                  <span className="text-[11px] font-medium text-muted-foreground mt-2 block">Evidence Requirements</span>
+                  {evidence.evidenceMap.requirements?.map((req: string, i: number) => {
+                    const satisfied = evidence.evidenceMap.satisfiedBy?.includes(req);
+                    return (
+                      <div key={i} className="flex items-center gap-2 text-xs" data-testid={`evidence-req-${i}`}>
+                        {satisfied ? (
+                          <CheckCircle2 className="w-3 h-3 flex-shrink-0 text-green-600" />
+                        ) : (
+                          <XCircle className="w-3 h-3 flex-shrink-0 text-destructive" />
+                        )}
+                        <span className={satisfied ? "text-muted-foreground" : ""}>{req}</span>
+                      </div>
+                    );
+                  })}
+                  {evidence.evidenceMap.missing?.length > 0 && (
+                    <div className="text-[11px] text-destructive mt-1">
+                      {evidence.evidenceMap.missing.length} requirement{evidence.evidenceMap.missing.length !== 1 ? "s" : ""} not yet satisfied
+                    </div>
+                  )}
+                </div>
               )}
             </div>
-            <div className="flex items-center gap-1">
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => onVerify({ id: code.id, verified: !code.verified })}
-                data-testid={`button-verify-${code.code}`}
-              >
-                <Check className={`w-4 h-4 ${code.verified ? "text-green-600" : "text-muted-foreground"}`} />
-              </Button>
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => onRemove(code.id)}
-                data-testid={`button-remove-${code.code}`}
-              >
-                <Trash2 className="w-4 h-4 text-muted-foreground" />
-              </Button>
-            </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
     </div>
   );

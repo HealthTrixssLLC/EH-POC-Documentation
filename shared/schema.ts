@@ -36,6 +36,8 @@ export const members = pgTable("members", {
   medications: text("medications").array(),
   allergies: text("allergies").array(),
   riskFlags: text("risk_flags").array(),
+  planPackId: text("plan_pack_id"),
+  planPackVersion: text("plan_pack_version"),
 });
 
 export const insertMemberSchema = createInsertSchema(members).omit({ id: true });
@@ -51,6 +53,7 @@ export const visits = pgTable("visits", {
   scheduledTime: text("scheduled_time"),
   visitType: text("visit_type").notNull().default("annual_wellness"),
   planId: text("plan_id"),
+  planPackVersion: text("plan_pack_version"),
   identityVerified: boolean("identity_verified").default(false),
   identityMethod: text("identity_method"),
   signedAt: text("signed_at"),
@@ -94,6 +97,7 @@ export const assessmentDefinitions = pgTable("assessment_definitions", {
   questions: jsonb("questions").notNull(),
   scoringRules: jsonb("scoring_rules"),
   interpretationBands: jsonb("interpretation_bands"),
+  branchingRules: jsonb("branching_rules"),
   active: boolean("active").notNull().default(true),
 });
 
@@ -298,6 +302,9 @@ export const planPacks = pgTable("plan_packs", {
   noppRequired: boolean("nopp_required").notNull().default(true),
   version: text("version").notNull().default("1.0"),
   active: boolean("active").notNull().default(true),
+  moduleEnables: jsonb("module_enables").$type<Record<string, boolean>>(),
+  featureFlags: jsonb("feature_flags").$type<Record<string, any>>(),
+  description: text("description"),
 });
 
 export const insertPlanPackSchema = createInsertSchema(planPacks).omit({ id: true });
@@ -318,6 +325,9 @@ export const clinicalRules = pgTable("clinical_rules", {
   priority: text("priority").notNull().default("medium"),
   description: text("description"),
   active: boolean("active").notNull().default(true),
+  severity: text("severity").notNull().default("warning"),
+  documentationPrompt: text("documentation_prompt"),
+  programScope: text("program_scope"),
 });
 
 export const insertClinicalRuleSchema = createInsertSchema(clinicalRules).omit({ id: true });
@@ -370,6 +380,9 @@ export const visitCodes = pgTable("visit_codes", {
   autoAssigned: boolean("auto_assigned").notNull().default(true),
   verified: boolean("verified").notNull().default(false),
   removedByNp: boolean("removed_by_np").notNull().default(false),
+  evidenceMap: jsonb("evidence_map"),
+  evidenceStatus: text("evidence_status"),
+  triggerComponents: text("trigger_components").array(),
 });
 
 export const insertVisitCodeSchema = createInsertSchema(visitCodes).omit({ id: true });
@@ -391,6 +404,9 @@ export const labResults = pgTable("lab_results", {
   resultDate: text("result_date"),
   orderingProvider: text("ordering_provider"),
   category: text("category"),
+  actorName: text("actor_name"),
+  actorId: varchar("actor_id"),
+  notes: text("notes"),
 });
 
 export const insertLabResultSchema = createInsertSchema(labResults).omit({ id: true });
@@ -412,6 +428,10 @@ export const medicationHistory = pgTable("medication_history", {
   source: text("source").notNull().default("practice"),
   category: text("category"),
   reason: text("reason"),
+  changeType: text("change_type"),
+  changeReason: text("change_reason"),
+  actorName: text("actor_name"),
+  actorId: varchar("actor_id"),
 });
 
 export const insertMedicationHistorySchema = createInsertSchema(medicationHistory).omit({ id: true });
@@ -431,6 +451,9 @@ export const vitalsHistory = pgTable("vitals_history", {
   temperature: real("temperature"),
   respiratoryRate: integer("respiratory_rate"),
   source: text("source").notNull().default("practice"),
+  actorName: text("actor_name"),
+  actorId: varchar("actor_id"),
+  notes: text("notes"),
 });
 
 export const insertVitalsHistorySchema = createInsertSchema(vitalsHistory).omit({ id: true });
@@ -758,3 +781,61 @@ export const extractedFields = pgTable("extracted_fields", {
 export const insertExtractedFieldSchema = createInsertSchema(extractedFields).omit({ id: true });
 export type InsertExtractedField = z.infer<typeof insertExtractedFieldSchema>;
 export type ExtractedField = typeof extractedFields.$inferSelect;
+
+export const ALERT_SEVERITIES = ["info", "warning", "critical", "emergency"] as const;
+export type AlertSeverity = typeof ALERT_SEVERITIES[number];
+
+export const visitAlerts = pgTable("visit_alerts", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  visitId: varchar("visit_id").notNull(),
+  ruleId: text("rule_id").notNull(),
+  ruleName: text("rule_name").notNull(),
+  severity: text("severity").notNull().default("warning"),
+  message: text("message").notNull(),
+  recommendedAction: text("recommended_action"),
+  status: text("status").notNull().default("active"),
+  acknowledgedBy: varchar("acknowledged_by"),
+  acknowledgedByName: text("acknowledged_by_name"),
+  acknowledgedAt: text("acknowledged_at"),
+  dismissedBy: varchar("dismissed_by"),
+  dismissedByName: text("dismissed_by_name"),
+  dismissedAt: text("dismissed_at"),
+  dismissReason: text("dismiss_reason"),
+  actionTaken: text("action_taken"),
+  triggeredAt: text("triggered_at"),
+});
+
+export const insertVisitAlertSchema = createInsertSchema(visitAlerts).omit({ id: true });
+export type InsertVisitAlert = z.infer<typeof insertVisitAlertSchema>;
+export type VisitAlert = typeof visitAlerts.$inferSelect;
+
+export const noteEdits = pgTable("note_edits", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  visitId: varchar("visit_id").notNull(),
+  section: text("section").notNull(),
+  previousContent: text("previous_content"),
+  newContent: text("new_content"),
+  editedBy: varchar("edited_by").notNull(),
+  editedByName: text("edited_by_name").notNull(),
+  editReason: text("edit_reason"),
+  editedAt: text("edited_at").notNull(),
+});
+
+export const insertNoteEditSchema = createInsertSchema(noteEdits).omit({ id: true });
+export type InsertNoteEdit = z.infer<typeof insertNoteEditSchema>;
+export type NoteEdit = typeof noteEdits.$inferSelect;
+
+export const noteSignatures = pgTable("note_signatures", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  visitId: varchar("visit_id").notNull(),
+  signatureType: text("signature_type").notNull(),
+  signedBy: varchar("signed_by").notNull(),
+  signedByName: text("signed_by_name").notNull(),
+  role: text("role").notNull(),
+  attestationText: text("attestation_text"),
+  signedAt: text("signed_at").notNull(),
+});
+
+export const insertNoteSignatureSchema = createInsertSchema(noteSignatures).omit({ id: true });
+export type InsertNoteSignature = z.infer<typeof insertNoteSignatureSchema>;
+export type NoteSignature = typeof noteSignatures.$inferSelect;

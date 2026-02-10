@@ -1,0 +1,2923 @@
+{
+  "resourceType": "Bundle",
+  "type": "transaction",
+  "entry": [
+    {
+      "fullUrl": "urn:uuid:patient-mem-004",
+      "resource": {
+        "resourceType": "Patient",
+        "identifier": [
+          {
+            "system": "urn:easy-health:member-id",
+            "value": "MEM-004"
+          }
+        ],
+        "name": [
+          {
+            "use": "official",
+            "family": "Chen",
+            "given": ["James"]
+          }
+        ],
+        "birthDate": "1940-06-12",
+        "gender": "male",
+        "telecom": [
+          {
+            "system": "phone",
+            "value": "(555) 567-8901",
+            "use": "home"
+          },
+          {
+            "system": "email",
+            "value": "james.chen@email.com"
+          }
+        ],
+        "address": [
+          {
+            "use": "home",
+            "line": ["321 Veterans Blvd"],
+            "city": "Springfield",
+            "state": "IL",
+            "postalCode": "62704"
+          }
+        ],
+        "generalPractitioner": [
+          {
+            "display": "Dr. Angela Brooks"
+          }
+        ],
+        "extension": [
+          {
+            "url": "urn:easy-health:conditions",
+            "extension": [
+              { "url": "condition", "valueString": "Atrial Fibrillation" },
+              { "url": "condition", "valueString": "Type 2 Diabetes" },
+              { "url": "condition", "valueString": "Chronic Kidney Disease Stage 3" },
+              { "url": "condition", "valueString": "Benign Prostatic Hyperplasia" }
+            ]
+          },
+          {
+            "url": "urn:easy-health:medications",
+            "extension": [
+              { "url": "medication", "valueString": "Eliquis 5mg BID" },
+              { "url": "medication", "valueString": "Metformin 1000mg BID" },
+              { "url": "medication", "valueString": "Losartan 50mg daily" },
+              { "url": "medication", "valueString": "Tamsulosin 0.4mg daily" },
+              { "url": "medication", "valueString": "Atorvastatin 40mg daily" }
+            ]
+          },
+          {
+            "url": "urn:easy-health:allergies",
+            "extension": [
+              { "url": "allergy", "valueString": "Iodine contrast dye" },
+              { "url": "allergy", "valueString": "Codeine" }
+            ]
+          },
+          {
+            "url": "urn:easy-health:risk-flags",
+            "extension": [
+              { "url": "flag", "valueString": "Fall risk" },
+              { "url": "flag", "valueString": "Anticoagulant therapy" }
+            ]
+          },
+          {
+            "url": "urn:easy-health:insurance-plan",
+            "valueString": "MA-PLAN-001"
+          }
+        ]
+      },
+      "request": {
+        "method": "POST",
+        "url": "Patient"
+      }
+    },
+    {
+      "fullUrl": "urn:uuid:encounter-mem-004",
+      "resource": {
+        "resourceType": "Encounter",
+        "status": "planned",
+        "class": {
+          "system": "http://terminology.hl7.org/CodeSystem/v3-ActCode",
+          "code": "HH",
+          "display": "home health"
+        },
+        "type": [
+          {
+            "coding": [
+              {
+                "system": "urn:easy-health:visit-type",
+                "code": "annual_wellness",
+                "display": "Annual Wellness Visit"
+              }
+            ]
+          }
+        ],
+        "subject": {
+          "reference": "Patient/MEM-004",
+          "display": "James Chen"
+        },
+        "period": {
+          "start": "2026-02-15"
+        }
+      },
+      "request": {
+        "method": "POST",
+        "url": "Encounter"
+      }
+    },
+    {
+      "fullUrl": "urn:uuid:condition-mem-004-1",
+      "resource": {
+        "resourceType": "Condition",
+        "clinicalStatus": {
+          "coding": [
+            {
+              "system": "http://terminology.hl7.org/CodeSystem/condition-clinical",
+              "code": "active",
+              "display": "Active"
+            }
+          ]
+        },
+        "verificationStatus": {
+          "coding": [
+            {
+              "system": "http://terminology.hl7.org/CodeSystem/condition-ver-status",
+              "code": "confirmed",
+              "display": "Confirmed"
+            }
+          ]
+        },
+        "code": {
+          "coding": [
+            {
+              "system": "http://hl7.org/fhir/sid/icd-10-cm",
+              "code": "I48.91",
+              "display": "Unspecified atrial fibrillation"
+            },
+            {
+              "system": "http://snomed.info/sct",
+              "code": "49436004",
+              "display": "Atrial fibrillation"
+            }
+          ],
+          "text": "Atrial Fibrillation"
+        },
+        "subject": {
+          "reference": "Patient/MEM-004",
+          "display": "James Chen"
+        }
+      },
+      "request": {
+        "method": "POST",
+        "url": "Condition"
+      }
+    },
+    {
+      "fullUrl": "urn:uuid:condition-mem-004-2",
+      "resource": {
+        "resourceType": "Condition",
+        "clinicalStatus": {
+          "coding": [
+            {
+              "system": "http://terminology.hl7.org/CodeSystem/condition-clinical",
+              "code": "active",
+              "display": "Active"
+            }
+          ]
+        },
+        "verificationStatus": {
+          "coding": [
+            {
+              "system": "http://terminology.hl7.org/CodeSystem/condition-ver-status",
+              "code": "confirmed",
+              "display": "Confirmed"
+            }
+          ]
+        },
+        "code": {
+          "coding": [
+            {
+              "system": "http://hl7.org/fhir/sid/icd-10-cm",
+              "code": "E11.9",
+              "display": "Type 2 diabetes mellitus without complications"
+            },
+            {
+              "system": "http://snomed.info/sct",
+              "code": "44054006",
+              "display": "Type 2 diabetes mellitus"
+            }
+          ],
+          "text": "Type 2 Diabetes"
+        },
+        "subject": {
+          "reference": "Patient/MEM-004",
+          "display": "James Chen"
+        }
+      },
+      "request": {
+        "method": "POST",
+        "url": "Condition"
+      }
+    },
+    {
+      "fullUrl": "urn:uuid:condition-mem-004-3",
+      "resource": {
+        "resourceType": "Condition",
+        "clinicalStatus": {
+          "coding": [
+            {
+              "system": "http://terminology.hl7.org/CodeSystem/condition-clinical",
+              "code": "active",
+              "display": "Active"
+            }
+          ]
+        },
+        "verificationStatus": {
+          "coding": [
+            {
+              "system": "http://terminology.hl7.org/CodeSystem/condition-ver-status",
+              "code": "confirmed",
+              "display": "Confirmed"
+            }
+          ]
+        },
+        "code": {
+          "coding": [
+            {
+              "system": "http://hl7.org/fhir/sid/icd-10-cm",
+              "code": "N18.3",
+              "display": "Chronic kidney disease, stage 3"
+            },
+            {
+              "system": "http://snomed.info/sct",
+              "code": "433144002",
+              "display": "Chronic kidney disease stage 3"
+            }
+          ],
+          "text": "Chronic Kidney Disease Stage 3"
+        },
+        "subject": {
+          "reference": "Patient/MEM-004",
+          "display": "James Chen"
+        }
+      },
+      "request": {
+        "method": "POST",
+        "url": "Condition"
+      }
+    },
+    {
+      "fullUrl": "urn:uuid:condition-mem-004-4",
+      "resource": {
+        "resourceType": "Condition",
+        "clinicalStatus": {
+          "coding": [
+            {
+              "system": "http://terminology.hl7.org/CodeSystem/condition-clinical",
+              "code": "active",
+              "display": "Active"
+            }
+          ]
+        },
+        "verificationStatus": {
+          "coding": [
+            {
+              "system": "http://terminology.hl7.org/CodeSystem/condition-ver-status",
+              "code": "confirmed",
+              "display": "Confirmed"
+            }
+          ]
+        },
+        "code": {
+          "coding": [
+            {
+              "system": "http://hl7.org/fhir/sid/icd-10-cm",
+              "code": "N40.0",
+              "display": "Benign prostatic hyperplasia without lower urinary tract symptoms"
+            },
+            {
+              "system": "http://snomed.info/sct",
+              "code": "266569009",
+              "display": "Benign prostatic hyperplasia"
+            }
+          ],
+          "text": "Benign Prostatic Hyperplasia"
+        },
+        "subject": {
+          "reference": "Patient/MEM-004",
+          "display": "James Chen"
+        }
+      },
+      "request": {
+        "method": "POST",
+        "url": "Condition"
+      }
+    },
+    {
+      "fullUrl": "urn:uuid:allergy-mem-004-1",
+      "resource": {
+        "resourceType": "AllergyIntolerance",
+        "clinicalStatus": {
+          "coding": [
+            {
+              "system": "http://terminology.hl7.org/CodeSystem/allergyintolerance-clinical",
+              "code": "active",
+              "display": "Active"
+            }
+          ]
+        },
+        "verificationStatus": {
+          "coding": [
+            {
+              "system": "http://terminology.hl7.org/CodeSystem/allergyintolerance-verification",
+              "code": "confirmed",
+              "display": "Confirmed"
+            }
+          ]
+        },
+        "type": "allergy",
+        "category": ["medication"],
+        "code": {
+          "text": "Iodine contrast dye"
+        },
+        "patient": {
+          "reference": "Patient/MEM-004",
+          "display": "James Chen"
+        }
+      },
+      "request": {
+        "method": "POST",
+        "url": "AllergyIntolerance"
+      }
+    },
+    {
+      "fullUrl": "urn:uuid:allergy-mem-004-2",
+      "resource": {
+        "resourceType": "AllergyIntolerance",
+        "clinicalStatus": {
+          "coding": [
+            {
+              "system": "http://terminology.hl7.org/CodeSystem/allergyintolerance-clinical",
+              "code": "active",
+              "display": "Active"
+            }
+          ]
+        },
+        "verificationStatus": {
+          "coding": [
+            {
+              "system": "http://terminology.hl7.org/CodeSystem/allergyintolerance-verification",
+              "code": "confirmed",
+              "display": "Confirmed"
+            }
+          ]
+        },
+        "type": "allergy",
+        "category": ["medication"],
+        "code": {
+          "coding": [
+            {
+              "system": "http://www.nlm.nih.gov/research/umls/rxnorm",
+              "code": "2670",
+              "display": "Codeine"
+            }
+          ],
+          "text": "Codeine"
+        },
+        "patient": {
+          "reference": "Patient/MEM-004",
+          "display": "James Chen"
+        }
+      },
+      "request": {
+        "method": "POST",
+        "url": "AllergyIntolerance"
+      }
+    },
+    {
+      "fullUrl": "urn:uuid:medstmt-mem-004-1",
+      "resource": {
+        "resourceType": "MedicationStatement",
+        "status": "active",
+        "medicationCodeableConcept": {
+          "coding": [
+            {
+              "system": "http://www.nlm.nih.gov/research/umls/rxnorm",
+              "code": "1364430",
+              "display": "Apixaban 5 MG Oral Tablet [Eliquis]"
+            }
+          ],
+          "text": "Eliquis 5mg BID"
+        },
+        "subject": {
+          "reference": "Patient/MEM-004",
+          "display": "James Chen"
+        },
+        "dosage": [
+          {
+            "text": "5mg twice daily",
+            "timing": {
+              "repeat": {
+                "frequency": 2,
+                "period": 1,
+                "periodUnit": "d"
+              }
+            }
+          }
+        ]
+      },
+      "request": {
+        "method": "POST",
+        "url": "MedicationStatement"
+      }
+    },
+    {
+      "fullUrl": "urn:uuid:medstmt-mem-004-2",
+      "resource": {
+        "resourceType": "MedicationStatement",
+        "status": "active",
+        "medicationCodeableConcept": {
+          "coding": [
+            {
+              "system": "http://www.nlm.nih.gov/research/umls/rxnorm",
+              "code": "861007",
+              "display": "Metformin hydrochloride 1000 MG Oral Tablet"
+            }
+          ],
+          "text": "Metformin 1000mg BID"
+        },
+        "subject": {
+          "reference": "Patient/MEM-004",
+          "display": "James Chen"
+        },
+        "dosage": [
+          {
+            "text": "1000mg twice daily",
+            "timing": {
+              "repeat": {
+                "frequency": 2,
+                "period": 1,
+                "periodUnit": "d"
+              }
+            }
+          }
+        ]
+      },
+      "request": {
+        "method": "POST",
+        "url": "MedicationStatement"
+      }
+    },
+    {
+      "fullUrl": "urn:uuid:medstmt-mem-004-3",
+      "resource": {
+        "resourceType": "MedicationStatement",
+        "status": "active",
+        "medicationCodeableConcept": {
+          "coding": [
+            {
+              "system": "http://www.nlm.nih.gov/research/umls/rxnorm",
+              "code": "979480",
+              "display": "Losartan potassium 50 MG Oral Tablet"
+            }
+          ],
+          "text": "Losartan 50mg daily"
+        },
+        "subject": {
+          "reference": "Patient/MEM-004",
+          "display": "James Chen"
+        },
+        "dosage": [
+          {
+            "text": "50mg once daily",
+            "timing": {
+              "repeat": {
+                "frequency": 1,
+                "period": 1,
+                "periodUnit": "d"
+              }
+            }
+          }
+        ]
+      },
+      "request": {
+        "method": "POST",
+        "url": "MedicationStatement"
+      }
+    },
+    {
+      "fullUrl": "urn:uuid:medstmt-mem-004-4",
+      "resource": {
+        "resourceType": "MedicationStatement",
+        "status": "active",
+        "medicationCodeableConcept": {
+          "coding": [
+            {
+              "system": "http://www.nlm.nih.gov/research/umls/rxnorm",
+              "code": "67108",
+              "display": "Tamsulosin hydrochloride 0.4 MG Oral Capsule"
+            }
+          ],
+          "text": "Tamsulosin 0.4mg daily"
+        },
+        "subject": {
+          "reference": "Patient/MEM-004",
+          "display": "James Chen"
+        },
+        "dosage": [
+          {
+            "text": "0.4mg once daily",
+            "timing": {
+              "repeat": {
+                "frequency": 1,
+                "period": 1,
+                "periodUnit": "d"
+              }
+            }
+          }
+        ]
+      },
+      "request": {
+        "method": "POST",
+        "url": "MedicationStatement"
+      }
+    },
+    {
+      "fullUrl": "urn:uuid:medstmt-mem-004-5",
+      "resource": {
+        "resourceType": "MedicationStatement",
+        "status": "active",
+        "medicationCodeableConcept": {
+          "coding": [
+            {
+              "system": "http://www.nlm.nih.gov/research/umls/rxnorm",
+              "code": "259255",
+              "display": "Atorvastatin 40 MG Oral Tablet"
+            }
+          ],
+          "text": "Atorvastatin 40mg daily"
+        },
+        "subject": {
+          "reference": "Patient/MEM-004",
+          "display": "James Chen"
+        },
+        "dosage": [
+          {
+            "text": "40mg once daily",
+            "timing": {
+              "repeat": {
+                "frequency": 1,
+                "period": 1,
+                "periodUnit": "d"
+              }
+            }
+          }
+        ]
+      },
+      "request": {
+        "method": "POST",
+        "url": "MedicationStatement"
+      }
+    },
+    {
+      "fullUrl": "urn:uuid:patient-mem-005",
+      "resource": {
+        "resourceType": "Patient",
+        "identifier": [
+          {
+            "system": "urn:easy-health:member-id",
+            "value": "MEM-005"
+          }
+        ],
+        "name": [
+          {
+            "use": "official",
+            "family": "Robinson",
+            "given": ["Beatrice"]
+          }
+        ],
+        "birthDate": "1948-04-28",
+        "gender": "female",
+        "telecom": [
+          {
+            "system": "phone",
+            "value": "(555) 678-9012",
+            "use": "home"
+          },
+          {
+            "system": "email",
+            "value": "bea.robinson@email.com"
+          }
+        ],
+        "address": [
+          {
+            "use": "home",
+            "line": ["567 Sunrise Court"],
+            "city": "Springfield",
+            "state": "IL",
+            "postalCode": "62705"
+          }
+        ],
+        "generalPractitioner": [
+          {
+            "display": "Dr. Thomas Wright"
+          }
+        ],
+        "extension": [
+          {
+            "url": "urn:easy-health:conditions",
+            "extension": [
+              { "url": "condition", "valueString": "COPD" },
+              { "url": "condition", "valueString": "Osteoporosis" },
+              { "url": "condition", "valueString": "Gastroesophageal Reflux" },
+              { "url": "condition", "valueString": "Mild Cognitive Impairment" }
+            ]
+          },
+          {
+            "url": "urn:easy-health:medications",
+            "extension": [
+              { "url": "medication", "valueString": "Tiotropium 18mcg inhaler daily" },
+              { "url": "medication", "valueString": "Alendronate 70mg weekly" },
+              { "url": "medication", "valueString": "Omeprazole 20mg daily" },
+              { "url": "medication", "valueString": "Calcium/Vitamin D supplement" },
+              { "url": "medication", "valueString": "Albuterol PRN" }
+            ]
+          },
+          {
+            "url": "urn:easy-health:allergies",
+            "extension": [
+              { "url": "allergy", "valueString": "Latex" }
+            ]
+          },
+          {
+            "url": "urn:easy-health:risk-flags",
+            "extension": [
+              { "url": "flag", "valueString": "Cognitive decline" },
+              { "url": "flag", "valueString": "Fall risk" },
+              { "url": "flag", "valueString": "Oxygen PRN" }
+            ]
+          },
+          {
+            "url": "urn:easy-health:insurance-plan",
+            "valueString": "MA-PLAN-001"
+          }
+        ]
+      },
+      "request": {
+        "method": "POST",
+        "url": "Patient"
+      }
+    },
+    {
+      "fullUrl": "urn:uuid:encounter-mem-005",
+      "resource": {
+        "resourceType": "Encounter",
+        "status": "planned",
+        "class": {
+          "system": "http://terminology.hl7.org/CodeSystem/v3-ActCode",
+          "code": "HH",
+          "display": "home health"
+        },
+        "type": [
+          {
+            "coding": [
+              {
+                "system": "urn:easy-health:visit-type",
+                "code": "annual_wellness",
+                "display": "Annual Wellness Visit"
+              }
+            ]
+          }
+        ],
+        "subject": {
+          "reference": "Patient/MEM-005",
+          "display": "Beatrice Robinson"
+        },
+        "period": {
+          "start": "2026-02-16"
+        }
+      },
+      "request": {
+        "method": "POST",
+        "url": "Encounter"
+      }
+    },
+    {
+      "fullUrl": "urn:uuid:condition-mem-005-1",
+      "resource": {
+        "resourceType": "Condition",
+        "clinicalStatus": {
+          "coding": [
+            {
+              "system": "http://terminology.hl7.org/CodeSystem/condition-clinical",
+              "code": "active",
+              "display": "Active"
+            }
+          ]
+        },
+        "verificationStatus": {
+          "coding": [
+            {
+              "system": "http://terminology.hl7.org/CodeSystem/condition-ver-status",
+              "code": "confirmed",
+              "display": "Confirmed"
+            }
+          ]
+        },
+        "code": {
+          "coding": [
+            {
+              "system": "http://hl7.org/fhir/sid/icd-10-cm",
+              "code": "J44.1",
+              "display": "Chronic obstructive pulmonary disease with acute exacerbation"
+            },
+            {
+              "system": "http://snomed.info/sct",
+              "code": "13645005",
+              "display": "Chronic obstructive lung disease"
+            }
+          ],
+          "text": "COPD"
+        },
+        "subject": {
+          "reference": "Patient/MEM-005",
+          "display": "Beatrice Robinson"
+        }
+      },
+      "request": {
+        "method": "POST",
+        "url": "Condition"
+      }
+    },
+    {
+      "fullUrl": "urn:uuid:condition-mem-005-2",
+      "resource": {
+        "resourceType": "Condition",
+        "clinicalStatus": {
+          "coding": [
+            {
+              "system": "http://terminology.hl7.org/CodeSystem/condition-clinical",
+              "code": "active",
+              "display": "Active"
+            }
+          ]
+        },
+        "verificationStatus": {
+          "coding": [
+            {
+              "system": "http://terminology.hl7.org/CodeSystem/condition-ver-status",
+              "code": "confirmed",
+              "display": "Confirmed"
+            }
+          ]
+        },
+        "code": {
+          "coding": [
+            {
+              "system": "http://hl7.org/fhir/sid/icd-10-cm",
+              "code": "M81.0",
+              "display": "Age-related osteoporosis without current pathological fracture"
+            },
+            {
+              "system": "http://snomed.info/sct",
+              "code": "64859006",
+              "display": "Osteoporosis"
+            }
+          ],
+          "text": "Osteoporosis"
+        },
+        "subject": {
+          "reference": "Patient/MEM-005",
+          "display": "Beatrice Robinson"
+        }
+      },
+      "request": {
+        "method": "POST",
+        "url": "Condition"
+      }
+    },
+    {
+      "fullUrl": "urn:uuid:condition-mem-005-3",
+      "resource": {
+        "resourceType": "Condition",
+        "clinicalStatus": {
+          "coding": [
+            {
+              "system": "http://terminology.hl7.org/CodeSystem/condition-clinical",
+              "code": "active",
+              "display": "Active"
+            }
+          ]
+        },
+        "verificationStatus": {
+          "coding": [
+            {
+              "system": "http://terminology.hl7.org/CodeSystem/condition-ver-status",
+              "code": "confirmed",
+              "display": "Confirmed"
+            }
+          ]
+        },
+        "code": {
+          "coding": [
+            {
+              "system": "http://hl7.org/fhir/sid/icd-10-cm",
+              "code": "K21.0",
+              "display": "Gastro-esophageal reflux disease with esophagitis"
+            },
+            {
+              "system": "http://snomed.info/sct",
+              "code": "235595009",
+              "display": "Gastroesophageal reflux disease"
+            }
+          ],
+          "text": "Gastroesophageal Reflux"
+        },
+        "subject": {
+          "reference": "Patient/MEM-005",
+          "display": "Beatrice Robinson"
+        }
+      },
+      "request": {
+        "method": "POST",
+        "url": "Condition"
+      }
+    },
+    {
+      "fullUrl": "urn:uuid:condition-mem-005-4",
+      "resource": {
+        "resourceType": "Condition",
+        "clinicalStatus": {
+          "coding": [
+            {
+              "system": "http://terminology.hl7.org/CodeSystem/condition-clinical",
+              "code": "active",
+              "display": "Active"
+            }
+          ]
+        },
+        "verificationStatus": {
+          "coding": [
+            {
+              "system": "http://terminology.hl7.org/CodeSystem/condition-ver-status",
+              "code": "confirmed",
+              "display": "Confirmed"
+            }
+          ]
+        },
+        "code": {
+          "coding": [
+            {
+              "system": "http://hl7.org/fhir/sid/icd-10-cm",
+              "code": "G31.84",
+              "display": "Mild cognitive impairment"
+            },
+            {
+              "system": "http://snomed.info/sct",
+              "code": "386806002",
+              "display": "Mild cognitive impairment"
+            }
+          ],
+          "text": "Mild Cognitive Impairment"
+        },
+        "subject": {
+          "reference": "Patient/MEM-005",
+          "display": "Beatrice Robinson"
+        }
+      },
+      "request": {
+        "method": "POST",
+        "url": "Condition"
+      }
+    },
+    {
+      "fullUrl": "urn:uuid:allergy-mem-005-1",
+      "resource": {
+        "resourceType": "AllergyIntolerance",
+        "clinicalStatus": {
+          "coding": [
+            {
+              "system": "http://terminology.hl7.org/CodeSystem/allergyintolerance-clinical",
+              "code": "active",
+              "display": "Active"
+            }
+          ]
+        },
+        "verificationStatus": {
+          "coding": [
+            {
+              "system": "http://terminology.hl7.org/CodeSystem/allergyintolerance-verification",
+              "code": "confirmed",
+              "display": "Confirmed"
+            }
+          ]
+        },
+        "type": "allergy",
+        "category": ["environment"],
+        "code": {
+          "coding": [
+            {
+              "system": "http://snomed.info/sct",
+              "code": "111088007",
+              "display": "Latex allergy"
+            }
+          ],
+          "text": "Latex"
+        },
+        "patient": {
+          "reference": "Patient/MEM-005",
+          "display": "Beatrice Robinson"
+        }
+      },
+      "request": {
+        "method": "POST",
+        "url": "AllergyIntolerance"
+      }
+    },
+    {
+      "fullUrl": "urn:uuid:medstmt-mem-005-1",
+      "resource": {
+        "resourceType": "MedicationStatement",
+        "status": "active",
+        "medicationCodeableConcept": {
+          "coding": [
+            {
+              "system": "http://www.nlm.nih.gov/research/umls/rxnorm",
+              "code": "274535",
+              "display": "Tiotropium 18 MCG Inhalation Capsule"
+            }
+          ],
+          "text": "Tiotropium 18mcg inhaler daily"
+        },
+        "subject": {
+          "reference": "Patient/MEM-005",
+          "display": "Beatrice Robinson"
+        },
+        "dosage": [
+          {
+            "text": "18mcg inhaler once daily",
+            "timing": {
+              "repeat": {
+                "frequency": 1,
+                "period": 1,
+                "periodUnit": "d"
+              }
+            }
+          }
+        ]
+      },
+      "request": {
+        "method": "POST",
+        "url": "MedicationStatement"
+      }
+    },
+    {
+      "fullUrl": "urn:uuid:medstmt-mem-005-2",
+      "resource": {
+        "resourceType": "MedicationStatement",
+        "status": "active",
+        "medicationCodeableConcept": {
+          "coding": [
+            {
+              "system": "http://www.nlm.nih.gov/research/umls/rxnorm",
+              "code": "197567",
+              "display": "Alendronate 70 MG Oral Tablet"
+            }
+          ],
+          "text": "Alendronate 70mg weekly"
+        },
+        "subject": {
+          "reference": "Patient/MEM-005",
+          "display": "Beatrice Robinson"
+        },
+        "dosage": [
+          {
+            "text": "70mg once weekly",
+            "timing": {
+              "repeat": {
+                "frequency": 1,
+                "period": 1,
+                "periodUnit": "wk"
+              }
+            }
+          }
+        ]
+      },
+      "request": {
+        "method": "POST",
+        "url": "MedicationStatement"
+      }
+    },
+    {
+      "fullUrl": "urn:uuid:medstmt-mem-005-3",
+      "resource": {
+        "resourceType": "MedicationStatement",
+        "status": "active",
+        "medicationCodeableConcept": {
+          "coding": [
+            {
+              "system": "http://www.nlm.nih.gov/research/umls/rxnorm",
+              "code": "198053",
+              "display": "Omeprazole 20 MG Delayed Release Oral Capsule"
+            }
+          ],
+          "text": "Omeprazole 20mg daily"
+        },
+        "subject": {
+          "reference": "Patient/MEM-005",
+          "display": "Beatrice Robinson"
+        },
+        "dosage": [
+          {
+            "text": "20mg once daily",
+            "timing": {
+              "repeat": {
+                "frequency": 1,
+                "period": 1,
+                "periodUnit": "d"
+              }
+            }
+          }
+        ]
+      },
+      "request": {
+        "method": "POST",
+        "url": "MedicationStatement"
+      }
+    },
+    {
+      "fullUrl": "urn:uuid:medstmt-mem-005-4",
+      "resource": {
+        "resourceType": "MedicationStatement",
+        "status": "active",
+        "medicationCodeableConcept": {
+          "text": "Calcium/Vitamin D supplement"
+        },
+        "subject": {
+          "reference": "Patient/MEM-005",
+          "display": "Beatrice Robinson"
+        },
+        "dosage": [
+          {
+            "text": "Daily supplement"
+          }
+        ]
+      },
+      "request": {
+        "method": "POST",
+        "url": "MedicationStatement"
+      }
+    },
+    {
+      "fullUrl": "urn:uuid:medstmt-mem-005-5",
+      "resource": {
+        "resourceType": "MedicationStatement",
+        "status": "active",
+        "medicationCodeableConcept": {
+          "coding": [
+            {
+              "system": "http://www.nlm.nih.gov/research/umls/rxnorm",
+              "code": "435",
+              "display": "Albuterol"
+            }
+          ],
+          "text": "Albuterol PRN"
+        },
+        "subject": {
+          "reference": "Patient/MEM-005",
+          "display": "Beatrice Robinson"
+        },
+        "dosage": [
+          {
+            "text": "As needed (PRN)",
+            "asNeededBoolean": true
+          }
+        ]
+      },
+      "request": {
+        "method": "POST",
+        "url": "MedicationStatement"
+      }
+    },
+    {
+      "fullUrl": "urn:uuid:patient-mem-006",
+      "resource": {
+        "resourceType": "Patient",
+        "identifier": [
+          {
+            "system": "urn:easy-health:member-id",
+            "value": "MEM-006"
+          }
+        ],
+        "name": [
+          {
+            "use": "official",
+            "family": "Williams",
+            "given": ["Robert"]
+          }
+        ],
+        "birthDate": "1955-09-03",
+        "gender": "male",
+        "telecom": [
+          {
+            "system": "phone",
+            "value": "(555) 789-0123",
+            "use": "home"
+          },
+          {
+            "system": "email",
+            "value": "robert.w@email.com"
+          }
+        ],
+        "address": [
+          {
+            "use": "home",
+            "line": ["890 Industrial Park Way"],
+            "city": "Springfield",
+            "state": "IL",
+            "postalCode": "62706"
+          }
+        ],
+        "generalPractitioner": [
+          {
+            "display": "Dr. Karen Miller"
+          }
+        ],
+        "extension": [
+          {
+            "url": "urn:easy-health:conditions",
+            "extension": [
+              { "url": "condition", "valueString": "Morbid Obesity" },
+              { "url": "condition", "valueString": "Obstructive Sleep Apnea" },
+              { "url": "condition", "valueString": "Major Depressive Disorder" },
+              { "url": "condition", "valueString": "Low Back Pain" },
+              { "url": "condition", "valueString": "Prediabetes" }
+            ]
+          },
+          {
+            "url": "urn:easy-health:medications",
+            "extension": [
+              { "url": "medication", "valueString": "Sertraline 100mg daily" },
+              { "url": "medication", "valueString": "Gabapentin 300mg TID" },
+              { "url": "medication", "valueString": "Naproxen 500mg BID PRN" },
+              { "url": "medication", "valueString": "Melatonin 5mg nightly" }
+            ]
+          },
+          {
+            "url": "urn:easy-health:allergies",
+            "extension": [
+              { "url": "allergy", "valueString": "Amoxicillin" },
+              { "url": "allergy", "valueString": "NSAIDs (topical only)" }
+            ]
+          },
+          {
+            "url": "urn:easy-health:risk-flags",
+            "extension": [
+              { "url": "flag", "valueString": "BMI > 40" },
+              { "url": "flag", "valueString": "Depression" },
+              { "url": "flag", "valueString": "Chronic pain" }
+            ]
+          },
+          {
+            "url": "urn:easy-health:insurance-plan",
+            "valueString": "ACA-PLAN-001"
+          }
+        ]
+      },
+      "request": {
+        "method": "POST",
+        "url": "Patient"
+      }
+    },
+    {
+      "fullUrl": "urn:uuid:encounter-mem-006",
+      "resource": {
+        "resourceType": "Encounter",
+        "status": "planned",
+        "class": {
+          "system": "http://terminology.hl7.org/CodeSystem/v3-ActCode",
+          "code": "HH",
+          "display": "home health"
+        },
+        "type": [
+          {
+            "coding": [
+              {
+                "system": "urn:easy-health:visit-type",
+                "code": "annual_wellness",
+                "display": "Annual Wellness Visit"
+              }
+            ]
+          }
+        ],
+        "subject": {
+          "reference": "Patient/MEM-006",
+          "display": "Robert Williams"
+        },
+        "period": {
+          "start": "2026-02-16"
+        }
+      },
+      "request": {
+        "method": "POST",
+        "url": "Encounter"
+      }
+    },
+    {
+      "fullUrl": "urn:uuid:condition-mem-006-1",
+      "resource": {
+        "resourceType": "Condition",
+        "clinicalStatus": {
+          "coding": [
+            {
+              "system": "http://terminology.hl7.org/CodeSystem/condition-clinical",
+              "code": "active",
+              "display": "Active"
+            }
+          ]
+        },
+        "verificationStatus": {
+          "coding": [
+            {
+              "system": "http://terminology.hl7.org/CodeSystem/condition-ver-status",
+              "code": "confirmed",
+              "display": "Confirmed"
+            }
+          ]
+        },
+        "code": {
+          "coding": [
+            {
+              "system": "http://hl7.org/fhir/sid/icd-10-cm",
+              "code": "E66.01",
+              "display": "Morbid (severe) obesity due to excess calories"
+            },
+            {
+              "system": "http://snomed.info/sct",
+              "code": "238136002",
+              "display": "Morbid obesity"
+            }
+          ],
+          "text": "Morbid Obesity"
+        },
+        "subject": {
+          "reference": "Patient/MEM-006",
+          "display": "Robert Williams"
+        }
+      },
+      "request": {
+        "method": "POST",
+        "url": "Condition"
+      }
+    },
+    {
+      "fullUrl": "urn:uuid:condition-mem-006-2",
+      "resource": {
+        "resourceType": "Condition",
+        "clinicalStatus": {
+          "coding": [
+            {
+              "system": "http://terminology.hl7.org/CodeSystem/condition-clinical",
+              "code": "active",
+              "display": "Active"
+            }
+          ]
+        },
+        "verificationStatus": {
+          "coding": [
+            {
+              "system": "http://terminology.hl7.org/CodeSystem/condition-ver-status",
+              "code": "confirmed",
+              "display": "Confirmed"
+            }
+          ]
+        },
+        "code": {
+          "coding": [
+            {
+              "system": "http://hl7.org/fhir/sid/icd-10-cm",
+              "code": "G47.33",
+              "display": "Obstructive sleep apnea"
+            },
+            {
+              "system": "http://snomed.info/sct",
+              "code": "78275009",
+              "display": "Obstructive sleep apnea syndrome"
+            }
+          ],
+          "text": "Obstructive Sleep Apnea"
+        },
+        "subject": {
+          "reference": "Patient/MEM-006",
+          "display": "Robert Williams"
+        }
+      },
+      "request": {
+        "method": "POST",
+        "url": "Condition"
+      }
+    },
+    {
+      "fullUrl": "urn:uuid:condition-mem-006-3",
+      "resource": {
+        "resourceType": "Condition",
+        "clinicalStatus": {
+          "coding": [
+            {
+              "system": "http://terminology.hl7.org/CodeSystem/condition-clinical",
+              "code": "active",
+              "display": "Active"
+            }
+          ]
+        },
+        "verificationStatus": {
+          "coding": [
+            {
+              "system": "http://terminology.hl7.org/CodeSystem/condition-ver-status",
+              "code": "confirmed",
+              "display": "Confirmed"
+            }
+          ]
+        },
+        "code": {
+          "coding": [
+            {
+              "system": "http://hl7.org/fhir/sid/icd-10-cm",
+              "code": "F33.1",
+              "display": "Major depressive disorder, recurrent, moderate"
+            },
+            {
+              "system": "http://snomed.info/sct",
+              "code": "370143000",
+              "display": "Major depressive disorder"
+            }
+          ],
+          "text": "Major Depressive Disorder"
+        },
+        "subject": {
+          "reference": "Patient/MEM-006",
+          "display": "Robert Williams"
+        }
+      },
+      "request": {
+        "method": "POST",
+        "url": "Condition"
+      }
+    },
+    {
+      "fullUrl": "urn:uuid:condition-mem-006-4",
+      "resource": {
+        "resourceType": "Condition",
+        "clinicalStatus": {
+          "coding": [
+            {
+              "system": "http://terminology.hl7.org/CodeSystem/condition-clinical",
+              "code": "active",
+              "display": "Active"
+            }
+          ]
+        },
+        "verificationStatus": {
+          "coding": [
+            {
+              "system": "http://terminology.hl7.org/CodeSystem/condition-ver-status",
+              "code": "confirmed",
+              "display": "Confirmed"
+            }
+          ]
+        },
+        "code": {
+          "coding": [
+            {
+              "system": "http://hl7.org/fhir/sid/icd-10-cm",
+              "code": "M54.5",
+              "display": "Low back pain"
+            },
+            {
+              "system": "http://snomed.info/sct",
+              "code": "279039007",
+              "display": "Low back pain"
+            }
+          ],
+          "text": "Low Back Pain"
+        },
+        "subject": {
+          "reference": "Patient/MEM-006",
+          "display": "Robert Williams"
+        }
+      },
+      "request": {
+        "method": "POST",
+        "url": "Condition"
+      }
+    },
+    {
+      "fullUrl": "urn:uuid:condition-mem-006-5",
+      "resource": {
+        "resourceType": "Condition",
+        "clinicalStatus": {
+          "coding": [
+            {
+              "system": "http://terminology.hl7.org/CodeSystem/condition-clinical",
+              "code": "active",
+              "display": "Active"
+            }
+          ]
+        },
+        "verificationStatus": {
+          "coding": [
+            {
+              "system": "http://terminology.hl7.org/CodeSystem/condition-ver-status",
+              "code": "confirmed",
+              "display": "Confirmed"
+            }
+          ]
+        },
+        "code": {
+          "coding": [
+            {
+              "system": "http://hl7.org/fhir/sid/icd-10-cm",
+              "code": "R73.03",
+              "display": "Prediabetes"
+            },
+            {
+              "system": "http://snomed.info/sct",
+              "code": "714628002",
+              "display": "Prediabetes"
+            }
+          ],
+          "text": "Prediabetes"
+        },
+        "subject": {
+          "reference": "Patient/MEM-006",
+          "display": "Robert Williams"
+        }
+      },
+      "request": {
+        "method": "POST",
+        "url": "Condition"
+      }
+    },
+    {
+      "fullUrl": "urn:uuid:allergy-mem-006-1",
+      "resource": {
+        "resourceType": "AllergyIntolerance",
+        "clinicalStatus": {
+          "coding": [
+            {
+              "system": "http://terminology.hl7.org/CodeSystem/allergyintolerance-clinical",
+              "code": "active",
+              "display": "Active"
+            }
+          ]
+        },
+        "verificationStatus": {
+          "coding": [
+            {
+              "system": "http://terminology.hl7.org/CodeSystem/allergyintolerance-verification",
+              "code": "confirmed",
+              "display": "Confirmed"
+            }
+          ]
+        },
+        "type": "allergy",
+        "category": ["medication"],
+        "code": {
+          "coding": [
+            {
+              "system": "http://www.nlm.nih.gov/research/umls/rxnorm",
+              "code": "723",
+              "display": "Amoxicillin"
+            }
+          ],
+          "text": "Amoxicillin"
+        },
+        "patient": {
+          "reference": "Patient/MEM-006",
+          "display": "Robert Williams"
+        }
+      },
+      "request": {
+        "method": "POST",
+        "url": "AllergyIntolerance"
+      }
+    },
+    {
+      "fullUrl": "urn:uuid:allergy-mem-006-2",
+      "resource": {
+        "resourceType": "AllergyIntolerance",
+        "clinicalStatus": {
+          "coding": [
+            {
+              "system": "http://terminology.hl7.org/CodeSystem/allergyintolerance-clinical",
+              "code": "active",
+              "display": "Active"
+            }
+          ]
+        },
+        "verificationStatus": {
+          "coding": [
+            {
+              "system": "http://terminology.hl7.org/CodeSystem/allergyintolerance-verification",
+              "code": "confirmed",
+              "display": "Confirmed"
+            }
+          ]
+        },
+        "type": "intolerance",
+        "category": ["medication"],
+        "code": {
+          "text": "NSAIDs (topical only)"
+        },
+        "note": [
+          {
+            "text": "Tolerates topical NSAIDs only; oral NSAIDs contraindicated"
+          }
+        ],
+        "patient": {
+          "reference": "Patient/MEM-006",
+          "display": "Robert Williams"
+        }
+      },
+      "request": {
+        "method": "POST",
+        "url": "AllergyIntolerance"
+      }
+    },
+    {
+      "fullUrl": "urn:uuid:medstmt-mem-006-1",
+      "resource": {
+        "resourceType": "MedicationStatement",
+        "status": "active",
+        "medicationCodeableConcept": {
+          "coding": [
+            {
+              "system": "http://www.nlm.nih.gov/research/umls/rxnorm",
+              "code": "36437",
+              "display": "Sertraline 100 MG Oral Tablet"
+            }
+          ],
+          "text": "Sertraline 100mg daily"
+        },
+        "subject": {
+          "reference": "Patient/MEM-006",
+          "display": "Robert Williams"
+        },
+        "dosage": [
+          {
+            "text": "100mg once daily",
+            "timing": {
+              "repeat": {
+                "frequency": 1,
+                "period": 1,
+                "periodUnit": "d"
+              }
+            }
+          }
+        ]
+      },
+      "request": {
+        "method": "POST",
+        "url": "MedicationStatement"
+      }
+    },
+    {
+      "fullUrl": "urn:uuid:medstmt-mem-006-2",
+      "resource": {
+        "resourceType": "MedicationStatement",
+        "status": "active",
+        "medicationCodeableConcept": {
+          "coding": [
+            {
+              "system": "http://www.nlm.nih.gov/research/umls/rxnorm",
+              "code": "310431",
+              "display": "Gabapentin 300 MG Oral Capsule"
+            }
+          ],
+          "text": "Gabapentin 300mg TID"
+        },
+        "subject": {
+          "reference": "Patient/MEM-006",
+          "display": "Robert Williams"
+        },
+        "dosage": [
+          {
+            "text": "300mg three times daily",
+            "timing": {
+              "repeat": {
+                "frequency": 3,
+                "period": 1,
+                "periodUnit": "d"
+              }
+            }
+          }
+        ]
+      },
+      "request": {
+        "method": "POST",
+        "url": "MedicationStatement"
+      }
+    },
+    {
+      "fullUrl": "urn:uuid:medstmt-mem-006-3",
+      "resource": {
+        "resourceType": "MedicationStatement",
+        "status": "active",
+        "medicationCodeableConcept": {
+          "coding": [
+            {
+              "system": "http://www.nlm.nih.gov/research/umls/rxnorm",
+              "code": "198013",
+              "display": "Naproxen 500 MG Oral Tablet"
+            }
+          ],
+          "text": "Naproxen 500mg BID PRN"
+        },
+        "subject": {
+          "reference": "Patient/MEM-006",
+          "display": "Robert Williams"
+        },
+        "dosage": [
+          {
+            "text": "500mg twice daily as needed",
+            "asNeededBoolean": true,
+            "timing": {
+              "repeat": {
+                "frequency": 2,
+                "period": 1,
+                "periodUnit": "d"
+              }
+            }
+          }
+        ]
+      },
+      "request": {
+        "method": "POST",
+        "url": "MedicationStatement"
+      }
+    },
+    {
+      "fullUrl": "urn:uuid:medstmt-mem-006-4",
+      "resource": {
+        "resourceType": "MedicationStatement",
+        "status": "active",
+        "medicationCodeableConcept": {
+          "text": "Melatonin 5mg nightly"
+        },
+        "subject": {
+          "reference": "Patient/MEM-006",
+          "display": "Robert Williams"
+        },
+        "dosage": [
+          {
+            "text": "5mg at bedtime",
+            "timing": {
+              "repeat": {
+                "frequency": 1,
+                "period": 1,
+                "periodUnit": "d"
+              }
+            }
+          }
+        ]
+      },
+      "request": {
+        "method": "POST",
+        "url": "MedicationStatement"
+      }
+    },
+    {
+      "fullUrl": "urn:uuid:patient-mem-007",
+      "resource": {
+        "resourceType": "Patient",
+        "identifier": [
+          {
+            "system": "urn:easy-health:member-id",
+            "value": "MEM-007"
+          }
+        ],
+        "name": [
+          {
+            "use": "official",
+            "family": "Sanchez",
+            "given": ["Gloria"]
+          }
+        ],
+        "birthDate": "1943-12-19",
+        "gender": "female",
+        "telecom": [
+          {
+            "system": "phone",
+            "value": "(555) 890-1234",
+            "use": "home"
+          },
+          {
+            "system": "email",
+            "value": "gloria.s@email.com"
+          }
+        ],
+        "address": [
+          {
+            "use": "home",
+            "line": ["234 Mission Drive"],
+            "city": "Springfield",
+            "state": "IL",
+            "postalCode": "62707"
+          }
+        ],
+        "generalPractitioner": [
+          {
+            "display": "Dr. Eduardo Reyes"
+          }
+        ],
+        "extension": [
+          {
+            "url": "urn:easy-health:conditions",
+            "extension": [
+              { "url": "condition", "valueString": "Congestive Heart Failure" },
+              { "url": "condition", "valueString": "Type 2 Diabetes with Neuropathy" },
+              { "url": "condition", "valueString": "Hypothyroidism" },
+              { "url": "condition", "valueString": "Peripheral Vascular Disease" }
+            ]
+          },
+          {
+            "url": "urn:easy-health:medications",
+            "extension": [
+              { "url": "medication", "valueString": "Furosemide 40mg daily" },
+              { "url": "medication", "valueString": "Carvedilol 25mg BID" },
+              { "url": "medication", "valueString": "Insulin Glargine 20 units nightly" },
+              { "url": "medication", "valueString": "Levothyroxine 100mcg daily" },
+              { "url": "medication", "valueString": "Gabapentin 300mg TID" },
+              { "url": "medication", "valueString": "Aspirin 81mg daily" }
+            ]
+          },
+          {
+            "url": "urn:easy-health:allergies",
+            "extension": [
+              { "url": "allergy", "valueString": "ACE inhibitors (cough)" },
+              { "url": "allergy", "valueString": "Metformin (GI intolerance)" }
+            ]
+          },
+          {
+            "url": "urn:easy-health:risk-flags",
+            "extension": [
+              { "url": "flag", "valueString": "Heart failure monitoring" },
+              { "url": "flag", "valueString": "Insulin-dependent" },
+              { "url": "flag", "valueString": "Fall risk" },
+              { "url": "flag", "valueString": "Polypharmacy" }
+            ]
+          },
+          {
+            "url": "urn:easy-health:insurance-plan",
+            "valueString": "MA-PLAN-001"
+          }
+        ]
+      },
+      "request": {
+        "method": "POST",
+        "url": "Patient"
+      }
+    },
+    {
+      "fullUrl": "urn:uuid:encounter-mem-007",
+      "resource": {
+        "resourceType": "Encounter",
+        "status": "planned",
+        "class": {
+          "system": "http://terminology.hl7.org/CodeSystem/v3-ActCode",
+          "code": "HH",
+          "display": "home health"
+        },
+        "type": [
+          {
+            "coding": [
+              {
+                "system": "urn:easy-health:visit-type",
+                "code": "annual_wellness",
+                "display": "Annual Wellness Visit"
+              }
+            ]
+          }
+        ],
+        "subject": {
+          "reference": "Patient/MEM-007",
+          "display": "Gloria Sanchez"
+        },
+        "period": {
+          "start": "2026-02-17"
+        }
+      },
+      "request": {
+        "method": "POST",
+        "url": "Encounter"
+      }
+    },
+    {
+      "fullUrl": "urn:uuid:condition-mem-007-1",
+      "resource": {
+        "resourceType": "Condition",
+        "clinicalStatus": {
+          "coding": [
+            {
+              "system": "http://terminology.hl7.org/CodeSystem/condition-clinical",
+              "code": "active",
+              "display": "Active"
+            }
+          ]
+        },
+        "verificationStatus": {
+          "coding": [
+            {
+              "system": "http://terminology.hl7.org/CodeSystem/condition-ver-status",
+              "code": "confirmed",
+              "display": "Confirmed"
+            }
+          ]
+        },
+        "code": {
+          "coding": [
+            {
+              "system": "http://hl7.org/fhir/sid/icd-10-cm",
+              "code": "I50.9",
+              "display": "Heart failure, unspecified"
+            },
+            {
+              "system": "http://snomed.info/sct",
+              "code": "42343007",
+              "display": "Congestive heart failure"
+            }
+          ],
+          "text": "Congestive Heart Failure"
+        },
+        "subject": {
+          "reference": "Patient/MEM-007",
+          "display": "Gloria Sanchez"
+        }
+      },
+      "request": {
+        "method": "POST",
+        "url": "Condition"
+      }
+    },
+    {
+      "fullUrl": "urn:uuid:condition-mem-007-2",
+      "resource": {
+        "resourceType": "Condition",
+        "clinicalStatus": {
+          "coding": [
+            {
+              "system": "http://terminology.hl7.org/CodeSystem/condition-clinical",
+              "code": "active",
+              "display": "Active"
+            }
+          ]
+        },
+        "verificationStatus": {
+          "coding": [
+            {
+              "system": "http://terminology.hl7.org/CodeSystem/condition-ver-status",
+              "code": "confirmed",
+              "display": "Confirmed"
+            }
+          ]
+        },
+        "code": {
+          "coding": [
+            {
+              "system": "http://hl7.org/fhir/sid/icd-10-cm",
+              "code": "E11.40",
+              "display": "Type 2 diabetes mellitus with diabetic neuropathy, unspecified"
+            },
+            {
+              "system": "http://snomed.info/sct",
+              "code": "230572002",
+              "display": "Diabetic neuropathy"
+            }
+          ],
+          "text": "Type 2 Diabetes with Neuropathy"
+        },
+        "subject": {
+          "reference": "Patient/MEM-007",
+          "display": "Gloria Sanchez"
+        }
+      },
+      "request": {
+        "method": "POST",
+        "url": "Condition"
+      }
+    },
+    {
+      "fullUrl": "urn:uuid:condition-mem-007-3",
+      "resource": {
+        "resourceType": "Condition",
+        "clinicalStatus": {
+          "coding": [
+            {
+              "system": "http://terminology.hl7.org/CodeSystem/condition-clinical",
+              "code": "active",
+              "display": "Active"
+            }
+          ]
+        },
+        "verificationStatus": {
+          "coding": [
+            {
+              "system": "http://terminology.hl7.org/CodeSystem/condition-ver-status",
+              "code": "confirmed",
+              "display": "Confirmed"
+            }
+          ]
+        },
+        "code": {
+          "coding": [
+            {
+              "system": "http://hl7.org/fhir/sid/icd-10-cm",
+              "code": "E03.9",
+              "display": "Hypothyroidism, unspecified"
+            },
+            {
+              "system": "http://snomed.info/sct",
+              "code": "40930008",
+              "display": "Hypothyroidism"
+            }
+          ],
+          "text": "Hypothyroidism"
+        },
+        "subject": {
+          "reference": "Patient/MEM-007",
+          "display": "Gloria Sanchez"
+        }
+      },
+      "request": {
+        "method": "POST",
+        "url": "Condition"
+      }
+    },
+    {
+      "fullUrl": "urn:uuid:condition-mem-007-4",
+      "resource": {
+        "resourceType": "Condition",
+        "clinicalStatus": {
+          "coding": [
+            {
+              "system": "http://terminology.hl7.org/CodeSystem/condition-clinical",
+              "code": "active",
+              "display": "Active"
+            }
+          ]
+        },
+        "verificationStatus": {
+          "coding": [
+            {
+              "system": "http://terminology.hl7.org/CodeSystem/condition-ver-status",
+              "code": "confirmed",
+              "display": "Confirmed"
+            }
+          ]
+        },
+        "code": {
+          "coding": [
+            {
+              "system": "http://hl7.org/fhir/sid/icd-10-cm",
+              "code": "I73.9",
+              "display": "Peripheral vascular disease, unspecified"
+            },
+            {
+              "system": "http://snomed.info/sct",
+              "code": "400047006",
+              "display": "Peripheral vascular disease"
+            }
+          ],
+          "text": "Peripheral Vascular Disease"
+        },
+        "subject": {
+          "reference": "Patient/MEM-007",
+          "display": "Gloria Sanchez"
+        }
+      },
+      "request": {
+        "method": "POST",
+        "url": "Condition"
+      }
+    },
+    {
+      "fullUrl": "urn:uuid:allergy-mem-007-1",
+      "resource": {
+        "resourceType": "AllergyIntolerance",
+        "clinicalStatus": {
+          "coding": [
+            {
+              "system": "http://terminology.hl7.org/CodeSystem/allergyintolerance-clinical",
+              "code": "active",
+              "display": "Active"
+            }
+          ]
+        },
+        "verificationStatus": {
+          "coding": [
+            {
+              "system": "http://terminology.hl7.org/CodeSystem/allergyintolerance-verification",
+              "code": "confirmed",
+              "display": "Confirmed"
+            }
+          ]
+        },
+        "type": "intolerance",
+        "category": ["medication"],
+        "code": {
+          "text": "ACE inhibitors"
+        },
+        "reaction": [
+          {
+            "manifestation": [
+              {
+                "text": "Cough"
+              }
+            ],
+            "description": "ACE inhibitor-induced cough"
+          }
+        ],
+        "patient": {
+          "reference": "Patient/MEM-007",
+          "display": "Gloria Sanchez"
+        }
+      },
+      "request": {
+        "method": "POST",
+        "url": "AllergyIntolerance"
+      }
+    },
+    {
+      "fullUrl": "urn:uuid:allergy-mem-007-2",
+      "resource": {
+        "resourceType": "AllergyIntolerance",
+        "clinicalStatus": {
+          "coding": [
+            {
+              "system": "http://terminology.hl7.org/CodeSystem/allergyintolerance-clinical",
+              "code": "active",
+              "display": "Active"
+            }
+          ]
+        },
+        "verificationStatus": {
+          "coding": [
+            {
+              "system": "http://terminology.hl7.org/CodeSystem/allergyintolerance-verification",
+              "code": "confirmed",
+              "display": "Confirmed"
+            }
+          ]
+        },
+        "type": "intolerance",
+        "category": ["medication"],
+        "code": {
+          "coding": [
+            {
+              "system": "http://www.nlm.nih.gov/research/umls/rxnorm",
+              "code": "6809",
+              "display": "Metformin"
+            }
+          ],
+          "text": "Metformin"
+        },
+        "reaction": [
+          {
+            "manifestation": [
+              {
+                "text": "GI intolerance"
+              }
+            ],
+            "description": "Gastrointestinal intolerance"
+          }
+        ],
+        "patient": {
+          "reference": "Patient/MEM-007",
+          "display": "Gloria Sanchez"
+        }
+      },
+      "request": {
+        "method": "POST",
+        "url": "AllergyIntolerance"
+      }
+    },
+    {
+      "fullUrl": "urn:uuid:medstmt-mem-007-1",
+      "resource": {
+        "resourceType": "MedicationStatement",
+        "status": "active",
+        "medicationCodeableConcept": {
+          "coding": [
+            {
+              "system": "http://www.nlm.nih.gov/research/umls/rxnorm",
+              "code": "200801",
+              "display": "Furosemide 40 MG Oral Tablet"
+            }
+          ],
+          "text": "Furosemide 40mg daily"
+        },
+        "subject": {
+          "reference": "Patient/MEM-007",
+          "display": "Gloria Sanchez"
+        },
+        "dosage": [
+          {
+            "text": "40mg once daily",
+            "timing": {
+              "repeat": {
+                "frequency": 1,
+                "period": 1,
+                "periodUnit": "d"
+              }
+            }
+          }
+        ]
+      },
+      "request": {
+        "method": "POST",
+        "url": "MedicationStatement"
+      }
+    },
+    {
+      "fullUrl": "urn:uuid:medstmt-mem-007-2",
+      "resource": {
+        "resourceType": "MedicationStatement",
+        "status": "active",
+        "medicationCodeableConcept": {
+          "coding": [
+            {
+              "system": "http://www.nlm.nih.gov/research/umls/rxnorm",
+              "code": "200031",
+              "display": "Carvedilol 25 MG Oral Tablet"
+            }
+          ],
+          "text": "Carvedilol 25mg BID"
+        },
+        "subject": {
+          "reference": "Patient/MEM-007",
+          "display": "Gloria Sanchez"
+        },
+        "dosage": [
+          {
+            "text": "25mg twice daily",
+            "timing": {
+              "repeat": {
+                "frequency": 2,
+                "period": 1,
+                "periodUnit": "d"
+              }
+            }
+          }
+        ]
+      },
+      "request": {
+        "method": "POST",
+        "url": "MedicationStatement"
+      }
+    },
+    {
+      "fullUrl": "urn:uuid:medstmt-mem-007-3",
+      "resource": {
+        "resourceType": "MedicationStatement",
+        "status": "active",
+        "medicationCodeableConcept": {
+          "coding": [
+            {
+              "system": "http://www.nlm.nih.gov/research/umls/rxnorm",
+              "code": "261551",
+              "display": "Insulin Glargine 100 UNT/ML Injectable Solution"
+            }
+          ],
+          "text": "Insulin Glargine 20 units nightly"
+        },
+        "subject": {
+          "reference": "Patient/MEM-007",
+          "display": "Gloria Sanchez"
+        },
+        "dosage": [
+          {
+            "text": "20 units subcutaneously at bedtime",
+            "timing": {
+              "repeat": {
+                "frequency": 1,
+                "period": 1,
+                "periodUnit": "d"
+              }
+            }
+          }
+        ]
+      },
+      "request": {
+        "method": "POST",
+        "url": "MedicationStatement"
+      }
+    },
+    {
+      "fullUrl": "urn:uuid:medstmt-mem-007-4",
+      "resource": {
+        "resourceType": "MedicationStatement",
+        "status": "active",
+        "medicationCodeableConcept": {
+          "coding": [
+            {
+              "system": "http://www.nlm.nih.gov/research/umls/rxnorm",
+              "code": "966222",
+              "display": "Levothyroxine Sodium 100 MCG Oral Tablet"
+            }
+          ],
+          "text": "Levothyroxine 100mcg daily"
+        },
+        "subject": {
+          "reference": "Patient/MEM-007",
+          "display": "Gloria Sanchez"
+        },
+        "dosage": [
+          {
+            "text": "100mcg once daily",
+            "timing": {
+              "repeat": {
+                "frequency": 1,
+                "period": 1,
+                "periodUnit": "d"
+              }
+            }
+          }
+        ]
+      },
+      "request": {
+        "method": "POST",
+        "url": "MedicationStatement"
+      }
+    },
+    {
+      "fullUrl": "urn:uuid:medstmt-mem-007-5",
+      "resource": {
+        "resourceType": "MedicationStatement",
+        "status": "active",
+        "medicationCodeableConcept": {
+          "coding": [
+            {
+              "system": "http://www.nlm.nih.gov/research/umls/rxnorm",
+              "code": "310431",
+              "display": "Gabapentin 300 MG Oral Capsule"
+            }
+          ],
+          "text": "Gabapentin 300mg TID"
+        },
+        "subject": {
+          "reference": "Patient/MEM-007",
+          "display": "Gloria Sanchez"
+        },
+        "dosage": [
+          {
+            "text": "300mg three times daily",
+            "timing": {
+              "repeat": {
+                "frequency": 3,
+                "period": 1,
+                "periodUnit": "d"
+              }
+            }
+          }
+        ]
+      },
+      "request": {
+        "method": "POST",
+        "url": "MedicationStatement"
+      }
+    },
+    {
+      "fullUrl": "urn:uuid:medstmt-mem-007-6",
+      "resource": {
+        "resourceType": "MedicationStatement",
+        "status": "active",
+        "medicationCodeableConcept": {
+          "coding": [
+            {
+              "system": "http://www.nlm.nih.gov/research/umls/rxnorm",
+              "code": "243670",
+              "display": "Aspirin 81 MG Delayed Release Oral Tablet"
+            }
+          ],
+          "text": "Aspirin 81mg daily"
+        },
+        "subject": {
+          "reference": "Patient/MEM-007",
+          "display": "Gloria Sanchez"
+        },
+        "dosage": [
+          {
+            "text": "81mg once daily",
+            "timing": {
+              "repeat": {
+                "frequency": 1,
+                "period": 1,
+                "periodUnit": "d"
+              }
+            }
+          }
+        ]
+      },
+      "request": {
+        "method": "POST",
+        "url": "MedicationStatement"
+      }
+    },
+    {
+      "fullUrl": "urn:uuid:patient-mem-008",
+      "resource": {
+        "resourceType": "Patient",
+        "identifier": [
+          {
+            "system": "urn:easy-health:member-id",
+            "value": "MEM-008"
+          }
+        ],
+        "name": [
+          {
+            "use": "official",
+            "family": "Foster",
+            "given": ["William"]
+          }
+        ],
+        "birthDate": "1936-01-30",
+        "gender": "male",
+        "telecom": [
+          {
+            "system": "phone",
+            "value": "(555) 901-2345",
+            "use": "home"
+          },
+          {
+            "system": "email",
+            "value": "bill.foster@email.com"
+          }
+        ],
+        "address": [
+          {
+            "use": "home",
+            "line": ["456 Heritage Lane"],
+            "city": "Springfield",
+            "state": "IL",
+            "postalCode": "62708"
+          }
+        ],
+        "generalPractitioner": [
+          {
+            "display": "Dr. Susan Park"
+          }
+        ],
+        "extension": [
+          {
+            "url": "urn:easy-health:conditions",
+            "extension": [
+              { "url": "condition", "valueString": "Parkinson's Disease" },
+              { "url": "condition", "valueString": "Alzheimer's Disease (mild)" },
+              { "url": "condition", "valueString": "Hypertension" },
+              { "url": "condition", "valueString": "History of Falls" },
+              { "url": "condition", "valueString": "Urinary Incontinence" }
+            ]
+          },
+          {
+            "url": "urn:easy-health:medications",
+            "extension": [
+              { "url": "medication", "valueString": "Carbidopa/Levodopa 25/100mg TID" },
+              { "url": "medication", "valueString": "Donepezil 10mg daily" },
+              { "url": "medication", "valueString": "Amlodipine 5mg daily" },
+              { "url": "medication", "valueString": "Oxybutynin 5mg BID" }
+            ]
+          },
+          {
+            "url": "urn:easy-health:allergies",
+            "extension": [
+              { "url": "allergy", "valueString": "Haloperidol" },
+              { "url": "allergy", "valueString": "Tramadol" }
+            ]
+          },
+          {
+            "url": "urn:easy-health:risk-flags",
+            "extension": [
+              { "url": "flag", "valueString": "High fall risk" },
+              { "url": "flag", "valueString": "Cognitive impairment" },
+              { "url": "flag", "valueString": "Caregiver dependent" },
+              { "url": "flag", "valueString": "Polypharmacy" }
+            ]
+          },
+          {
+            "url": "urn:easy-health:insurance-plan",
+            "valueString": "MA-PLAN-001"
+          }
+        ]
+      },
+      "request": {
+        "method": "POST",
+        "url": "Patient"
+      }
+    },
+    {
+      "fullUrl": "urn:uuid:encounter-mem-008",
+      "resource": {
+        "resourceType": "Encounter",
+        "status": "planned",
+        "class": {
+          "system": "http://terminology.hl7.org/CodeSystem/v3-ActCode",
+          "code": "HH",
+          "display": "home health"
+        },
+        "type": [
+          {
+            "coding": [
+              {
+                "system": "urn:easy-health:visit-type",
+                "code": "annual_wellness",
+                "display": "Annual Wellness Visit"
+              }
+            ]
+          }
+        ],
+        "subject": {
+          "reference": "Patient/MEM-008",
+          "display": "William Foster"
+        },
+        "period": {
+          "start": "2026-02-18"
+        }
+      },
+      "request": {
+        "method": "POST",
+        "url": "Encounter"
+      }
+    },
+    {
+      "fullUrl": "urn:uuid:condition-mem-008-1",
+      "resource": {
+        "resourceType": "Condition",
+        "clinicalStatus": {
+          "coding": [
+            {
+              "system": "http://terminology.hl7.org/CodeSystem/condition-clinical",
+              "code": "active",
+              "display": "Active"
+            }
+          ]
+        },
+        "verificationStatus": {
+          "coding": [
+            {
+              "system": "http://terminology.hl7.org/CodeSystem/condition-ver-status",
+              "code": "confirmed",
+              "display": "Confirmed"
+            }
+          ]
+        },
+        "code": {
+          "coding": [
+            {
+              "system": "http://hl7.org/fhir/sid/icd-10-cm",
+              "code": "G20",
+              "display": "Parkinson's disease"
+            },
+            {
+              "system": "http://snomed.info/sct",
+              "code": "49049000",
+              "display": "Parkinson's disease"
+            }
+          ],
+          "text": "Parkinson's Disease"
+        },
+        "subject": {
+          "reference": "Patient/MEM-008",
+          "display": "William Foster"
+        }
+      },
+      "request": {
+        "method": "POST",
+        "url": "Condition"
+      }
+    },
+    {
+      "fullUrl": "urn:uuid:condition-mem-008-2",
+      "resource": {
+        "resourceType": "Condition",
+        "clinicalStatus": {
+          "coding": [
+            {
+              "system": "http://terminology.hl7.org/CodeSystem/condition-clinical",
+              "code": "active",
+              "display": "Active"
+            }
+          ]
+        },
+        "verificationStatus": {
+          "coding": [
+            {
+              "system": "http://terminology.hl7.org/CodeSystem/condition-ver-status",
+              "code": "confirmed",
+              "display": "Confirmed"
+            }
+          ]
+        },
+        "code": {
+          "coding": [
+            {
+              "system": "http://hl7.org/fhir/sid/icd-10-cm",
+              "code": "G30.9",
+              "display": "Alzheimer's disease, unspecified"
+            },
+            {
+              "system": "http://snomed.info/sct",
+              "code": "26929004",
+              "display": "Alzheimer's disease"
+            }
+          ],
+          "text": "Alzheimer's Disease (mild)"
+        },
+        "subject": {
+          "reference": "Patient/MEM-008",
+          "display": "William Foster"
+        }
+      },
+      "request": {
+        "method": "POST",
+        "url": "Condition"
+      }
+    },
+    {
+      "fullUrl": "urn:uuid:condition-mem-008-3",
+      "resource": {
+        "resourceType": "Condition",
+        "clinicalStatus": {
+          "coding": [
+            {
+              "system": "http://terminology.hl7.org/CodeSystem/condition-clinical",
+              "code": "active",
+              "display": "Active"
+            }
+          ]
+        },
+        "verificationStatus": {
+          "coding": [
+            {
+              "system": "http://terminology.hl7.org/CodeSystem/condition-ver-status",
+              "code": "confirmed",
+              "display": "Confirmed"
+            }
+          ]
+        },
+        "code": {
+          "coding": [
+            {
+              "system": "http://hl7.org/fhir/sid/icd-10-cm",
+              "code": "I10",
+              "display": "Essential (primary) hypertension"
+            },
+            {
+              "system": "http://snomed.info/sct",
+              "code": "38341003",
+              "display": "Hypertensive disorder"
+            }
+          ],
+          "text": "Hypertension"
+        },
+        "subject": {
+          "reference": "Patient/MEM-008",
+          "display": "William Foster"
+        }
+      },
+      "request": {
+        "method": "POST",
+        "url": "Condition"
+      }
+    },
+    {
+      "fullUrl": "urn:uuid:condition-mem-008-4",
+      "resource": {
+        "resourceType": "Condition",
+        "clinicalStatus": {
+          "coding": [
+            {
+              "system": "http://terminology.hl7.org/CodeSystem/condition-clinical",
+              "code": "active",
+              "display": "Active"
+            }
+          ]
+        },
+        "verificationStatus": {
+          "coding": [
+            {
+              "system": "http://terminology.hl7.org/CodeSystem/condition-ver-status",
+              "code": "confirmed",
+              "display": "Confirmed"
+            }
+          ]
+        },
+        "code": {
+          "coding": [
+            {
+              "system": "http://hl7.org/fhir/sid/icd-10-cm",
+              "code": "R29.6",
+              "display": "Repeated falls"
+            },
+            {
+              "system": "http://snomed.info/sct",
+              "code": "129839007",
+              "display": "At risk for falls"
+            }
+          ],
+          "text": "History of Falls"
+        },
+        "subject": {
+          "reference": "Patient/MEM-008",
+          "display": "William Foster"
+        }
+      },
+      "request": {
+        "method": "POST",
+        "url": "Condition"
+      }
+    },
+    {
+      "fullUrl": "urn:uuid:condition-mem-008-5",
+      "resource": {
+        "resourceType": "Condition",
+        "clinicalStatus": {
+          "coding": [
+            {
+              "system": "http://terminology.hl7.org/CodeSystem/condition-clinical",
+              "code": "active",
+              "display": "Active"
+            }
+          ]
+        },
+        "verificationStatus": {
+          "coding": [
+            {
+              "system": "http://terminology.hl7.org/CodeSystem/condition-ver-status",
+              "code": "confirmed",
+              "display": "Confirmed"
+            }
+          ]
+        },
+        "code": {
+          "coding": [
+            {
+              "system": "http://hl7.org/fhir/sid/icd-10-cm",
+              "code": "R32",
+              "display": "Unspecified urinary incontinence"
+            },
+            {
+              "system": "http://snomed.info/sct",
+              "code": "165232002",
+              "display": "Urinary incontinence"
+            }
+          ],
+          "text": "Urinary Incontinence"
+        },
+        "subject": {
+          "reference": "Patient/MEM-008",
+          "display": "William Foster"
+        }
+      },
+      "request": {
+        "method": "POST",
+        "url": "Condition"
+      }
+    },
+    {
+      "fullUrl": "urn:uuid:allergy-mem-008-1",
+      "resource": {
+        "resourceType": "AllergyIntolerance",
+        "clinicalStatus": {
+          "coding": [
+            {
+              "system": "http://terminology.hl7.org/CodeSystem/allergyintolerance-clinical",
+              "code": "active",
+              "display": "Active"
+            }
+          ]
+        },
+        "verificationStatus": {
+          "coding": [
+            {
+              "system": "http://terminology.hl7.org/CodeSystem/allergyintolerance-verification",
+              "code": "confirmed",
+              "display": "Confirmed"
+            }
+          ]
+        },
+        "type": "allergy",
+        "category": ["medication"],
+        "code": {
+          "coding": [
+            {
+              "system": "http://www.nlm.nih.gov/research/umls/rxnorm",
+              "code": "5093",
+              "display": "Haloperidol"
+            }
+          ],
+          "text": "Haloperidol"
+        },
+        "patient": {
+          "reference": "Patient/MEM-008",
+          "display": "William Foster"
+        }
+      },
+      "request": {
+        "method": "POST",
+        "url": "AllergyIntolerance"
+      }
+    },
+    {
+      "fullUrl": "urn:uuid:allergy-mem-008-2",
+      "resource": {
+        "resourceType": "AllergyIntolerance",
+        "clinicalStatus": {
+          "coding": [
+            {
+              "system": "http://terminology.hl7.org/CodeSystem/allergyintolerance-clinical",
+              "code": "active",
+              "display": "Active"
+            }
+          ]
+        },
+        "verificationStatus": {
+          "coding": [
+            {
+              "system": "http://terminology.hl7.org/CodeSystem/allergyintolerance-verification",
+              "code": "confirmed",
+              "display": "Confirmed"
+            }
+          ]
+        },
+        "type": "allergy",
+        "category": ["medication"],
+        "code": {
+          "coding": [
+            {
+              "system": "http://www.nlm.nih.gov/research/umls/rxnorm",
+              "code": "10689",
+              "display": "Tramadol"
+            }
+          ],
+          "text": "Tramadol"
+        },
+        "patient": {
+          "reference": "Patient/MEM-008",
+          "display": "William Foster"
+        }
+      },
+      "request": {
+        "method": "POST",
+        "url": "AllergyIntolerance"
+      }
+    },
+    {
+      "fullUrl": "urn:uuid:medstmt-mem-008-1",
+      "resource": {
+        "resourceType": "MedicationStatement",
+        "status": "active",
+        "medicationCodeableConcept": {
+          "coding": [
+            {
+              "system": "http://www.nlm.nih.gov/research/umls/rxnorm",
+              "code": "197971",
+              "display": "Carbidopa 25 MG / Levodopa 100 MG Oral Tablet"
+            }
+          ],
+          "text": "Carbidopa/Levodopa 25/100mg TID"
+        },
+        "subject": {
+          "reference": "Patient/MEM-008",
+          "display": "William Foster"
+        },
+        "dosage": [
+          {
+            "text": "25/100mg three times daily",
+            "timing": {
+              "repeat": {
+                "frequency": 3,
+                "period": 1,
+                "periodUnit": "d"
+              }
+            }
+          }
+        ]
+      },
+      "request": {
+        "method": "POST",
+        "url": "MedicationStatement"
+      }
+    },
+    {
+      "fullUrl": "urn:uuid:medstmt-mem-008-2",
+      "resource": {
+        "resourceType": "MedicationStatement",
+        "status": "active",
+        "medicationCodeableConcept": {
+          "coding": [
+            {
+              "system": "http://www.nlm.nih.gov/research/umls/rxnorm",
+              "code": "197894",
+              "display": "Donepezil hydrochloride 10 MG Oral Tablet"
+            }
+          ],
+          "text": "Donepezil 10mg daily"
+        },
+        "subject": {
+          "reference": "Patient/MEM-008",
+          "display": "William Foster"
+        },
+        "dosage": [
+          {
+            "text": "10mg once daily",
+            "timing": {
+              "repeat": {
+                "frequency": 1,
+                "period": 1,
+                "periodUnit": "d"
+              }
+            }
+          }
+        ]
+      },
+      "request": {
+        "method": "POST",
+        "url": "MedicationStatement"
+      }
+    },
+    {
+      "fullUrl": "urn:uuid:medstmt-mem-008-3",
+      "resource": {
+        "resourceType": "MedicationStatement",
+        "status": "active",
+        "medicationCodeableConcept": {
+          "coding": [
+            {
+              "system": "http://www.nlm.nih.gov/research/umls/rxnorm",
+              "code": "197361",
+              "display": "Amlodipine 5 MG Oral Tablet"
+            }
+          ],
+          "text": "Amlodipine 5mg daily"
+        },
+        "subject": {
+          "reference": "Patient/MEM-008",
+          "display": "William Foster"
+        },
+        "dosage": [
+          {
+            "text": "5mg once daily",
+            "timing": {
+              "repeat": {
+                "frequency": 1,
+                "period": 1,
+                "periodUnit": "d"
+              }
+            }
+          }
+        ]
+      },
+      "request": {
+        "method": "POST",
+        "url": "MedicationStatement"
+      }
+    },
+    {
+      "fullUrl": "urn:uuid:medstmt-mem-008-4",
+      "resource": {
+        "resourceType": "MedicationStatement",
+        "status": "active",
+        "medicationCodeableConcept": {
+          "coding": [
+            {
+              "system": "http://www.nlm.nih.gov/research/umls/rxnorm",
+              "code": "198283",
+              "display": "Oxybutynin chloride 5 MG Oral Tablet"
+            }
+          ],
+          "text": "Oxybutynin 5mg BID"
+        },
+        "subject": {
+          "reference": "Patient/MEM-008",
+          "display": "William Foster"
+        },
+        "dosage": [
+          {
+            "text": "5mg twice daily",
+            "timing": {
+              "repeat": {
+                "frequency": 2,
+                "period": 1,
+                "periodUnit": "d"
+              }
+            }
+          }
+        ]
+      },
+      "request": {
+        "method": "POST",
+        "url": "MedicationStatement"
+      }
+    }
+  ]
+}

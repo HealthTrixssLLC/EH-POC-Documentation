@@ -251,8 +251,10 @@ function ExportTab() {
 
 function ImportTab() {
   const [jsonInput, setJsonInput] = useState("");
-  const [importType, setImportType] = useState<"patient" | "bundle">("patient");
+  const [importType, setImportType] = useState<"patient" | "bundle">("bundle");
   const [result, setResult] = useState<any>(null);
+  const [demoBundleLoading, setDemoBundleLoading] = useState(false);
+  const [demoBundleLoaded, setDemoBundleLoaded] = useState(false);
   const { toast } = useToast();
 
   const importMutation = useMutation({
@@ -265,6 +267,7 @@ function ImportTab() {
       setResult(data);
       queryClient.invalidateQueries({ queryKey: ["/api/visits"] });
       queryClient.invalidateQueries({ queryKey: ["/api/fhir/Patient"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/members"] });
       toast({ title: "Import successful", description: `FHIR ${importType === "patient" ? "Patient" : "Bundle"} processed` });
     },
     onError: (err: any) => {
@@ -289,8 +292,78 @@ function ImportTab() {
     }
   };
 
+  const loadDemoBundle = async () => {
+    setDemoBundleLoading(true);
+    try {
+      const response = await fetch("/api/fhir/demo-bundle");
+      const data = await response.json();
+      setJsonInput(JSON.stringify(data, null, 2));
+      setImportType("bundle");
+      setDemoBundleLoaded(true);
+      toast({ title: "Demo bundle loaded", description: `${data.entry?.length || 0} FHIR resources ready to import (5 patients with clinical data)` });
+    } catch (err: any) {
+      toast({ title: "Failed to load demo bundle", description: err.message, variant: "destructive" });
+    }
+    setDemoBundleLoading(false);
+  };
+
+  const downloadDemoBundle = async () => {
+    try {
+      const response = await fetch("/api/fhir/demo-bundle");
+      const data = await response.json();
+      const text = JSON.stringify(data, null, 2);
+      const blob = new Blob([text], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "easy-health-demo-fhir-bundle.json";
+      a.click();
+      URL.revokeObjectURL(url);
+      toast({ title: "Bundle downloaded", description: "FHIR Bundle saved as easy-health-demo-fhir-bundle.json" });
+    } catch (err: any) {
+      toast({ title: "Download failed", description: err.message, variant: "destructive" });
+    }
+  };
+
   return (
     <div className="space-y-4">
+      <Card>
+        <CardHeader className="p-4 pb-2">
+          <div className="flex items-center gap-2">
+            <FileJson className="w-5 h-5 text-primary" />
+            <div>
+              <h3 className="text-sm font-semibold" data-testid="text-demo-bundle-title">Demo FHIR Bundle</h3>
+              <p className="text-xs text-muted-foreground">
+                5 patients with conditions, medications, allergies, and scheduled encounters (65 resources)
+              </p>
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent className="p-4 pt-2">
+          <div className="flex items-center gap-2 flex-wrap">
+            <Button
+              onClick={loadDemoBundle}
+              disabled={demoBundleLoading}
+              data-testid="button-load-demo-bundle"
+            >
+              {demoBundleLoading ? <RefreshCw className="w-4 h-4 mr-2 animate-spin" /> : <Upload className="w-4 h-4 mr-2" />}
+              Load Demo Bundle
+            </Button>
+            <Button
+              variant="outline"
+              onClick={downloadDemoBundle}
+              data-testid="button-download-demo-bundle"
+            >
+              <Download className="w-4 h-4 mr-2" />
+              Download Bundle
+            </Button>
+            {demoBundleLoaded && (
+              <Badge variant="secondary" className="text-xs" data-testid="badge-demo-loaded">Ready to import</Badge>
+            )}
+          </div>
+        </CardContent>
+      </Card>
+
       <Card>
         <CardContent className="p-4 space-y-4">
           <div className="flex items-center justify-between gap-3 flex-wrap">

@@ -3024,6 +3024,19 @@ export async function registerRoutes(
             const phone = resource.telecom?.find((t: any) => t.system === "phone")?.value;
             const email = resource.telecom?.find((t: any) => t.system === "email")?.value;
 
+            const getExt = (url: string) => resource.extension?.find((e: any) => e.url === url);
+            const getExtStrings = (url: string) => {
+              const ext = getExt(url);
+              if (ext?.extension) return ext.extension.map((e: any) => e.valueString).filter(Boolean);
+              if (ext?.valueString) return [ext.valueString];
+              return null;
+            };
+            const conditions = getExtStrings("urn:easy-health:conditions");
+            const medications = getExtStrings("urn:easy-health:medications");
+            const allergies = getExtStrings("urn:easy-health:allergies");
+            const riskFlags = getExtStrings("urn:easy-health:risk-flags");
+            const insurancePlan = getExt("urn:easy-health:insurance-plan")?.valueString || null;
+
             const existing = await storage.getMemberByMemberId(externalMemberId);
             if (existing) {
               await storage.updateMember(existing.id, {
@@ -3033,6 +3046,11 @@ export async function registerRoutes(
                 phone: phone || existing.phone, email: email || existing.email,
                 address: addr?.line?.[0] || existing.address, city: addr?.city || existing.city,
                 state: addr?.state || existing.state, zip: addr?.postalCode || existing.zip,
+                ...(conditions && { conditions }),
+                ...(medications && { medications }),
+                ...(allergies && { allergies }),
+                ...(riskFlags && { riskFlags }),
+                ...(insurancePlan && { insurancePlan, planPackId: insurancePlan, planPackVersion: "1.0" }),
               });
               createdMember = existing;
               results.push({ resourceType: "Patient", action: "updated", id: existing.id });
@@ -3042,8 +3060,9 @@ export async function registerRoutes(
                 dob: resource.birthDate || "1900-01-01",
                 gender: resource.gender, phone, email,
                 address: addr?.line?.[0], city: addr?.city, state: addr?.state, zip: addr?.postalCode,
-                insurancePlan: null, pcp: resource.generalPractitioner?.[0]?.display || null,
-                conditions: null, medications: null, allergies: null, riskFlags: null,
+                insurancePlan: insurancePlan, pcp: resource.generalPractitioner?.[0]?.display || null,
+                planPackId: insurancePlan, planPackVersion: insurancePlan ? "1.0" : null,
+                conditions: conditions, medications: medications, allergies: allergies, riskFlags: riskFlags,
               });
               createdMember = created;
               results.push({ resourceType: "Patient", action: "created", id: created.id });
@@ -3056,7 +3075,10 @@ export async function registerRoutes(
               continue;
             }
             const allUsers = await storage.getAllUsers();
-            const npUser = allUsers.find(u => u.role === "np");
+            const npUsers = allUsers.filter(u => u.role === "np");
+            const npUser = npUsers[Math.floor(Math.random() * npUsers.length)] || npUsers[0];
+            const memberData = createdMember;
+            const planId = (memberData as any)?.planPackId || (memberData as any)?.insurancePlan || null;
             const created = await storage.createVisit({
               memberId,
               npUserId: npUser?.id || "unknown",
@@ -3064,11 +3086,42 @@ export async function registerRoutes(
               scheduledTime: null,
               visitType: resource.type?.[0]?.coding?.[0]?.code || "annual_wellness",
               status: "scheduled",
-              planId: null,
+              planId: planId,
               identityVerified: false, identityMethod: null,
               signedAt: null, signedBy: null, attestationText: null, finalizedAt: null,
               syncStatus: "draft_local", travelNotes: null, safetyNotes: null,
             });
+
+            if (planId) {
+              try {
+                const planPack = await storage.getPlanPack(planId);
+                if (planPack) {
+                  for (const assessmentId of (planPack.requiredAssessments || [])) {
+                    const def = await storage.getAssessmentDefinition(assessmentId);
+                    await storage.createChecklistItem({
+                      visitId: created.id,
+                      itemType: "assessment",
+                      itemId: assessmentId,
+                      itemName: def?.name || assessmentId,
+                      status: "not_started",
+                    });
+                  }
+                  for (const measureId of (planPack.requiredMeasures || [])) {
+                    const def = await storage.getMeasureDefinition(measureId);
+                    await storage.createChecklistItem({
+                      visitId: created.id,
+                      itemType: "measure",
+                      itemId: measureId,
+                      itemName: def?.name || measureId,
+                      status: "not_started",
+                    });
+                  }
+                }
+              } catch (checklistErr: any) {
+                errors.push({ severity: "warning", code: "processing", diagnostics: `Checklist creation for visit: ${checklistErr.message}` });
+              }
+            }
+
             results.push({ resourceType: "Encounter", action: "created", id: created.id });
           } else {
             results.push({ resourceType: resource.resourceType, action: "skipped", reason: "unsupported resource type" });
@@ -4511,68 +4564,23 @@ ${transcript.text}`;
 
   app.get("/api/demo/sample-import-bundle", async (_req, res) => {
     try {
-      res.json({
-        resourceType: "Bundle",
-        type: "transaction",
-        timestamp: new Date().toISOString(),
-        entry: [
-          {
-            fullUrl: "urn:uuid:demo-patient-1",
-            resource: {
-              resourceType: "Patient",
-              identifier: [{ system: "urn:easy-health:member-id", value: "DEMO-IMPORT-001" }],
-              name: [{ family: "Anderson", given: ["James", "Robert"] }],
-              gender: "male",
-              birthDate: "1948-06-20",
-              address: [{ line: ["100 Demo Lane"], city: "Springfield", state: "IL", postalCode: "62704" }],
-              telecom: [
-                { system: "phone", value: "(555) 999-0001", use: "home" },
-                { system: "email", value: "james.anderson@demo.com" },
-              ],
-            },
-            request: { method: "POST", url: "Patient" },
-          },
-          {
-            fullUrl: "urn:uuid:demo-encounter-1",
-            resource: {
-              resourceType: "Encounter",
-              status: "planned",
-              class: { system: "http://terminology.hl7.org/CodeSystem/v3-ActCode", code: "HH", display: "Home Health" },
-              type: [{ coding: [{ system: "http://www.ama-assn.org/go/cpt", code: "99345", display: "Home visit - new patient" }] }],
-              subject: { reference: "urn:uuid:demo-patient-1" },
-              period: { start: new Date(Date.now() + 14 * 86400000).toISOString().split("T")[0] },
-            },
-            request: { method: "POST", url: "Encounter" },
-          },
-          {
-            fullUrl: "urn:uuid:demo-patient-2",
-            resource: {
-              resourceType: "Patient",
-              identifier: [{ system: "urn:easy-health:member-id", value: "DEMO-IMPORT-002" }],
-              name: [{ family: "Chen", given: ["Linda", "Mai"] }],
-              gender: "female",
-              birthDate: "1955-12-03",
-              address: [{ line: ["250 Sample Blvd"], city: "Springfield", state: "IL", postalCode: "62705" }],
-              telecom: [
-                { system: "phone", value: "(555) 999-0002", use: "home" },
-              ],
-            },
-            request: { method: "POST", url: "Patient" },
-          },
-          {
-            fullUrl: "urn:uuid:demo-encounter-2",
-            resource: {
-              resourceType: "Encounter",
-              status: "planned",
-              class: { system: "http://terminology.hl7.org/CodeSystem/v3-ActCode", code: "HH", display: "Home Health" },
-              type: [{ coding: [{ system: "http://www.ama-assn.org/go/cpt", code: "99345", display: "Home visit - new patient" }] }],
-              subject: { reference: "urn:uuid:demo-patient-2" },
-              period: { start: new Date(Date.now() + 21 * 86400000).toISOString().split("T")[0] },
-            },
-            request: { method: "POST", url: "Encounter" },
-          },
-        ],
-      });
+      const fs = await import("fs");
+      const path = await import("path");
+      const bundlePath = path.join(process.cwd(), "server", "data", "demo-fhir-bundle.json");
+      const bundleData = JSON.parse(fs.readFileSync(bundlePath, "utf-8"));
+      res.json(bundleData);
+    } catch (err: any) {
+      res.status(500).json({ message: err.message });
+    }
+  });
+
+  app.get("/api/fhir/demo-bundle", async (_req, res) => {
+    try {
+      const fs = await import("fs");
+      const path = await import("path");
+      const bundlePath = path.join(process.cwd(), "server", "data", "demo-fhir-bundle.json");
+      const bundleData = JSON.parse(fs.readFileSync(bundlePath, "utf-8"));
+      res.json(bundleData);
     } catch (err: any) {
       res.status(500).json({ message: err.message });
     }

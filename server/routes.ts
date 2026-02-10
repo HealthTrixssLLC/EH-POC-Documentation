@@ -2352,6 +2352,76 @@ export async function registerRoutes(
     }
   });
 
+  async function syncMedReconToTimeline(med: any) {
+    try {
+      if (!med.memberId || !med.medicationName) return;
+
+      const today = new Date().toISOString().split("T")[0];
+      const reconStatus = (med.status || "").toLowerCase();
+
+      let timelineStatus = "active";
+      let changeType: string | null = null;
+      let changeReason: string | null = null;
+
+      if (reconStatus === "discontinued") {
+        timelineStatus = "discontinued";
+        changeType = "discontinued";
+        changeReason = med.notes || "Discontinued during medication reconciliation";
+      } else if (reconStatus === "modified" || reconStatus === "changed") {
+        timelineStatus = "active";
+        changeType = "dose_change";
+        changeReason = med.notes || "Modified during medication reconciliation";
+      } else if (reconStatus === "new") {
+        timelineStatus = "active";
+        changeType = null;
+        changeReason = "New medication added during reconciliation";
+      } else if (reconStatus === "held") {
+        timelineStatus = "on_hold";
+        changeType = "held";
+        changeReason = med.notes || "Held during medication reconciliation";
+      } else if (reconStatus === "verified") {
+        timelineStatus = "active";
+        changeType = "continued";
+        changeReason = "Verified/continued during medication reconciliation";
+      }
+
+      const userName = med.reconciledBy ? (await storage.getUser(med.reconciledBy))?.fullName : undefined;
+
+      const existingHistory = await storage.getMedicationHistoryByMember(med.memberId);
+      const matchingEntry = existingHistory.find(
+        (h) => h.medicationName.toLowerCase() === med.medicationName.toLowerCase()
+          && h.source === "practice"
+          && h.startDate === today
+      );
+
+      if (matchingEntry) {
+        return;
+      }
+
+      await storage.createMedicationHistory({
+        memberId: med.memberId,
+        medicationName: med.medicationName,
+        genericName: med.genericName || null,
+        dosage: med.dosage || null,
+        frequency: med.frequency || null,
+        route: med.route || null,
+        prescriber: userName || null,
+        startDate: reconStatus === "new" ? today : (med.startDate || today),
+        endDate: reconStatus === "discontinued" ? today : (med.endDate || null),
+        status: timelineStatus,
+        source: "practice",
+        category: med.category || null,
+        reason: med.notes || null,
+        changeType,
+        changeReason,
+        actorName: userName || null,
+        actorId: med.reconciledBy || null,
+      });
+    } catch (err: any) {
+      console.warn("Failed to sync med recon to timeline:", err.message);
+    }
+  }
+
   app.post("/api/visits/:visitId/med-reconciliation", async (req, res) => {
     try {
       const med = await storage.createMedReconciliation({
@@ -2359,6 +2429,7 @@ export async function registerRoutes(
         visitId: req.params.visitId,
         reconciledAt: new Date().toISOString(),
       });
+      await syncMedReconToTimeline(med);
       return res.status(201).json(med);
     } catch (err: any) {
       return res.status(500).json({ message: err.message });
@@ -2375,6 +2446,7 @@ export async function registerRoutes(
           visitId: req.params.visitId,
           reconciledAt: new Date().toISOString(),
         });
+        await syncMedReconToTimeline(med);
         created.push(med);
       }
       return res.status(201).json(created);
@@ -2387,6 +2459,7 @@ export async function registerRoutes(
     try {
       const updated = await storage.updateMedReconciliation(req.params.id, req.body);
       if (!updated) return res.status(404).json({ message: "Not found" });
+      await syncMedReconToTimeline(updated);
       return res.json(updated);
     } catch (err: any) {
       return res.status(500).json({ message: err.message });

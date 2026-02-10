@@ -223,6 +223,24 @@ export default function IntakeDashboard() {
     return { total, complete, incomplete, exception };
   }, [progressNoteRaw]);
 
+  const extractedFieldsRaw = overview?.extractedFields || [];
+  const voiceFieldsByCategoryMemo = useMemo(() => {
+    const map: Record<string, { accepted: number; total: number; nullFields: string[]; capturedFields: string[] }> = {};
+    for (const ef of extractedFieldsRaw) {
+      const cat = ef.category || "other";
+      if (!map[cat]) map[cat] = { accepted: 0, total: 0, nullFields: [], capturedFields: [] };
+      map[cat].total++;
+      if (ef.status === "accepted" || ef.status === "edited") {
+        map[cat].accepted++;
+        map[cat].capturedFields.push(ef.fieldLabel || ef.fieldKey);
+      }
+      if (!ef.proposedValue && !ef.editedValue) {
+        map[cat].nullFields.push(ef.fieldLabel || ef.fieldKey);
+      }
+    }
+    return map;
+  }, [extractedFieldsRaw]);
+
   if (isLoading) {
     return (
       <div className="p-6 space-y-6">
@@ -249,6 +267,57 @@ export default function IntakeDashboard() {
   const targets = overview?.targets || [];
   const exclusions = overview?.exclusions || [];
   const consents = overview?.consents || [];
+  const extractedFields = overview?.extractedFields || [];
+
+  const voiceFieldsByCategory = voiceFieldsByCategoryMemo;
+
+  const hasVoiceInferredVitals = vitals?.voiceInferredFields && Object.keys(vitals.voiceInferredFields as Record<string, any>).length > 0;
+  const voiceInferredVitalsFields = hasVoiceInferredVitals ? Object.keys(vitals.voiceInferredFields as Record<string, any>) : [];
+
+  const stepCategoryMap: Record<string, string[]> = {
+    vitals: ["vitals", "physical_exam"],
+    medications: ["medications", "med_reconciliation"],
+    identity: ["identity"],
+  };
+
+  const isVoiceCapturedOnly = (stepId: string): boolean => {
+    const categories = stepCategoryMap[stepId];
+    if (!categories) {
+      if (stepId.startsWith("assessment-")) {
+        const assessmentId = stepId.replace("assessment-", "");
+        const hasPending = extractedFields.some((ef: any) =>
+          (ef.category === "assessment" || ef.category === assessmentId) && ef.status === "pending"
+        );
+        const hasAccepted = extractedFields.some((ef: any) =>
+          (ef.category === "assessment" || ef.category === assessmentId) && (ef.status === "accepted" || ef.status === "edited")
+        );
+        return hasPending && hasAccepted;
+      }
+      if (stepId.startsWith("measure-")) {
+        const measureId = stepId.replace("measure-", "");
+        const hasPending = extractedFields.some((ef: any) =>
+          (ef.category === "measure" || ef.category === measureId) && ef.status === "pending"
+        );
+        const hasAccepted = extractedFields.some((ef: any) =>
+          (ef.category === "measure" || ef.category === measureId) && (ef.status === "accepted" || ef.status === "edited")
+        );
+        return hasPending && hasAccepted;
+      }
+      return false;
+    }
+
+    const hasPendingVoiceFields = extractedFields.some((ef: any) =>
+      categories.includes(ef.category) && ef.status === "pending"
+    );
+    const hasAcceptedVoiceFields = extractedFields.some((ef: any) =>
+      categories.includes(ef.category) && (ef.status === "accepted" || ef.status === "edited")
+    );
+
+    if (stepId === "vitals") {
+      return (!!hasVoiceInferredVitals || hasAcceptedVoiceFields) && hasPendingVoiceFields;
+    }
+    return hasAcceptedVoiceFields && hasPendingVoiceFields;
+  };
 
   const noppConsent = consents.find((c: any) => c.consentType === "nopp");
   const voiceConsent = consents.find((c: any) => c.consentType === "voice_transcription");
@@ -306,19 +375,23 @@ export default function IntakeDashboard() {
   const getExclusionForObjective = (objectiveKey: string) =>
     exclusions.find((e: any) => e.objectiveKey === objectiveKey);
 
-  const getObjectiveStatus = (step: any): "completed" | "excluded" | "pending" => {
-    if (step.done) return "completed";
+  const getObjectiveStatus = (step: any): "completed" | "voice_captured" | "excluded" | "pending" => {
+    if (step.done) {
+      if (isVoiceCapturedOnly(step.id)) return "voice_captured";
+      return "completed";
+    }
     if (getExclusionForObjective(step.id)) return "excluded";
     return "pending";
   };
 
+  const voiceCapturedCount = objectiveSteps.filter(s => getObjectiveStatus(s) === "voice_captured").length;
   const completedCount = objectiveSteps.filter(s => getObjectiveStatus(s) === "completed").length;
   const excludedCount = objectiveSteps.filter(s => getObjectiveStatus(s) === "excluded").length;
   const pendingCount = objectiveSteps.filter(s => getObjectiveStatus(s) === "pending").length;
   const totalSteps = objectiveSteps.length;
-  const resolvedCount = completedCount + excludedCount;
+  const resolvedCount = completedCount + excludedCount + voiceCapturedCount;
   const progressPct = totalSteps > 0 ? Math.round((resolvedCount / totalSteps) * 100) : 0;
-  const gateReady = pendingCount === 0 && totalSteps > 0;
+  const gateReady = pendingCount === 0 && voiceCapturedCount === 0 && totalSteps > 0;
 
   const allFlags = [...vitalsFlags, ...assessmentFlags.map((f: any) => ({ ...f, message: `${f.instrumentId}: Score ${f.score} - ${f.interpretation}`, label: f.instrumentId }))];
 
@@ -362,8 +435,9 @@ export default function IntakeDashboard() {
   };
 
 
-  const statusColors = {
+  const statusColors: Record<string, { bg: string; border: string; text: string; icon: any }> = {
     completed: { bg: "#27749315", border: "#277493", text: "#277493", icon: CheckCircle2 },
+    voice_captured: { bg: "#7c3aed15", border: "#7c3aed", text: "#7c3aed", icon: Mic },
     excluded: { bg: "#FEA00215", border: "#FEA002", text: "#9a6700", icon: Ban },
     pending: { bg: "#2E456B08", border: "transparent", text: "#64748b", icon: Circle },
   };
@@ -510,24 +584,38 @@ export default function IntakeDashboard() {
                 const exclusion = getExclusionForObjective(step.id);
                 const Icon = stepIcons[step.id.split("-")[0]] || ClipboardList;
                 const isDone = objStatus === "completed";
+                const isVoiceCaptured = objStatus === "voice_captured";
                 const isExcluded = objStatus === "excluded";
 
                 return (
                   <div key={step.id} className="group" data-testid={`task-${step.id}`}>
                     <div className="flex items-center gap-3 p-2.5 rounded-md border" style={{
-                      borderColor: isDone ? "#27749340" : isExcluded ? "#FEA00240" : undefined,
-                      backgroundColor: isDone ? "#27749308" : isExcluded ? "#FEA00208" : undefined,
+                      borderColor: isDone ? "#27749340" : isVoiceCaptured ? "#7c3aed40" : isExcluded ? "#FEA00240" : undefined,
+                      backgroundColor: isDone ? "#27749308" : isVoiceCaptured ? "#7c3aed08" : isExcluded ? "#FEA00208" : undefined,
                       opacity: isDone ? 0.7 : isExcluded ? 0.6 : 1,
                     }}>
                       <div className="flex items-center justify-center w-7 h-7 rounded-md flex-shrink-0" style={{
-                        backgroundColor: statusColors[objStatus].bg
+                        backgroundColor: statusColors[objStatus]?.bg
                       }}>
-                        <Icon className="w-3.5 h-3.5" style={{ color: statusColors[objStatus].text }} />
+                        <Icon className="w-3.5 h-3.5" style={{ color: statusColors[objStatus]?.text }} />
                       </div>
                       <div className="flex-1 min-w-0">
                         <span className={`text-sm ${isDone ? "line-through text-muted-foreground" : isExcluded ? "line-through text-muted-foreground" : ""}`}>
                           {step.label}
                         </span>
+                        {isVoiceCaptured && (
+                          <div className="flex items-center gap-1 mt-0.5">
+                            <Mic className="w-3 h-3" style={{ color: "#7c3aed" }} />
+                            <span className="text-[11px]" style={{ color: "#7c3aed" }}>
+                              Voice captured - review recommended
+                            </span>
+                            {step.id === "vitals" && voiceInferredVitalsFields.length > 0 && (
+                              <Badge variant="outline" className="text-[10px] h-4 ml-1 no-default-hover-elevate no-default-active-elevate" style={{ borderColor: "#7c3aed40", color: "#7c3aed" }}>
+                                {voiceInferredVitalsFields.length} field{voiceInferredVitalsFields.length > 1 ? "s" : ""}
+                              </Badge>
+                            )}
+                          </div>
+                        )}
                         {isExcluded && exclusion && (
                           <p className="text-[11px] mt-0.5" style={{ color: "#9a6700" }}>
                             Excluded: {exclusion.reason}
@@ -543,6 +631,22 @@ export default function IntakeDashboard() {
                             <TooltipContent>Completed</TooltipContent>
                           </Tooltip>
                         )}
+                        {isVoiceCaptured && (
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <div className="flex items-center gap-1" data-testid={`status-voice-${step.id}`}>
+                                <Mic className="w-4 h-4" style={{ color: "#7c3aed" }} />
+                              </div>
+                            </TooltipTrigger>
+                            <TooltipContent>
+                              <div className="space-y-1">
+                                <p className="font-medium">Voice Captured</p>
+                                <p className="text-xs">Data populated via voice transcription.</p>
+                                <p className="text-xs">Click "Review" to verify and confirm.</p>
+                              </div>
+                            </TooltipContent>
+                          </Tooltip>
+                        )}
                         {isExcluded && (
                           <Tooltip>
                             <TooltipTrigger asChild>
@@ -551,7 +655,7 @@ export default function IntakeDashboard() {
                             <TooltipContent>Excluded: {exclusion?.reason}</TooltipContent>
                           </Tooltip>
                         )}
-                        {!isDone && !isExcluded && (
+                        {!isDone && !isExcluded && !isVoiceCaptured && (
                           <div className="flex items-center gap-1">
                             <Link href={step.href}>
                               <Button variant="ghost" size="sm" className="h-7 px-2 text-xs" data-testid={`button-start-${step.id}`}>
@@ -579,7 +683,14 @@ export default function IntakeDashboard() {
                             </Tooltip>
                           </div>
                         )}
-                        {(isDone || isExcluded) && (
+                        {isVoiceCaptured && (
+                          <Link href={step.href}>
+                            <Button variant="outline" size="sm" className="h-7 px-2 text-xs" style={{ borderColor: "#7c3aed40", color: "#7c3aed" }} data-testid={`button-review-${step.id}`}>
+                              Review <ArrowRight className="w-3 h-3 ml-1" />
+                            </Button>
+                          </Link>
+                        )}
+                        {(isDone || isExcluded) && !isVoiceCaptured && (
                           <Link href={step.href}>
                             <Button variant="ghost" size="icon" className="h-7 w-7" data-testid={`button-view-${step.id}`}>
                               <ExternalLink className="w-3 h-3 text-muted-foreground" />
@@ -989,10 +1100,15 @@ export default function IntakeDashboard() {
                   <CheckCircle2 className="w-3 h-3" />
                   <span className="font-medium">All objectives resolved - ready for finalization</span>
                 </div>
+              ) : voiceCapturedCount > 0 && pendingCount === 0 ? (
+                <div className="flex items-center gap-2 mt-1 text-xs" style={{ color: "#7c3aed" }}>
+                  <Mic className="w-3 h-3" />
+                  <span>{voiceCapturedCount} voice-captured item{voiceCapturedCount !== 1 ? "s" : ""} need{voiceCapturedCount === 1 ? "s" : ""} NP review</span>
+                </div>
               ) : (
                 <div className="flex items-center gap-2 mt-1 text-xs text-muted-foreground">
                   <AlertCircle className="w-3 h-3" />
-                  <span>{pendingCount} objective{pendingCount !== 1 ? "s" : ""} remaining</span>
+                  <span>{pendingCount} objective{pendingCount !== 1 ? "s" : ""} remaining{voiceCapturedCount > 0 ? `, ${voiceCapturedCount} voice-captured` : ""}</span>
                 </div>
               )}
             </CardHeader>
@@ -1003,6 +1119,12 @@ export default function IntakeDashboard() {
                   <CheckCircle2 className="w-3 h-3" style={{ color: "#277493" }} />
                   <span className="text-muted-foreground">Completed ({completedCount})</span>
                 </div>
+                {voiceCapturedCount > 0 && (
+                  <div className="flex items-center gap-1">
+                    <Mic className="w-3 h-3" style={{ color: "#7c3aed" }} />
+                    <span className="text-muted-foreground">Voice Captured ({voiceCapturedCount})</span>
+                  </div>
+                )}
                 <div className="flex items-center gap-1">
                   <Ban className="w-3 h-3" style={{ color: "#FEA002" }} />
                   <span className="text-muted-foreground">Excluded ({excludedCount})</span>
@@ -1033,6 +1155,11 @@ export default function IntakeDashboard() {
                           </span>
                           {objStatus === "completed" && (
                             <Badge variant="secondary" className="text-[10px] no-default-hover-elevate no-default-active-elevate" style={{ backgroundColor: "#27749320", color: "#277493", border: "none" }} data-testid={`badge-done-${step.id}`}>Done</Badge>
+                          )}
+                          {objStatus === "voice_captured" && (
+                            <Badge variant="secondary" className="text-[10px] no-default-hover-elevate no-default-active-elevate" style={{ backgroundColor: "#7c3aed20", color: "#7c3aed", border: "none" }} data-testid={`badge-voice-${step.id}`}>
+                              <Mic className="w-2.5 h-2.5 mr-0.5" /> Voice Captured
+                            </Badge>
                           )}
                           {objStatus === "excluded" && (
                             <Badge variant="secondary" className="text-[10px] no-default-hover-elevate no-default-active-elevate" style={{ backgroundColor: "#FEA00220", color: "#9a6700", border: "none" }} data-testid={`badge-excluded-${step.id}`}>Excluded</Badge>

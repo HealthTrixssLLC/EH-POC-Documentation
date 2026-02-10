@@ -160,7 +160,7 @@ export async function registerRoutes(
       const visit = await storage.getVisit(req.params.id);
       if (!visit) return res.status(404).json({ message: "Visit not found" });
 
-      const [member, checklist, vitals, tasks, recommendations, medRecon, assessmentResponses, measureResults, codes, overrides, npUser, exclusions, allMeasureDefs, consents, alerts] = await Promise.all([
+      const [member, checklist, vitals, tasks, recommendations, medRecon, assessmentResponses, measureResults, codes, overrides, npUser, exclusions, allMeasureDefs, consents, alerts, extractedFields] = await Promise.all([
         storage.getMember(visit.memberId),
         storage.getChecklistByVisit(visit.id),
         storage.getVitalsByVisit(visit.id),
@@ -176,6 +176,7 @@ export async function registerRoutes(
         storage.getAllMeasureDefinitions(),
         storage.getConsentsByVisit(visit.id),
         storage.getAlertsByVisit(visit.id),
+        storage.getExtractedFieldsByVisit(visit.id),
       ]);
 
       const targets = member ? await storage.getPlanTargets(member.id) : [];
@@ -613,6 +614,7 @@ export async function registerRoutes(
         consents,
         planPack,
         alerts,
+        extractedFields,
       });
     } catch (err: any) {
       return res.status(500).json({ message: err.message });

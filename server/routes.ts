@@ -3067,6 +3067,51 @@ export async function registerRoutes(
               createdMember = created;
               results.push({ resourceType: "Patient", action: "created", id: created.id });
             }
+
+            // Import vitals history, lab results, and medication history from extensions
+            if (createdMember) {
+              const vitalsExt = getExt("urn:easy-health:vitals-history");
+              if (vitalsExt?.extension) {
+                for (const entry of vitalsExt.extension) {
+                  if (entry.valueString) {
+                    try {
+                      const parsed = JSON.parse(entry.valueString);
+                      await storage.createVitalsHistory({ memberId: createdMember.id, ...parsed });
+                    } catch (e: any) {
+                      errors.push({ severity: "warning", code: "processing", diagnostics: `Vitals history entry: ${e.message}` });
+                    }
+                  }
+                }
+              }
+
+              const labsExt = getExt("urn:easy-health:lab-results");
+              if (labsExt?.extension) {
+                for (const entry of labsExt.extension) {
+                  if (entry.valueString) {
+                    try {
+                      const parsed = JSON.parse(entry.valueString);
+                      await storage.createLabResult({ memberId: createdMember.id, ...parsed });
+                    } catch (e: any) {
+                      errors.push({ severity: "warning", code: "processing", diagnostics: `Lab result entry: ${e.message}` });
+                    }
+                  }
+                }
+              }
+
+              const medsHistExt = getExt("urn:easy-health:medication-history");
+              if (medsHistExt?.extension) {
+                for (const entry of medsHistExt.extension) {
+                  if (entry.valueString) {
+                    try {
+                      const parsed = JSON.parse(entry.valueString);
+                      await storage.createMedicationHistory({ memberId: createdMember.id, ...parsed });
+                    } catch (e: any) {
+                      errors.push({ severity: "warning", code: "processing", diagnostics: `Medication history entry: ${e.message}` });
+                    }
+                  }
+                }
+              }
+            }
           } else if (resource.resourceType === "Encounter") {
             const subjectRef = resource.subject?.reference;
             const memberId = createdMember?.id || (subjectRef ? subjectRef.replace("Patient/", "") : null);

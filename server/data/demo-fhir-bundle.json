@@ -16,7 +16,9 @@
           {
             "use": "official",
             "family": "Chen",
-            "given": ["James"]
+            "given": [
+              "James"
+            ]
           }
         ],
         "birthDate": "1940-06-12",
@@ -35,7 +37,9 @@
         "address": [
           {
             "use": "home",
-            "line": ["321 Veterans Blvd"],
+            "line": [
+              "321 Veterans Blvd"
+            ],
             "city": "Springfield",
             "state": "IL",
             "postalCode": "62704"
@@ -50,39 +54,365 @@
           {
             "url": "urn:easy-health:conditions",
             "extension": [
-              { "url": "condition", "valueString": "Atrial Fibrillation" },
-              { "url": "condition", "valueString": "Type 2 Diabetes" },
-              { "url": "condition", "valueString": "Chronic Kidney Disease Stage 3" },
-              { "url": "condition", "valueString": "Benign Prostatic Hyperplasia" }
+              {
+                "url": "condition",
+                "valueString": "Atrial Fibrillation"
+              },
+              {
+                "url": "condition",
+                "valueString": "Type 2 Diabetes"
+              },
+              {
+                "url": "condition",
+                "valueString": "Chronic Kidney Disease Stage 3"
+              },
+              {
+                "url": "condition",
+                "valueString": "Benign Prostatic Hyperplasia"
+              }
             ]
           },
           {
             "url": "urn:easy-health:medications",
             "extension": [
-              { "url": "medication", "valueString": "Eliquis 5mg BID" },
-              { "url": "medication", "valueString": "Metformin 1000mg BID" },
-              { "url": "medication", "valueString": "Losartan 50mg daily" },
-              { "url": "medication", "valueString": "Tamsulosin 0.4mg daily" },
-              { "url": "medication", "valueString": "Atorvastatin 40mg daily" }
+              {
+                "url": "medication",
+                "valueString": "Eliquis 5mg BID"
+              },
+              {
+                "url": "medication",
+                "valueString": "Metformin 1000mg BID"
+              },
+              {
+                "url": "medication",
+                "valueString": "Losartan 50mg daily"
+              },
+              {
+                "url": "medication",
+                "valueString": "Tamsulosin 0.4mg daily"
+              },
+              {
+                "url": "medication",
+                "valueString": "Atorvastatin 40mg daily"
+              }
             ]
           },
           {
             "url": "urn:easy-health:allergies",
             "extension": [
-              { "url": "allergy", "valueString": "Iodine contrast dye" },
-              { "url": "allergy", "valueString": "Codeine" }
+              {
+                "url": "allergy",
+                "valueString": "Iodine contrast dye"
+              },
+              {
+                "url": "allergy",
+                "valueString": "Codeine"
+              }
             ]
           },
           {
             "url": "urn:easy-health:risk-flags",
             "extension": [
-              { "url": "flag", "valueString": "Fall risk" },
-              { "url": "flag", "valueString": "Anticoagulant therapy" }
+              {
+                "url": "flag",
+                "valueString": "Fall risk"
+              },
+              {
+                "url": "flag",
+                "valueString": "Anticoagulant therapy"
+              }
             ]
           },
           {
             "url": "urn:easy-health:insurance-plan",
             "valueString": "MA-PLAN-001"
+          },
+          {
+            "url": "urn:easy-health:vitals-history",
+            "extension": [
+              {
+                "url": "entry",
+                "valueString": "{\"measureDate\":\"2024-02-12\",\"systolic\":143,\"diastolic\":87,\"heartRate\":75,\"oxygenSaturation\":97,\"weight\":184.8,\"bmi\":26.9,\"temperature\":97.8,\"respiratoryRate\":17,\"source\":\"hie\"}"
+              },
+              {
+                "url": "entry",
+                "valueString": "{\"measureDate\":\"2024-05-08\",\"systolic\":135,\"diastolic\":84,\"heartRate\":78,\"oxygenSaturation\":98,\"weight\":185.1,\"bmi\":26.6,\"temperature\":97.7,\"respiratoryRate\":18,\"source\":\"practice\"}"
+              },
+              {
+                "url": "entry",
+                "valueString": "{\"measureDate\":\"2024-08-14\",\"systolic\":144,\"diastolic\":82,\"heartRate\":78,\"oxygenSaturation\":98,\"weight\":186.6,\"bmi\":27.1,\"temperature\":98.6,\"respiratoryRate\":16,\"source\":\"practice\"}"
+              },
+              {
+                "url": "entry",
+                "valueString": "{\"measureDate\":\"2024-11-06\",\"systolic\":143,\"diastolic\":85,\"heartRate\":82,\"oxygenSaturation\":98,\"weight\":183.5,\"bmi\":26.8,\"temperature\":98.4,\"respiratoryRate\":15,\"source\":\"hie\"}"
+              },
+              {
+                "url": "entry",
+                "valueString": "{\"measureDate\":\"2025-02-10\",\"systolic\":139,\"diastolic\":84,\"heartRate\":69,\"oxygenSaturation\":97,\"weight\":185,\"bmi\":26.6,\"temperature\":97.7,\"respiratoryRate\":16,\"source\":\"practice\"}"
+              },
+              {
+                "url": "entry",
+                "valueString": "{\"measureDate\":\"2025-05-07\",\"systolic\":144,\"diastolic\":80,\"heartRate\":92,\"oxygenSaturation\":96,\"weight\":184.1,\"bmi\":27,\"temperature\":98.7,\"respiratoryRate\":15,\"source\":\"practice\"}"
+              },
+              {
+                "url": "entry",
+                "valueString": "{\"measureDate\":\"2025-08-13\",\"systolic\":134,\"diastolic\":88,\"heartRate\":92,\"oxygenSaturation\":98,\"weight\":186.9,\"bmi\":27.1,\"temperature\":97.8,\"respiratoryRate\":17,\"source\":\"hie\"}"
+              },
+              {
+                "url": "entry",
+                "valueString": "{\"measureDate\":\"2025-11-05\",\"systolic\":143,\"diastolic\":82,\"heartRate\":79,\"oxygenSaturation\":98,\"weight\":185.2,\"bmi\":26.6,\"temperature\":98.8,\"respiratoryRate\":15,\"source\":\"practice\"}"
+              }
+            ]
+          },
+          {
+            "url": "urn:easy-health:lab-results",
+            "extension": [
+              {
+                "url": "entry",
+                "valueString": "{\"testName\":\"HbA1c\",\"testCode\":\"83036\",\"value\":7.3,\"unit\":\"%\",\"referenceMin\":4,\"referenceMax\":5.6,\"status\":\"high\",\"source\":\"practice\",\"collectedDate\":\"2024-02-15\",\"resultDate\":\"2024-02-17\",\"orderingProvider\":\"Dr. Angela Brooks\",\"category\":\"diabetes\"}"
+              },
+              {
+                "url": "entry",
+                "valueString": "{\"testName\":\"Fasting Glucose\",\"testCode\":\"82947\",\"value\":188,\"unit\":\"mg/dL\",\"referenceMin\":70,\"referenceMax\":100,\"status\":\"high\",\"source\":\"practice\",\"collectedDate\":\"2024-02-15\",\"resultDate\":\"2024-02-17\",\"orderingProvider\":\"Dr. Angela Brooks\",\"category\":\"diabetes\"}"
+              },
+              {
+                "url": "entry",
+                "valueString": "{\"testName\":\"Creatinine\",\"testCode\":\"82565\",\"value\":1.4,\"unit\":\"mg/dL\",\"referenceMin\":0.7,\"referenceMax\":1.3,\"status\":\"high\",\"source\":\"practice\",\"collectedDate\":\"2024-02-15\",\"resultDate\":\"2024-02-17\",\"orderingProvider\":\"Dr. Angela Brooks\",\"category\":\"renal\"}"
+              },
+              {
+                "url": "entry",
+                "valueString": "{\"testName\":\"eGFR\",\"testCode\":\"69405-9\",\"value\":35,\"unit\":\"mL/min/1.73m2\",\"referenceMin\":60,\"referenceMax\":120,\"status\":\"low\",\"source\":\"practice\",\"collectedDate\":\"2024-02-15\",\"resultDate\":\"2024-02-17\",\"orderingProvider\":\"Dr. Angela Brooks\",\"category\":\"renal\"}"
+              },
+              {
+                "url": "entry",
+                "valueString": "{\"testName\":\"HbA1c\",\"testCode\":\"83036\",\"value\":8,\"unit\":\"%\",\"referenceMin\":4,\"referenceMax\":5.6,\"status\":\"high\",\"source\":\"practice\",\"collectedDate\":\"2024-05-12\",\"resultDate\":\"2024-05-14\",\"orderingProvider\":\"Dr. Angela Brooks\",\"category\":\"diabetes\"}"
+              },
+              {
+                "url": "entry",
+                "valueString": "{\"testName\":\"Fasting Glucose\",\"testCode\":\"82947\",\"value\":185,\"unit\":\"mg/dL\",\"referenceMin\":70,\"referenceMax\":100,\"status\":\"high\",\"source\":\"practice\",\"collectedDate\":\"2024-05-12\",\"resultDate\":\"2024-05-14\",\"orderingProvider\":\"Dr. Angela Brooks\",\"category\":\"diabetes\"}"
+              },
+              {
+                "url": "entry",
+                "valueString": "{\"testName\":\"Creatinine\",\"testCode\":\"82565\",\"value\":1.5,\"unit\":\"mg/dL\",\"referenceMin\":0.7,\"referenceMax\":1.3,\"status\":\"high\",\"source\":\"practice\",\"collectedDate\":\"2024-05-12\",\"resultDate\":\"2024-05-14\",\"orderingProvider\":\"Dr. Angela Brooks\",\"category\":\"renal\"}"
+              },
+              {
+                "url": "entry",
+                "valueString": "{\"testName\":\"eGFR\",\"testCode\":\"69405-9\",\"value\":37,\"unit\":\"mL/min/1.73m2\",\"referenceMin\":60,\"referenceMax\":120,\"status\":\"low\",\"source\":\"practice\",\"collectedDate\":\"2024-05-12\",\"resultDate\":\"2024-05-14\",\"orderingProvider\":\"Dr. Angela Brooks\",\"category\":\"renal\"}"
+              },
+              {
+                "url": "entry",
+                "valueString": "{\"testName\":\"HbA1c\",\"testCode\":\"83036\",\"value\":7.9,\"unit\":\"%\",\"referenceMin\":4,\"referenceMax\":5.6,\"status\":\"high\",\"source\":\"practice\",\"collectedDate\":\"2024-08-18\",\"resultDate\":\"2024-08-20\",\"orderingProvider\":\"Dr. Angela Brooks\",\"category\":\"diabetes\"}"
+              },
+              {
+                "url": "entry",
+                "valueString": "{\"testName\":\"Fasting Glucose\",\"testCode\":\"82947\",\"value\":166,\"unit\":\"mg/dL\",\"referenceMin\":70,\"referenceMax\":100,\"status\":\"high\",\"source\":\"practice\",\"collectedDate\":\"2024-08-18\",\"resultDate\":\"2024-08-20\",\"orderingProvider\":\"Dr. Angela Brooks\",\"category\":\"diabetes\"}"
+              },
+              {
+                "url": "entry",
+                "valueString": "{\"testName\":\"Creatinine\",\"testCode\":\"82565\",\"value\":1.5,\"unit\":\"mg/dL\",\"referenceMin\":0.7,\"referenceMax\":1.3,\"status\":\"high\",\"source\":\"practice\",\"collectedDate\":\"2024-08-18\",\"resultDate\":\"2024-08-20\",\"orderingProvider\":\"Dr. Angela Brooks\",\"category\":\"renal\"}"
+              },
+              {
+                "url": "entry",
+                "valueString": "{\"testName\":\"eGFR\",\"testCode\":\"69405-9\",\"value\":48,\"unit\":\"mL/min/1.73m2\",\"referenceMin\":60,\"referenceMax\":120,\"status\":\"low\",\"source\":\"practice\",\"collectedDate\":\"2024-08-18\",\"resultDate\":\"2024-08-20\",\"orderingProvider\":\"Dr. Angela Brooks\",\"category\":\"renal\"}"
+              },
+              {
+                "url": "entry",
+                "valueString": "{\"testName\":\"HbA1c\",\"testCode\":\"83036\",\"value\":7.5,\"unit\":\"%\",\"referenceMin\":4,\"referenceMax\":5.6,\"status\":\"high\",\"source\":\"practice\",\"collectedDate\":\"2024-11-10\",\"resultDate\":\"2024-11-12\",\"orderingProvider\":\"Dr. Angela Brooks\",\"category\":\"diabetes\"}"
+              },
+              {
+                "url": "entry",
+                "valueString": "{\"testName\":\"Fasting Glucose\",\"testCode\":\"82947\",\"value\":179,\"unit\":\"mg/dL\",\"referenceMin\":70,\"referenceMax\":100,\"status\":\"high\",\"source\":\"practice\",\"collectedDate\":\"2024-11-10\",\"resultDate\":\"2024-11-12\",\"orderingProvider\":\"Dr. Angela Brooks\",\"category\":\"diabetes\"}"
+              },
+              {
+                "url": "entry",
+                "valueString": "{\"testName\":\"Creatinine\",\"testCode\":\"82565\",\"value\":1.5,\"unit\":\"mg/dL\",\"referenceMin\":0.7,\"referenceMax\":1.3,\"status\":\"high\",\"source\":\"practice\",\"collectedDate\":\"2024-11-10\",\"resultDate\":\"2024-11-12\",\"orderingProvider\":\"Dr. Angela Brooks\",\"category\":\"renal\"}"
+              },
+              {
+                "url": "entry",
+                "valueString": "{\"testName\":\"eGFR\",\"testCode\":\"69405-9\",\"value\":45,\"unit\":\"mL/min/1.73m2\",\"referenceMin\":60,\"referenceMax\":120,\"status\":\"low\",\"source\":\"practice\",\"collectedDate\":\"2024-11-10\",\"resultDate\":\"2024-11-12\",\"orderingProvider\":\"Dr. Angela Brooks\",\"category\":\"renal\"}"
+              },
+              {
+                "url": "entry",
+                "valueString": "{\"testName\":\"HbA1c\",\"testCode\":\"83036\",\"value\":7.7,\"unit\":\"%\",\"referenceMin\":4,\"referenceMax\":5.6,\"status\":\"high\",\"source\":\"practice\",\"collectedDate\":\"2025-02-14\",\"resultDate\":\"2025-02-16\",\"orderingProvider\":\"Dr. Angela Brooks\",\"category\":\"diabetes\"}"
+              },
+              {
+                "url": "entry",
+                "valueString": "{\"testName\":\"Fasting Glucose\",\"testCode\":\"82947\",\"value\":165,\"unit\":\"mg/dL\",\"referenceMin\":70,\"referenceMax\":100,\"status\":\"high\",\"source\":\"practice\",\"collectedDate\":\"2025-02-14\",\"resultDate\":\"2025-02-16\",\"orderingProvider\":\"Dr. Angela Brooks\",\"category\":\"diabetes\"}"
+              },
+              {
+                "url": "entry",
+                "valueString": "{\"testName\":\"Creatinine\",\"testCode\":\"82565\",\"value\":1.5,\"unit\":\"mg/dL\",\"referenceMin\":0.7,\"referenceMax\":1.3,\"status\":\"high\",\"source\":\"practice\",\"collectedDate\":\"2025-02-14\",\"resultDate\":\"2025-02-16\",\"orderingProvider\":\"Dr. Angela Brooks\",\"category\":\"renal\"}"
+              },
+              {
+                "url": "entry",
+                "valueString": "{\"testName\":\"eGFR\",\"testCode\":\"69405-9\",\"value\":42,\"unit\":\"mL/min/1.73m2\",\"referenceMin\":60,\"referenceMax\":120,\"status\":\"low\",\"source\":\"practice\",\"collectedDate\":\"2025-02-14\",\"resultDate\":\"2025-02-16\",\"orderingProvider\":\"Dr. Angela Brooks\",\"category\":\"renal\"}"
+              },
+              {
+                "url": "entry",
+                "valueString": "{\"testName\":\"HbA1c\",\"testCode\":\"83036\",\"value\":7.5,\"unit\":\"%\",\"referenceMin\":4,\"referenceMax\":5.6,\"status\":\"high\",\"source\":\"practice\",\"collectedDate\":\"2025-05-11\",\"resultDate\":\"2025-05-13\",\"orderingProvider\":\"Dr. Angela Brooks\",\"category\":\"diabetes\"}"
+              },
+              {
+                "url": "entry",
+                "valueString": "{\"testName\":\"Fasting Glucose\",\"testCode\":\"82947\",\"value\":188,\"unit\":\"mg/dL\",\"referenceMin\":70,\"referenceMax\":100,\"status\":\"high\",\"source\":\"practice\",\"collectedDate\":\"2025-05-11\",\"resultDate\":\"2025-05-13\",\"orderingProvider\":\"Dr. Angela Brooks\",\"category\":\"diabetes\"}"
+              },
+              {
+                "url": "entry",
+                "valueString": "{\"testName\":\"Creatinine\",\"testCode\":\"82565\",\"value\":1.6,\"unit\":\"mg/dL\",\"referenceMin\":0.7,\"referenceMax\":1.3,\"status\":\"high\",\"source\":\"practice\",\"collectedDate\":\"2025-05-11\",\"resultDate\":\"2025-05-13\",\"orderingProvider\":\"Dr. Angela Brooks\",\"category\":\"renal\"}"
+              },
+              {
+                "url": "entry",
+                "valueString": "{\"testName\":\"eGFR\",\"testCode\":\"69405-9\",\"value\":45,\"unit\":\"mL/min/1.73m2\",\"referenceMin\":60,\"referenceMax\":120,\"status\":\"low\",\"source\":\"practice\",\"collectedDate\":\"2025-05-11\",\"resultDate\":\"2025-05-13\",\"orderingProvider\":\"Dr. Angela Brooks\",\"category\":\"renal\"}"
+              },
+              {
+                "url": "entry",
+                "valueString": "{\"testName\":\"HbA1c\",\"testCode\":\"83036\",\"value\":7.2,\"unit\":\"%\",\"referenceMin\":4,\"referenceMax\":5.6,\"status\":\"high\",\"source\":\"practice\",\"collectedDate\":\"2025-08-17\",\"resultDate\":\"2025-08-19\",\"orderingProvider\":\"Dr. Angela Brooks\",\"category\":\"diabetes\"}"
+              },
+              {
+                "url": "entry",
+                "valueString": "{\"testName\":\"Fasting Glucose\",\"testCode\":\"82947\",\"value\":195,\"unit\":\"mg/dL\",\"referenceMin\":70,\"referenceMax\":100,\"status\":\"high\",\"source\":\"practice\",\"collectedDate\":\"2025-08-17\",\"resultDate\":\"2025-08-19\",\"orderingProvider\":\"Dr. Angela Brooks\",\"category\":\"diabetes\"}"
+              },
+              {
+                "url": "entry",
+                "valueString": "{\"testName\":\"Creatinine\",\"testCode\":\"82565\",\"value\":1.5,\"unit\":\"mg/dL\",\"referenceMin\":0.7,\"referenceMax\":1.3,\"status\":\"high\",\"source\":\"practice\",\"collectedDate\":\"2025-08-17\",\"resultDate\":\"2025-08-19\",\"orderingProvider\":\"Dr. Angela Brooks\",\"category\":\"renal\"}"
+              },
+              {
+                "url": "entry",
+                "valueString": "{\"testName\":\"eGFR\",\"testCode\":\"69405-9\",\"value\":40,\"unit\":\"mL/min/1.73m2\",\"referenceMin\":60,\"referenceMax\":120,\"status\":\"low\",\"source\":\"practice\",\"collectedDate\":\"2025-08-17\",\"resultDate\":\"2025-08-19\",\"orderingProvider\":\"Dr. Angela Brooks\",\"category\":\"renal\"}"
+              },
+              {
+                "url": "entry",
+                "valueString": "{\"testName\":\"HbA1c\",\"testCode\":\"83036\",\"value\":7.9,\"unit\":\"%\",\"referenceMin\":4,\"referenceMax\":5.6,\"status\":\"high\",\"source\":\"practice\",\"collectedDate\":\"2025-11-09\",\"resultDate\":\"2025-11-11\",\"orderingProvider\":\"Dr. Angela Brooks\",\"category\":\"diabetes\"}"
+              },
+              {
+                "url": "entry",
+                "valueString": "{\"testName\":\"Fasting Glucose\",\"testCode\":\"82947\",\"value\":154,\"unit\":\"mg/dL\",\"referenceMin\":70,\"referenceMax\":100,\"status\":\"high\",\"source\":\"practice\",\"collectedDate\":\"2025-11-09\",\"resultDate\":\"2025-11-11\",\"orderingProvider\":\"Dr. Angela Brooks\",\"category\":\"diabetes\"}"
+              },
+              {
+                "url": "entry",
+                "valueString": "{\"testName\":\"Creatinine\",\"testCode\":\"82565\",\"value\":1.6,\"unit\":\"mg/dL\",\"referenceMin\":0.7,\"referenceMax\":1.3,\"status\":\"high\",\"source\":\"practice\",\"collectedDate\":\"2025-11-09\",\"resultDate\":\"2025-11-11\",\"orderingProvider\":\"Dr. Angela Brooks\",\"category\":\"renal\"}"
+              },
+              {
+                "url": "entry",
+                "valueString": "{\"testName\":\"eGFR\",\"testCode\":\"69405-9\",\"value\":36,\"unit\":\"mL/min/1.73m2\",\"referenceMin\":60,\"referenceMax\":120,\"status\":\"low\",\"source\":\"practice\",\"collectedDate\":\"2025-11-09\",\"resultDate\":\"2025-11-11\",\"orderingProvider\":\"Dr. Angela Brooks\",\"category\":\"renal\"}"
+              },
+              {
+                "url": "entry",
+                "valueString": "{\"testName\":\"BUN\",\"testCode\":\"3094-0\",\"value\":22,\"unit\":\"mg/dL\",\"referenceMin\":7,\"referenceMax\":20,\"status\":\"high\",\"source\":\"practice\",\"collectedDate\":\"2024-02-15\",\"resultDate\":\"2024-02-17\",\"orderingProvider\":\"Dr. Angela Brooks\",\"category\":\"renal\"}"
+              },
+              {
+                "url": "entry",
+                "valueString": "{\"testName\":\"INR\",\"testCode\":\"6301-6\",\"value\":3.3,\"unit\":\"ratio\",\"referenceMin\":2,\"referenceMax\":3,\"status\":\"normal\",\"source\":\"practice\",\"collectedDate\":\"2024-02-15\",\"resultDate\":\"2024-02-17\",\"orderingProvider\":\"Dr. Angela Brooks\",\"category\":\"hematology\"}"
+              },
+              {
+                "url": "entry",
+                "valueString": "{\"testName\":\"Potassium\",\"testCode\":\"2823-3\",\"value\":4,\"unit\":\"mEq/L\",\"referenceMin\":3.5,\"referenceMax\":5,\"status\":\"normal\",\"source\":\"practice\",\"collectedDate\":\"2024-02-15\",\"resultDate\":\"2024-02-17\",\"orderingProvider\":\"Dr. Angela Brooks\",\"category\":\"metabolic\"}"
+              },
+              {
+                "url": "entry",
+                "valueString": "{\"testName\":\"Total Cholesterol\",\"testCode\":\"2093-3\",\"value\":194,\"unit\":\"mg/dL\",\"referenceMin\":0,\"referenceMax\":200,\"status\":\"normal\",\"source\":\"practice\",\"collectedDate\":\"2024-02-15\",\"resultDate\":\"2024-02-17\",\"orderingProvider\":\"Dr. Angela Brooks\",\"category\":\"lipid\"}"
+              },
+              {
+                "url": "entry",
+                "valueString": "{\"testName\":\"LDL Cholesterol\",\"testCode\":\"2089-1\",\"value\":116,\"unit\":\"mg/dL\",\"referenceMin\":0,\"referenceMax\":100,\"status\":\"high\",\"source\":\"practice\",\"collectedDate\":\"2024-02-15\",\"resultDate\":\"2024-02-17\",\"orderingProvider\":\"Dr. Angela Brooks\",\"category\":\"lipid\"}"
+              },
+              {
+                "url": "entry",
+                "valueString": "{\"testName\":\"BUN\",\"testCode\":\"3094-0\",\"value\":22,\"unit\":\"mg/dL\",\"referenceMin\":7,\"referenceMax\":20,\"status\":\"high\",\"source\":\"practice\",\"collectedDate\":\"2024-08-18\",\"resultDate\":\"2024-08-20\",\"orderingProvider\":\"Dr. Angela Brooks\",\"category\":\"renal\"}"
+              },
+              {
+                "url": "entry",
+                "valueString": "{\"testName\":\"INR\",\"testCode\":\"6301-6\",\"value\":3.4,\"unit\":\"ratio\",\"referenceMin\":2,\"referenceMax\":3,\"status\":\"normal\",\"source\":\"practice\",\"collectedDate\":\"2024-08-18\",\"resultDate\":\"2024-08-20\",\"orderingProvider\":\"Dr. Angela Brooks\",\"category\":\"hematology\"}"
+              },
+              {
+                "url": "entry",
+                "valueString": "{\"testName\":\"Potassium\",\"testCode\":\"2823-3\",\"value\":4.5,\"unit\":\"mEq/L\",\"referenceMin\":3.5,\"referenceMax\":5,\"status\":\"normal\",\"source\":\"practice\",\"collectedDate\":\"2024-08-18\",\"resultDate\":\"2024-08-20\",\"orderingProvider\":\"Dr. Angela Brooks\",\"category\":\"metabolic\"}"
+              },
+              {
+                "url": "entry",
+                "valueString": "{\"testName\":\"Total Cholesterol\",\"testCode\":\"2093-3\",\"value\":190,\"unit\":\"mg/dL\",\"referenceMin\":0,\"referenceMax\":200,\"status\":\"normal\",\"source\":\"practice\",\"collectedDate\":\"2024-08-18\",\"resultDate\":\"2024-08-20\",\"orderingProvider\":\"Dr. Angela Brooks\",\"category\":\"lipid\"}"
+              },
+              {
+                "url": "entry",
+                "valueString": "{\"testName\":\"LDL Cholesterol\",\"testCode\":\"2089-1\",\"value\":116,\"unit\":\"mg/dL\",\"referenceMin\":0,\"referenceMax\":100,\"status\":\"high\",\"source\":\"practice\",\"collectedDate\":\"2024-08-18\",\"resultDate\":\"2024-08-20\",\"orderingProvider\":\"Dr. Angela Brooks\",\"category\":\"lipid\"}"
+              },
+              {
+                "url": "entry",
+                "valueString": "{\"testName\":\"BUN\",\"testCode\":\"3094-0\",\"value\":24,\"unit\":\"mg/dL\",\"referenceMin\":7,\"referenceMax\":20,\"status\":\"high\",\"source\":\"practice\",\"collectedDate\":\"2025-02-14\",\"resultDate\":\"2025-02-16\",\"orderingProvider\":\"Dr. Angela Brooks\",\"category\":\"renal\"}"
+              },
+              {
+                "url": "entry",
+                "valueString": "{\"testName\":\"INR\",\"testCode\":\"6301-6\",\"value\":2.3,\"unit\":\"ratio\",\"referenceMin\":2,\"referenceMax\":3,\"status\":\"high\",\"source\":\"practice\",\"collectedDate\":\"2025-02-14\",\"resultDate\":\"2025-02-16\",\"orderingProvider\":\"Dr. Angela Brooks\",\"category\":\"hematology\"}"
+              },
+              {
+                "url": "entry",
+                "valueString": "{\"testName\":\"Potassium\",\"testCode\":\"2823-3\",\"value\":4.4,\"unit\":\"mEq/L\",\"referenceMin\":3.5,\"referenceMax\":5,\"status\":\"normal\",\"source\":\"practice\",\"collectedDate\":\"2025-02-14\",\"resultDate\":\"2025-02-16\",\"orderingProvider\":\"Dr. Angela Brooks\",\"category\":\"metabolic\"}"
+              },
+              {
+                "url": "entry",
+                "valueString": "{\"testName\":\"Total Cholesterol\",\"testCode\":\"2093-3\",\"value\":212,\"unit\":\"mg/dL\",\"referenceMin\":0,\"referenceMax\":200,\"status\":\"normal\",\"source\":\"practice\",\"collectedDate\":\"2025-02-14\",\"resultDate\":\"2025-02-16\",\"orderingProvider\":\"Dr. Angela Brooks\",\"category\":\"lipid\"}"
+              },
+              {
+                "url": "entry",
+                "valueString": "{\"testName\":\"LDL Cholesterol\",\"testCode\":\"2089-1\",\"value\":109,\"unit\":\"mg/dL\",\"referenceMin\":0,\"referenceMax\":100,\"status\":\"high\",\"source\":\"practice\",\"collectedDate\":\"2025-02-14\",\"resultDate\":\"2025-02-16\",\"orderingProvider\":\"Dr. Angela Brooks\",\"category\":\"lipid\"}"
+              },
+              {
+                "url": "entry",
+                "valueString": "{\"testName\":\"BUN\",\"testCode\":\"3094-0\",\"value\":22,\"unit\":\"mg/dL\",\"referenceMin\":7,\"referenceMax\":20,\"status\":\"high\",\"source\":\"practice\",\"collectedDate\":\"2025-08-17\",\"resultDate\":\"2025-08-19\",\"orderingProvider\":\"Dr. Angela Brooks\",\"category\":\"renal\"}"
+              },
+              {
+                "url": "entry",
+                "valueString": "{\"testName\":\"INR\",\"testCode\":\"6301-6\",\"value\":3,\"unit\":\"ratio\",\"referenceMin\":2,\"referenceMax\":3,\"status\":\"normal\",\"source\":\"practice\",\"collectedDate\":\"2025-08-17\",\"resultDate\":\"2025-08-19\",\"orderingProvider\":\"Dr. Angela Brooks\",\"category\":\"hematology\"}"
+              },
+              {
+                "url": "entry",
+                "valueString": "{\"testName\":\"Potassium\",\"testCode\":\"2823-3\",\"value\":4.6,\"unit\":\"mEq/L\",\"referenceMin\":3.5,\"referenceMax\":5,\"status\":\"normal\",\"source\":\"practice\",\"collectedDate\":\"2025-08-17\",\"resultDate\":\"2025-08-19\",\"orderingProvider\":\"Dr. Angela Brooks\",\"category\":\"metabolic\"}"
+              },
+              {
+                "url": "entry",
+                "valueString": "{\"testName\":\"Total Cholesterol\",\"testCode\":\"2093-3\",\"value\":215,\"unit\":\"mg/dL\",\"referenceMin\":0,\"referenceMax\":200,\"status\":\"high\",\"source\":\"practice\",\"collectedDate\":\"2025-08-17\",\"resultDate\":\"2025-08-19\",\"orderingProvider\":\"Dr. Angela Brooks\",\"category\":\"lipid\"}"
+              },
+              {
+                "url": "entry",
+                "valueString": "{\"testName\":\"LDL Cholesterol\",\"testCode\":\"2089-1\",\"value\":128,\"unit\":\"mg/dL\",\"referenceMin\":0,\"referenceMax\":100,\"status\":\"normal\",\"source\":\"practice\",\"collectedDate\":\"2025-08-17\",\"resultDate\":\"2025-08-19\",\"orderingProvider\":\"Dr. Angela Brooks\",\"category\":\"lipid\"}"
+              }
+            ]
+          },
+          {
+            "url": "urn:easy-health:medication-history",
+            "extension": [
+              {
+                "url": "entry",
+                "valueString": "{\"medicationName\":\"Eliquis 2.5mg BID\",\"genericName\":\"Apixaban\",\"dosage\":\"2.5mg\",\"frequency\":\"twice daily\",\"route\":\"oral\",\"prescriber\":\"Dr. Angela Brooks\",\"startDate\":\"2022-03-15\",\"endDate\":\"2024-01-10\",\"status\":\"changed\",\"source\":\"practice\",\"category\":\"anticoagulant\",\"reason\":\"Atrial Fibrillation\",\"changeType\":\"dose_increase\",\"changeReason\":\"Subtherapeutic INR, dose increased to 5mg\"}"
+              },
+              {
+                "url": "entry",
+                "valueString": "{\"medicationName\":\"Eliquis 5mg BID\",\"genericName\":\"Apixaban\",\"dosage\":\"5mg\",\"frequency\":\"twice daily\",\"route\":\"oral\",\"prescriber\":\"Dr. Angela Brooks\",\"startDate\":\"2024-01-10\",\"endDate\":null,\"status\":\"active\",\"source\":\"practice\",\"category\":\"anticoagulant\",\"reason\":\"Atrial Fibrillation\",\"changeType\":null,\"changeReason\":null}"
+              },
+              {
+                "url": "entry",
+                "valueString": "{\"medicationName\":\"Metformin 500mg BID\",\"genericName\":\"Metformin\",\"dosage\":\"500mg\",\"frequency\":\"twice daily\",\"route\":\"oral\",\"prescriber\":\"Dr. Angela Brooks\",\"startDate\":\"2020-06-01\",\"endDate\":\"2023-09-15\",\"status\":\"changed\",\"source\":\"practice\",\"category\":\"diabetes\",\"reason\":\"Type 2 Diabetes\",\"changeType\":\"dose_increase\",\"changeReason\":\"A1c above target, dose increased to 1000mg\"}"
+              },
+              {
+                "url": "entry",
+                "valueString": "{\"medicationName\":\"Metformin 1000mg BID\",\"genericName\":\"Metformin\",\"dosage\":\"1000mg\",\"frequency\":\"twice daily\",\"route\":\"oral\",\"prescriber\":\"Dr. Angela Brooks\",\"startDate\":\"2023-09-15\",\"endDate\":null,\"status\":\"active\",\"source\":\"practice\",\"category\":\"diabetes\",\"reason\":\"Type 2 Diabetes\",\"changeType\":null,\"changeReason\":null}"
+              },
+              {
+                "url": "entry",
+                "valueString": "{\"medicationName\":\"Losartan 50mg daily\",\"genericName\":\"Losartan\",\"dosage\":\"50mg\",\"frequency\":\"once daily\",\"route\":\"oral\",\"prescriber\":\"Dr. Angela Brooks\",\"startDate\":\"2021-01-20\",\"endDate\":null,\"status\":\"active\",\"source\":\"practice\",\"category\":\"cardiovascular\",\"reason\":\"Hypertension, CKD nephroprotection\",\"changeType\":null,\"changeReason\":null}"
+              },
+              {
+                "url": "entry",
+                "valueString": "{\"medicationName\":\"Tamsulosin 0.4mg daily\",\"genericName\":\"Tamsulosin\",\"dosage\":\"0.4mg\",\"frequency\":\"once daily\",\"route\":\"oral\",\"prescriber\":\"Dr. Angela Brooks\",\"startDate\":\"2023-04-10\",\"endDate\":null,\"status\":\"active\",\"source\":\"practice\",\"category\":\"other\",\"reason\":\"Benign Prostatic Hyperplasia\",\"changeType\":null,\"changeReason\":null}"
+              },
+              {
+                "url": "entry",
+                "valueString": "{\"medicationName\":\"Atorvastatin 20mg daily\",\"genericName\":\"Atorvastatin\",\"dosage\":\"20mg\",\"frequency\":\"once daily\",\"route\":\"oral\",\"prescriber\":\"Dr. Angela Brooks\",\"startDate\":\"2020-06-01\",\"endDate\":\"2024-05-20\",\"status\":\"changed\",\"source\":\"practice\",\"category\":\"cardiovascular\",\"reason\":\"Hyperlipidemia\",\"changeType\":\"dose_increase\",\"changeReason\":\"LDL not at goal, increased to 40mg\"}"
+              },
+              {
+                "url": "entry",
+                "valueString": "{\"medicationName\":\"Atorvastatin 40mg daily\",\"genericName\":\"Atorvastatin\",\"dosage\":\"40mg\",\"frequency\":\"once daily\",\"route\":\"oral\",\"prescriber\":\"Dr. Angela Brooks\",\"startDate\":\"2024-05-20\",\"endDate\":null,\"status\":\"active\",\"source\":\"practice\",\"category\":\"cardiovascular\",\"reason\":\"Hyperlipidemia\",\"changeType\":null,\"changeReason\":null}"
+              }
+            ]
           }
         ]
       },
@@ -336,7 +666,9 @@
           ]
         },
         "type": "allergy",
-        "category": ["medication"],
+        "category": [
+          "medication"
+        ],
         "code": {
           "text": "Iodine contrast dye"
         },
@@ -373,7 +705,9 @@
           ]
         },
         "type": "allergy",
-        "category": ["medication"],
+        "category": [
+          "medication"
+        ],
         "code": {
           "coding": [
             {
@@ -593,7 +927,9 @@
           {
             "use": "official",
             "family": "Robinson",
-            "given": ["Beatrice"]
+            "given": [
+              "Beatrice"
+            ]
           }
         ],
         "birthDate": "1948-04-28",
@@ -612,7 +948,9 @@
         "address": [
           {
             "use": "home",
-            "line": ["567 Sunrise Court"],
+            "line": [
+              "567 Sunrise Court"
+            ],
             "city": "Springfield",
             "state": "IL",
             "postalCode": "62705"
@@ -627,39 +965,341 @@
           {
             "url": "urn:easy-health:conditions",
             "extension": [
-              { "url": "condition", "valueString": "COPD" },
-              { "url": "condition", "valueString": "Osteoporosis" },
-              { "url": "condition", "valueString": "Gastroesophageal Reflux" },
-              { "url": "condition", "valueString": "Mild Cognitive Impairment" }
+              {
+                "url": "condition",
+                "valueString": "COPD"
+              },
+              {
+                "url": "condition",
+                "valueString": "Osteoporosis"
+              },
+              {
+                "url": "condition",
+                "valueString": "Gastroesophageal Reflux"
+              },
+              {
+                "url": "condition",
+                "valueString": "Mild Cognitive Impairment"
+              }
             ]
           },
           {
             "url": "urn:easy-health:medications",
             "extension": [
-              { "url": "medication", "valueString": "Tiotropium 18mcg inhaler daily" },
-              { "url": "medication", "valueString": "Alendronate 70mg weekly" },
-              { "url": "medication", "valueString": "Omeprazole 20mg daily" },
-              { "url": "medication", "valueString": "Calcium/Vitamin D supplement" },
-              { "url": "medication", "valueString": "Albuterol PRN" }
+              {
+                "url": "medication",
+                "valueString": "Tiotropium 18mcg inhaler daily"
+              },
+              {
+                "url": "medication",
+                "valueString": "Alendronate 70mg weekly"
+              },
+              {
+                "url": "medication",
+                "valueString": "Omeprazole 20mg daily"
+              },
+              {
+                "url": "medication",
+                "valueString": "Calcium/Vitamin D supplement"
+              },
+              {
+                "url": "medication",
+                "valueString": "Albuterol PRN"
+              }
             ]
           },
           {
             "url": "urn:easy-health:allergies",
             "extension": [
-              { "url": "allergy", "valueString": "Latex" }
+              {
+                "url": "allergy",
+                "valueString": "Latex"
+              }
             ]
           },
           {
             "url": "urn:easy-health:risk-flags",
             "extension": [
-              { "url": "flag", "valueString": "Cognitive decline" },
-              { "url": "flag", "valueString": "Fall risk" },
-              { "url": "flag", "valueString": "Oxygen PRN" }
+              {
+                "url": "flag",
+                "valueString": "Cognitive decline"
+              },
+              {
+                "url": "flag",
+                "valueString": "Fall risk"
+              },
+              {
+                "url": "flag",
+                "valueString": "Oxygen PRN"
+              }
             ]
           },
           {
             "url": "urn:easy-health:insurance-plan",
             "valueString": "MA-PLAN-001"
+          },
+          {
+            "url": "urn:easy-health:vitals-history",
+            "extension": [
+              {
+                "url": "entry",
+                "valueString": "{\"measureDate\":\"2024-02-12\",\"systolic\":118,\"diastolic\":73,\"heartRate\":80,\"oxygenSaturation\":92,\"weight\":128.5,\"bmi\":22.2,\"temperature\":98.2,\"respiratoryRate\":19,\"source\":\"hie\"}"
+              },
+              {
+                "url": "entry",
+                "valueString": "{\"measureDate\":\"2024-05-08\",\"systolic\":127,\"diastolic\":80,\"heartRate\":76,\"oxygenSaturation\":94,\"weight\":127.1,\"bmi\":21.6,\"temperature\":97.5,\"respiratoryRate\":20,\"source\":\"practice\"}"
+              },
+              {
+                "url": "entry",
+                "valueString": "{\"measureDate\":\"2024-08-14\",\"systolic\":130,\"diastolic\":82,\"heartRate\":81,\"oxygenSaturation\":93,\"weight\":127.9,\"bmi\":21.6,\"temperature\":98.4,\"respiratoryRate\":22,\"source\":\"practice\"}"
+              },
+              {
+                "url": "entry",
+                "valueString": "{\"measureDate\":\"2024-11-06\",\"systolic\":119,\"diastolic\":82,\"heartRate\":77,\"oxygenSaturation\":92,\"weight\":128.5,\"bmi\":22.2,\"temperature\":97.8,\"respiratoryRate\":19,\"source\":\"hie\"}"
+              },
+              {
+                "url": "entry",
+                "valueString": "{\"measureDate\":\"2025-02-10\",\"systolic\":121,\"diastolic\":76,\"heartRate\":74,\"oxygenSaturation\":92,\"weight\":129.1,\"bmi\":22.1,\"temperature\":98.5,\"respiratoryRate\":19,\"source\":\"practice\"}"
+              },
+              {
+                "url": "entry",
+                "valueString": "{\"measureDate\":\"2025-05-07\",\"systolic\":118,\"diastolic\":77,\"heartRate\":78,\"oxygenSaturation\":93,\"weight\":126.5,\"bmi\":22.4,\"temperature\":98.3,\"respiratoryRate\":19,\"source\":\"practice\"}"
+              },
+              {
+                "url": "entry",
+                "valueString": "{\"measureDate\":\"2025-08-13\",\"systolic\":130,\"diastolic\":76,\"heartRate\":73,\"oxygenSaturation\":93,\"weight\":128.5,\"bmi\":21.7,\"temperature\":98.2,\"respiratoryRate\":20,\"source\":\"hie\"}"
+              },
+              {
+                "url": "entry",
+                "valueString": "{\"measureDate\":\"2025-11-05\",\"systolic\":124,\"diastolic\":77,\"heartRate\":74,\"oxygenSaturation\":94,\"weight\":126.1,\"bmi\":22.2,\"temperature\":98.4,\"respiratoryRate\":20,\"source\":\"practice\"}"
+              }
+            ]
+          },
+          {
+            "url": "urn:easy-health:lab-results",
+            "extension": [
+              {
+                "url": "entry",
+                "valueString": "{\"testName\":\"Calcium\",\"testCode\":\"17861-6\",\"value\":9,\"unit\":\"mg/dL\",\"referenceMin\":8.5,\"referenceMax\":10.5,\"status\":\"low\",\"source\":\"practice\",\"collectedDate\":\"2024-03-05\",\"resultDate\":\"2024-03-07\",\"orderingProvider\":\"Dr. Thomas Wright\",\"category\":\"metabolic\"}"
+              },
+              {
+                "url": "entry",
+                "valueString": "{\"testName\":\"Vitamin D, 25-Hydroxy\",\"testCode\":\"1989-3\",\"value\":23,\"unit\":\"ng/mL\",\"referenceMin\":30,\"referenceMax\":100,\"status\":\"low\",\"source\":\"practice\",\"collectedDate\":\"2024-03-05\",\"resultDate\":\"2024-03-07\",\"orderingProvider\":\"Dr. Thomas Wright\",\"category\":\"metabolic\"}"
+              },
+              {
+                "url": "entry",
+                "valueString": "{\"testName\":\"Alkaline Phosphatase\",\"testCode\":\"6768-6\",\"value\":82,\"unit\":\"U/L\",\"referenceMin\":44,\"referenceMax\":147,\"status\":\"normal\",\"source\":\"practice\",\"collectedDate\":\"2024-03-05\",\"resultDate\":\"2024-03-07\",\"orderingProvider\":\"Dr. Thomas Wright\",\"category\":\"hepatic\"}"
+              },
+              {
+                "url": "entry",
+                "valueString": "{\"testName\":\"Calcium\",\"testCode\":\"17861-6\",\"value\":8.5,\"unit\":\"mg/dL\",\"referenceMin\":8.5,\"referenceMax\":10.5,\"status\":\"low\",\"source\":\"practice\",\"collectedDate\":\"2024-06-10\",\"resultDate\":\"2024-06-12\",\"orderingProvider\":\"Dr. Thomas Wright\",\"category\":\"metabolic\"}"
+              },
+              {
+                "url": "entry",
+                "valueString": "{\"testName\":\"Vitamin D, 25-Hydroxy\",\"testCode\":\"1989-3\",\"value\":18,\"unit\":\"ng/mL\",\"referenceMin\":30,\"referenceMax\":100,\"status\":\"low\",\"source\":\"practice\",\"collectedDate\":\"2024-06-10\",\"resultDate\":\"2024-06-12\",\"orderingProvider\":\"Dr. Thomas Wright\",\"category\":\"metabolic\"}"
+              },
+              {
+                "url": "entry",
+                "valueString": "{\"testName\":\"Alkaline Phosphatase\",\"testCode\":\"6768-6\",\"value\":120,\"unit\":\"U/L\",\"referenceMin\":44,\"referenceMax\":147,\"status\":\"normal\",\"source\":\"practice\",\"collectedDate\":\"2024-06-10\",\"resultDate\":\"2024-06-12\",\"orderingProvider\":\"Dr. Thomas Wright\",\"category\":\"hepatic\"}"
+              },
+              {
+                "url": "entry",
+                "valueString": "{\"testName\":\"Calcium\",\"testCode\":\"17861-6\",\"value\":8.3,\"unit\":\"mg/dL\",\"referenceMin\":8.5,\"referenceMax\":10.5,\"status\":\"normal\",\"source\":\"practice\",\"collectedDate\":\"2024-09-08\",\"resultDate\":\"2024-09-10\",\"orderingProvider\":\"Dr. Thomas Wright\",\"category\":\"metabolic\"}"
+              },
+              {
+                "url": "entry",
+                "valueString": "{\"testName\":\"Vitamin D, 25-Hydroxy\",\"testCode\":\"1989-3\",\"value\":19,\"unit\":\"ng/mL\",\"referenceMin\":30,\"referenceMax\":100,\"status\":\"low\",\"source\":\"practice\",\"collectedDate\":\"2024-09-08\",\"resultDate\":\"2024-09-10\",\"orderingProvider\":\"Dr. Thomas Wright\",\"category\":\"metabolic\"}"
+              },
+              {
+                "url": "entry",
+                "valueString": "{\"testName\":\"Alkaline Phosphatase\",\"testCode\":\"6768-6\",\"value\":118,\"unit\":\"U/L\",\"referenceMin\":44,\"referenceMax\":147,\"status\":\"normal\",\"source\":\"practice\",\"collectedDate\":\"2024-09-08\",\"resultDate\":\"2024-09-10\",\"orderingProvider\":\"Dr. Thomas Wright\",\"category\":\"hepatic\"}"
+              },
+              {
+                "url": "entry",
+                "valueString": "{\"testName\":\"Calcium\",\"testCode\":\"17861-6\",\"value\":8.3,\"unit\":\"mg/dL\",\"referenceMin\":8.5,\"referenceMax\":10.5,\"status\":\"normal\",\"source\":\"practice\",\"collectedDate\":\"2024-12-04\",\"resultDate\":\"2024-12-06\",\"orderingProvider\":\"Dr. Thomas Wright\",\"category\":\"metabolic\"}"
+              },
+              {
+                "url": "entry",
+                "valueString": "{\"testName\":\"Vitamin D, 25-Hydroxy\",\"testCode\":\"1989-3\",\"value\":18,\"unit\":\"ng/mL\",\"referenceMin\":30,\"referenceMax\":100,\"status\":\"low\",\"source\":\"practice\",\"collectedDate\":\"2024-12-04\",\"resultDate\":\"2024-12-06\",\"orderingProvider\":\"Dr. Thomas Wright\",\"category\":\"metabolic\"}"
+              },
+              {
+                "url": "entry",
+                "valueString": "{\"testName\":\"Alkaline Phosphatase\",\"testCode\":\"6768-6\",\"value\":112,\"unit\":\"U/L\",\"referenceMin\":44,\"referenceMax\":147,\"status\":\"normal\",\"source\":\"practice\",\"collectedDate\":\"2024-12-04\",\"resultDate\":\"2024-12-06\",\"orderingProvider\":\"Dr. Thomas Wright\",\"category\":\"hepatic\"}"
+              },
+              {
+                "url": "entry",
+                "valueString": "{\"testName\":\"Calcium\",\"testCode\":\"17861-6\",\"value\":8.9,\"unit\":\"mg/dL\",\"referenceMin\":8.5,\"referenceMax\":10.5,\"status\":\"normal\",\"source\":\"practice\",\"collectedDate\":\"2025-03-06\",\"resultDate\":\"2025-03-08\",\"orderingProvider\":\"Dr. Thomas Wright\",\"category\":\"metabolic\"}"
+              },
+              {
+                "url": "entry",
+                "valueString": "{\"testName\":\"Vitamin D, 25-Hydroxy\",\"testCode\":\"1989-3\",\"value\":21,\"unit\":\"ng/mL\",\"referenceMin\":30,\"referenceMax\":100,\"status\":\"low\",\"source\":\"practice\",\"collectedDate\":\"2025-03-06\",\"resultDate\":\"2025-03-08\",\"orderingProvider\":\"Dr. Thomas Wright\",\"category\":\"metabolic\"}"
+              },
+              {
+                "url": "entry",
+                "valueString": "{\"testName\":\"Alkaline Phosphatase\",\"testCode\":\"6768-6\",\"value\":96,\"unit\":\"U/L\",\"referenceMin\":44,\"referenceMax\":147,\"status\":\"normal\",\"source\":\"practice\",\"collectedDate\":\"2025-03-06\",\"resultDate\":\"2025-03-08\",\"orderingProvider\":\"Dr. Thomas Wright\",\"category\":\"hepatic\"}"
+              },
+              {
+                "url": "entry",
+                "valueString": "{\"testName\":\"Calcium\",\"testCode\":\"17861-6\",\"value\":8.5,\"unit\":\"mg/dL\",\"referenceMin\":8.5,\"referenceMax\":10.5,\"status\":\"normal\",\"source\":\"practice\",\"collectedDate\":\"2025-06-09\",\"resultDate\":\"2025-06-11\",\"orderingProvider\":\"Dr. Thomas Wright\",\"category\":\"metabolic\"}"
+              },
+              {
+                "url": "entry",
+                "valueString": "{\"testName\":\"Vitamin D, 25-Hydroxy\",\"testCode\":\"1989-3\",\"value\":18,\"unit\":\"ng/mL\",\"referenceMin\":30,\"referenceMax\":100,\"status\":\"low\",\"source\":\"practice\",\"collectedDate\":\"2025-06-09\",\"resultDate\":\"2025-06-11\",\"orderingProvider\":\"Dr. Thomas Wright\",\"category\":\"metabolic\"}"
+              },
+              {
+                "url": "entry",
+                "valueString": "{\"testName\":\"Alkaline Phosphatase\",\"testCode\":\"6768-6\",\"value\":102,\"unit\":\"U/L\",\"referenceMin\":44,\"referenceMax\":147,\"status\":\"normal\",\"source\":\"practice\",\"collectedDate\":\"2025-06-09\",\"resultDate\":\"2025-06-11\",\"orderingProvider\":\"Dr. Thomas Wright\",\"category\":\"hepatic\"}"
+              },
+              {
+                "url": "entry",
+                "valueString": "{\"testName\":\"Calcium\",\"testCode\":\"17861-6\",\"value\":8.5,\"unit\":\"mg/dL\",\"referenceMin\":8.5,\"referenceMax\":10.5,\"status\":\"normal\",\"source\":\"practice\",\"collectedDate\":\"2025-09-07\",\"resultDate\":\"2025-09-09\",\"orderingProvider\":\"Dr. Thomas Wright\",\"category\":\"metabolic\"}"
+              },
+              {
+                "url": "entry",
+                "valueString": "{\"testName\":\"Vitamin D, 25-Hydroxy\",\"testCode\":\"1989-3\",\"value\":25,\"unit\":\"ng/mL\",\"referenceMin\":30,\"referenceMax\":100,\"status\":\"low\",\"source\":\"practice\",\"collectedDate\":\"2025-09-07\",\"resultDate\":\"2025-09-09\",\"orderingProvider\":\"Dr. Thomas Wright\",\"category\":\"metabolic\"}"
+              },
+              {
+                "url": "entry",
+                "valueString": "{\"testName\":\"Alkaline Phosphatase\",\"testCode\":\"6768-6\",\"value\":82,\"unit\":\"U/L\",\"referenceMin\":44,\"referenceMax\":147,\"status\":\"normal\",\"source\":\"practice\",\"collectedDate\":\"2025-09-07\",\"resultDate\":\"2025-09-09\",\"orderingProvider\":\"Dr. Thomas Wright\",\"category\":\"hepatic\"}"
+              },
+              {
+                "url": "entry",
+                "valueString": "{\"testName\":\"Calcium\",\"testCode\":\"17861-6\",\"value\":8.8,\"unit\":\"mg/dL\",\"referenceMin\":8.5,\"referenceMax\":10.5,\"status\":\"normal\",\"source\":\"practice\",\"collectedDate\":\"2025-12-03\",\"resultDate\":\"2025-12-05\",\"orderingProvider\":\"Dr. Thomas Wright\",\"category\":\"metabolic\"}"
+              },
+              {
+                "url": "entry",
+                "valueString": "{\"testName\":\"Vitamin D, 25-Hydroxy\",\"testCode\":\"1989-3\",\"value\":28,\"unit\":\"ng/mL\",\"referenceMin\":30,\"referenceMax\":100,\"status\":\"low\",\"source\":\"practice\",\"collectedDate\":\"2025-12-03\",\"resultDate\":\"2025-12-05\",\"orderingProvider\":\"Dr. Thomas Wright\",\"category\":\"metabolic\"}"
+              },
+              {
+                "url": "entry",
+                "valueString": "{\"testName\":\"Alkaline Phosphatase\",\"testCode\":\"6768-6\",\"value\":106,\"unit\":\"U/L\",\"referenceMin\":44,\"referenceMax\":147,\"status\":\"normal\",\"source\":\"practice\",\"collectedDate\":\"2025-12-03\",\"resultDate\":\"2025-12-05\",\"orderingProvider\":\"Dr. Thomas Wright\",\"category\":\"hepatic\"}"
+              },
+              {
+                "url": "entry",
+                "valueString": "{\"testName\":\"Albumin\",\"testCode\":\"1751-7\",\"value\":3.2,\"unit\":\"g/dL\",\"referenceMin\":3.5,\"referenceMax\":5.5,\"status\":\"normal\",\"source\":\"practice\",\"collectedDate\":\"2024-03-05\",\"resultDate\":\"2024-03-07\",\"orderingProvider\":\"Dr. Thomas Wright\",\"category\":\"metabolic\"}"
+              },
+              {
+                "url": "entry",
+                "valueString": "{\"testName\":\"TSH\",\"testCode\":\"3016-3\",\"value\":2.5,\"unit\":\"mIU/L\",\"referenceMin\":0.4,\"referenceMax\":4,\"status\":\"normal\",\"source\":\"practice\",\"collectedDate\":\"2024-03-05\",\"resultDate\":\"2024-03-07\",\"orderingProvider\":\"Dr. Thomas Wright\",\"category\":\"thyroid\"}"
+              },
+              {
+                "url": "entry",
+                "valueString": "{\"testName\":\"WBC\",\"testCode\":\"6690-2\",\"value\":7.7,\"unit\":\"K/uL\",\"referenceMin\":4.5,\"referenceMax\":11,\"status\":\"normal\",\"source\":\"practice\",\"collectedDate\":\"2024-03-05\",\"resultDate\":\"2024-03-07\",\"orderingProvider\":\"Dr. Thomas Wright\",\"category\":\"hematology\"}"
+              },
+              {
+                "url": "entry",
+                "valueString": "{\"testName\":\"Hemoglobin\",\"testCode\":\"718-7\",\"value\":12.2,\"unit\":\"g/dL\",\"referenceMin\":12,\"referenceMax\":16,\"status\":\"low\",\"source\":\"practice\",\"collectedDate\":\"2024-03-05\",\"resultDate\":\"2024-03-07\",\"orderingProvider\":\"Dr. Thomas Wright\",\"category\":\"hematology\"}"
+              },
+              {
+                "url": "entry",
+                "valueString": "{\"testName\":\"Sodium\",\"testCode\":\"2951-2\",\"value\":142,\"unit\":\"mEq/L\",\"referenceMin\":136,\"referenceMax\":145,\"status\":\"normal\",\"source\":\"practice\",\"collectedDate\":\"2024-03-05\",\"resultDate\":\"2024-03-07\",\"orderingProvider\":\"Dr. Thomas Wright\",\"category\":\"metabolic\"}"
+              },
+              {
+                "url": "entry",
+                "valueString": "{\"testName\":\"Potassium\",\"testCode\":\"2823-3\",\"value\":4,\"unit\":\"mEq/L\",\"referenceMin\":3.5,\"referenceMax\":5,\"status\":\"normal\",\"source\":\"practice\",\"collectedDate\":\"2024-03-05\",\"resultDate\":\"2024-03-07\",\"orderingProvider\":\"Dr. Thomas Wright\",\"category\":\"metabolic\"}"
+              },
+              {
+                "url": "entry",
+                "valueString": "{\"testName\":\"Albumin\",\"testCode\":\"1751-7\",\"value\":3.2,\"unit\":\"g/dL\",\"referenceMin\":3.5,\"referenceMax\":5.5,\"status\":\"normal\",\"source\":\"practice\",\"collectedDate\":\"2024-09-08\",\"resultDate\":\"2024-09-10\",\"orderingProvider\":\"Dr. Thomas Wright\",\"category\":\"metabolic\"}"
+              },
+              {
+                "url": "entry",
+                "valueString": "{\"testName\":\"TSH\",\"testCode\":\"3016-3\",\"value\":3.3,\"unit\":\"mIU/L\",\"referenceMin\":0.4,\"referenceMax\":4,\"status\":\"normal\",\"source\":\"practice\",\"collectedDate\":\"2024-09-08\",\"resultDate\":\"2024-09-10\",\"orderingProvider\":\"Dr. Thomas Wright\",\"category\":\"thyroid\"}"
+              },
+              {
+                "url": "entry",
+                "valueString": "{\"testName\":\"WBC\",\"testCode\":\"6690-2\",\"value\":9.5,\"unit\":\"K/uL\",\"referenceMin\":4.5,\"referenceMax\":11,\"status\":\"normal\",\"source\":\"practice\",\"collectedDate\":\"2024-09-08\",\"resultDate\":\"2024-09-10\",\"orderingProvider\":\"Dr. Thomas Wright\",\"category\":\"hematology\"}"
+              },
+              {
+                "url": "entry",
+                "valueString": "{\"testName\":\"Hemoglobin\",\"testCode\":\"718-7\",\"value\":12.8,\"unit\":\"g/dL\",\"referenceMin\":12,\"referenceMax\":16,\"status\":\"low\",\"source\":\"practice\",\"collectedDate\":\"2024-09-08\",\"resultDate\":\"2024-09-10\",\"orderingProvider\":\"Dr. Thomas Wright\",\"category\":\"hematology\"}"
+              },
+              {
+                "url": "entry",
+                "valueString": "{\"testName\":\"Sodium\",\"testCode\":\"2951-2\",\"value\":139,\"unit\":\"mEq/L\",\"referenceMin\":136,\"referenceMax\":145,\"status\":\"normal\",\"source\":\"practice\",\"collectedDate\":\"2024-09-08\",\"resultDate\":\"2024-09-10\",\"orderingProvider\":\"Dr. Thomas Wright\",\"category\":\"metabolic\"}"
+              },
+              {
+                "url": "entry",
+                "valueString": "{\"testName\":\"Potassium\",\"testCode\":\"2823-3\",\"value\":4.2,\"unit\":\"mEq/L\",\"referenceMin\":3.5,\"referenceMax\":5,\"status\":\"normal\",\"source\":\"practice\",\"collectedDate\":\"2024-09-08\",\"resultDate\":\"2024-09-10\",\"orderingProvider\":\"Dr. Thomas Wright\",\"category\":\"metabolic\"}"
+              },
+              {
+                "url": "entry",
+                "valueString": "{\"testName\":\"Albumin\",\"testCode\":\"1751-7\",\"value\":3.7,\"unit\":\"g/dL\",\"referenceMin\":3.5,\"referenceMax\":5.5,\"status\":\"low\",\"source\":\"practice\",\"collectedDate\":\"2025-03-06\",\"resultDate\":\"2025-03-08\",\"orderingProvider\":\"Dr. Thomas Wright\",\"category\":\"metabolic\"}"
+              },
+              {
+                "url": "entry",
+                "valueString": "{\"testName\":\"TSH\",\"testCode\":\"3016-3\",\"value\":2.4,\"unit\":\"mIU/L\",\"referenceMin\":0.4,\"referenceMax\":4,\"status\":\"normal\",\"source\":\"practice\",\"collectedDate\":\"2025-03-06\",\"resultDate\":\"2025-03-08\",\"orderingProvider\":\"Dr. Thomas Wright\",\"category\":\"thyroid\"}"
+              },
+              {
+                "url": "entry",
+                "valueString": "{\"testName\":\"WBC\",\"testCode\":\"6690-2\",\"value\":6.9,\"unit\":\"K/uL\",\"referenceMin\":4.5,\"referenceMax\":11,\"status\":\"normal\",\"source\":\"practice\",\"collectedDate\":\"2025-03-06\",\"resultDate\":\"2025-03-08\",\"orderingProvider\":\"Dr. Thomas Wright\",\"category\":\"hematology\"}"
+              },
+              {
+                "url": "entry",
+                "valueString": "{\"testName\":\"Hemoglobin\",\"testCode\":\"718-7\",\"value\":12,\"unit\":\"g/dL\",\"referenceMin\":12,\"referenceMax\":16,\"status\":\"low\",\"source\":\"practice\",\"collectedDate\":\"2025-03-06\",\"resultDate\":\"2025-03-08\",\"orderingProvider\":\"Dr. Thomas Wright\",\"category\":\"hematology\"}"
+              },
+              {
+                "url": "entry",
+                "valueString": "{\"testName\":\"Sodium\",\"testCode\":\"2951-2\",\"value\":140,\"unit\":\"mEq/L\",\"referenceMin\":136,\"referenceMax\":145,\"status\":\"normal\",\"source\":\"practice\",\"collectedDate\":\"2025-03-06\",\"resultDate\":\"2025-03-08\",\"orderingProvider\":\"Dr. Thomas Wright\",\"category\":\"metabolic\"}"
+              },
+              {
+                "url": "entry",
+                "valueString": "{\"testName\":\"Potassium\",\"testCode\":\"2823-3\",\"value\":4,\"unit\":\"mEq/L\",\"referenceMin\":3.5,\"referenceMax\":5,\"status\":\"normal\",\"source\":\"practice\",\"collectedDate\":\"2025-03-06\",\"resultDate\":\"2025-03-08\",\"orderingProvider\":\"Dr. Thomas Wright\",\"category\":\"metabolic\"}"
+              },
+              {
+                "url": "entry",
+                "valueString": "{\"testName\":\"Albumin\",\"testCode\":\"1751-7\",\"value\":3.7,\"unit\":\"g/dL\",\"referenceMin\":3.5,\"referenceMax\":5.5,\"status\":\"normal\",\"source\":\"practice\",\"collectedDate\":\"2025-09-07\",\"resultDate\":\"2025-09-09\",\"orderingProvider\":\"Dr. Thomas Wright\",\"category\":\"metabolic\"}"
+              },
+              {
+                "url": "entry",
+                "valueString": "{\"testName\":\"TSH\",\"testCode\":\"3016-3\",\"value\":1.6,\"unit\":\"mIU/L\",\"referenceMin\":0.4,\"referenceMax\":4,\"status\":\"normal\",\"source\":\"practice\",\"collectedDate\":\"2025-09-07\",\"resultDate\":\"2025-09-09\",\"orderingProvider\":\"Dr. Thomas Wright\",\"category\":\"thyroid\"}"
+              },
+              {
+                "url": "entry",
+                "valueString": "{\"testName\":\"WBC\",\"testCode\":\"6690-2\",\"value\":6.4,\"unit\":\"K/uL\",\"referenceMin\":4.5,\"referenceMax\":11,\"status\":\"normal\",\"source\":\"practice\",\"collectedDate\":\"2025-09-07\",\"resultDate\":\"2025-09-09\",\"orderingProvider\":\"Dr. Thomas Wright\",\"category\":\"hematology\"}"
+              },
+              {
+                "url": "entry",
+                "valueString": "{\"testName\":\"Hemoglobin\",\"testCode\":\"718-7\",\"value\":12.3,\"unit\":\"g/dL\",\"referenceMin\":12,\"referenceMax\":16,\"status\":\"normal\",\"source\":\"practice\",\"collectedDate\":\"2025-09-07\",\"resultDate\":\"2025-09-09\",\"orderingProvider\":\"Dr. Thomas Wright\",\"category\":\"hematology\"}"
+              },
+              {
+                "url": "entry",
+                "valueString": "{\"testName\":\"Sodium\",\"testCode\":\"2951-2\",\"value\":138,\"unit\":\"mEq/L\",\"referenceMin\":136,\"referenceMax\":145,\"status\":\"normal\",\"source\":\"practice\",\"collectedDate\":\"2025-09-07\",\"resultDate\":\"2025-09-09\",\"orderingProvider\":\"Dr. Thomas Wright\",\"category\":\"metabolic\"}"
+              },
+              {
+                "url": "entry",
+                "valueString": "{\"testName\":\"Potassium\",\"testCode\":\"2823-3\",\"value\":4.3,\"unit\":\"mEq/L\",\"referenceMin\":3.5,\"referenceMax\":5,\"status\":\"normal\",\"source\":\"practice\",\"collectedDate\":\"2025-09-07\",\"resultDate\":\"2025-09-09\",\"orderingProvider\":\"Dr. Thomas Wright\",\"category\":\"metabolic\"}"
+              }
+            ]
+          },
+          {
+            "url": "urn:easy-health:medication-history",
+            "extension": [
+              {
+                "url": "entry",
+                "valueString": "{\"medicationName\":\"Tiotropium 18mcg inhaler daily\",\"genericName\":\"Tiotropium\",\"dosage\":\"18mcg\",\"frequency\":\"once daily\",\"route\":\"inhalation\",\"prescriber\":\"Dr. Thomas Wright\",\"startDate\":\"2021-05-10\",\"endDate\":null,\"status\":\"active\",\"source\":\"practice\",\"category\":\"respiratory\",\"reason\":\"COPD maintenance\",\"changeType\":null,\"changeReason\":null}"
+              },
+              {
+                "url": "entry",
+                "valueString": "{\"medicationName\":\"Alendronate 70mg weekly\",\"genericName\":\"Alendronate\",\"dosage\":\"70mg\",\"frequency\":\"once weekly\",\"route\":\"oral\",\"prescriber\":\"Dr. Thomas Wright\",\"startDate\":\"2022-01-15\",\"endDate\":null,\"status\":\"active\",\"source\":\"practice\",\"category\":\"other\",\"reason\":\"Osteoporosis\",\"changeType\":null,\"changeReason\":null}"
+              },
+              {
+                "url": "entry",
+                "valueString": "{\"medicationName\":\"Omeprazole 20mg daily\",\"genericName\":\"Omeprazole\",\"dosage\":\"20mg\",\"frequency\":\"once daily\",\"route\":\"oral\",\"prescriber\":\"Dr. Thomas Wright\",\"startDate\":\"2022-08-20\",\"endDate\":null,\"status\":\"active\",\"source\":\"practice\",\"category\":\"gastrointestinal\",\"reason\":\"GERD, gastroprotection with Alendronate\",\"changeType\":null,\"changeReason\":null}"
+              },
+              {
+                "url": "entry",
+                "valueString": "{\"medicationName\":\"Calcium/Vitamin D 600mg/400IU\",\"genericName\":\"Calcium Carbonate/Cholecalciferol\",\"dosage\":\"600mg/400IU\",\"frequency\":\"twice daily\",\"route\":\"oral\",\"prescriber\":\"Dr. Thomas Wright\",\"startDate\":\"2022-01-15\",\"endDate\":null,\"status\":\"active\",\"source\":\"practice\",\"category\":\"other\",\"reason\":\"Osteoporosis supplementation\",\"changeType\":null,\"changeReason\":null}"
+              },
+              {
+                "url": "entry",
+                "valueString": "{\"medicationName\":\"Albuterol 90mcg inhaler PRN\",\"genericName\":\"Albuterol\",\"dosage\":\"90mcg/puff\",\"frequency\":\"as needed\",\"route\":\"inhalation\",\"prescriber\":\"Dr. Thomas Wright\",\"startDate\":\"2019-03-01\",\"endDate\":null,\"status\":\"active\",\"source\":\"practice\",\"category\":\"respiratory\",\"reason\":\"COPD rescue inhaler\",\"changeType\":null,\"changeReason\":null}"
+              },
+              {
+                "url": "entry",
+                "valueString": "{\"medicationName\":\"Fluticasone/Salmeterol 250/50 inhaler\",\"genericName\":\"Fluticasone/Salmeterol\",\"dosage\":\"250/50mcg\",\"frequency\":\"twice daily\",\"route\":\"inhalation\",\"prescriber\":\"Dr. Thomas Wright\",\"startDate\":\"2020-04-15\",\"endDate\":\"2021-05-10\",\"status\":\"discontinued\",\"source\":\"practice\",\"category\":\"respiratory\",\"reason\":\"COPD\",\"changeType\":\"switched\",\"changeReason\":\"Switched to Tiotropium for better COPD control\"}"
+              }
+            ]
           }
         ]
       },
@@ -913,7 +1553,9 @@
           ]
         },
         "type": "allergy",
-        "category": ["environment"],
+        "category": [
+          "environment"
+        ],
         "code": {
           "coding": [
             {
@@ -1113,7 +1755,9 @@
           {
             "use": "official",
             "family": "Williams",
-            "given": ["Robert"]
+            "given": [
+              "Robert"
+            ]
           }
         ],
         "birthDate": "1955-09-03",
@@ -1132,7 +1776,9 @@
         "address": [
           {
             "use": "home",
-            "line": ["890 Industrial Park Way"],
+            "line": [
+              "890 Industrial Park Way"
+            ],
             "city": "Springfield",
             "state": "IL",
             "postalCode": "62706"
@@ -1147,40 +1793,325 @@
           {
             "url": "urn:easy-health:conditions",
             "extension": [
-              { "url": "condition", "valueString": "Morbid Obesity" },
-              { "url": "condition", "valueString": "Obstructive Sleep Apnea" },
-              { "url": "condition", "valueString": "Major Depressive Disorder" },
-              { "url": "condition", "valueString": "Low Back Pain" },
-              { "url": "condition", "valueString": "Prediabetes" }
+              {
+                "url": "condition",
+                "valueString": "Morbid Obesity"
+              },
+              {
+                "url": "condition",
+                "valueString": "Obstructive Sleep Apnea"
+              },
+              {
+                "url": "condition",
+                "valueString": "Major Depressive Disorder"
+              },
+              {
+                "url": "condition",
+                "valueString": "Low Back Pain"
+              },
+              {
+                "url": "condition",
+                "valueString": "Prediabetes"
+              }
             ]
           },
           {
             "url": "urn:easy-health:medications",
             "extension": [
-              { "url": "medication", "valueString": "Sertraline 100mg daily" },
-              { "url": "medication", "valueString": "Gabapentin 300mg TID" },
-              { "url": "medication", "valueString": "Naproxen 500mg BID PRN" },
-              { "url": "medication", "valueString": "Melatonin 5mg nightly" }
+              {
+                "url": "medication",
+                "valueString": "Sertraline 100mg daily"
+              },
+              {
+                "url": "medication",
+                "valueString": "Gabapentin 300mg TID"
+              },
+              {
+                "url": "medication",
+                "valueString": "Naproxen 500mg BID PRN"
+              },
+              {
+                "url": "medication",
+                "valueString": "Melatonin 5mg nightly"
+              }
             ]
           },
           {
             "url": "urn:easy-health:allergies",
             "extension": [
-              { "url": "allergy", "valueString": "Amoxicillin" },
-              { "url": "allergy", "valueString": "NSAIDs (topical only)" }
+              {
+                "url": "allergy",
+                "valueString": "Amoxicillin"
+              },
+              {
+                "url": "allergy",
+                "valueString": "NSAIDs (topical only)"
+              }
             ]
           },
           {
             "url": "urn:easy-health:risk-flags",
             "extension": [
-              { "url": "flag", "valueString": "BMI > 40" },
-              { "url": "flag", "valueString": "Depression" },
-              { "url": "flag", "valueString": "Chronic pain" }
+              {
+                "url": "flag",
+                "valueString": "BMI > 40"
+              },
+              {
+                "url": "flag",
+                "valueString": "Depression"
+              },
+              {
+                "url": "flag",
+                "valueString": "Chronic pain"
+              }
             ]
           },
           {
             "url": "urn:easy-health:insurance-plan",
             "valueString": "ACA-PLAN-001"
+          },
+          {
+            "url": "urn:easy-health:vitals-history",
+            "extension": [
+              {
+                "url": "entry",
+                "valueString": "{\"measureDate\":\"2024-02-12\",\"systolic\":148,\"diastolic\":96,\"heartRate\":92,\"oxygenSaturation\":95,\"weight\":308.9,\"bmi\":43.9,\"temperature\":98.3,\"respiratoryRate\":16,\"source\":\"hie\"}"
+              },
+              {
+                "url": "entry",
+                "valueString": "{\"measureDate\":\"2024-05-08\",\"systolic\":142,\"diastolic\":88,\"heartRate\":88,\"oxygenSaturation\":94,\"weight\":308.8,\"bmi\":42.5,\"temperature\":98.2,\"respiratoryRate\":16,\"source\":\"practice\"}"
+              },
+              {
+                "url": "entry",
+                "valueString": "{\"measureDate\":\"2024-08-14\",\"systolic\":143,\"diastolic\":90,\"heartRate\":85,\"oxygenSaturation\":95,\"weight\":314.6,\"bmi\":43.3,\"temperature\":98.8,\"respiratoryRate\":17,\"source\":\"practice\"}"
+              },
+              {
+                "url": "entry",
+                "valueString": "{\"measureDate\":\"2024-11-06\",\"systolic\":156,\"diastolic\":97,\"heartRate\":94,\"oxygenSaturation\":92,\"weight\":310.6,\"bmi\":43.4,\"temperature\":98.7,\"respiratoryRate\":19,\"source\":\"hie\"}"
+              },
+              {
+                "url": "entry",
+                "valueString": "{\"measureDate\":\"2025-02-10\",\"systolic\":151,\"diastolic\":89,\"heartRate\":91,\"oxygenSaturation\":92,\"weight\":313,\"bmi\":42.9,\"temperature\":98.8,\"respiratoryRate\":16,\"source\":\"practice\"}"
+              },
+              {
+                "url": "entry",
+                "valueString": "{\"measureDate\":\"2025-05-07\",\"systolic\":155,\"diastolic\":88,\"heartRate\":88,\"oxygenSaturation\":94,\"weight\":310,\"bmi\":42.3,\"temperature\":98.4,\"respiratoryRate\":20,\"source\":\"practice\"}"
+              },
+              {
+                "url": "entry",
+                "valueString": "{\"measureDate\":\"2025-08-13\",\"systolic\":158,\"diastolic\":89,\"heartRate\":81,\"oxygenSaturation\":92,\"weight\":311.3,\"bmi\":43,\"temperature\":98.7,\"respiratoryRate\":19,\"source\":\"hie\"}"
+              },
+              {
+                "url": "entry",
+                "valueString": "{\"measureDate\":\"2025-11-05\",\"systolic\":153,\"diastolic\":94,\"heartRate\":95,\"oxygenSaturation\":92,\"weight\":311.7,\"bmi\":43.2,\"temperature\":98.5,\"respiratoryRate\":19,\"source\":\"practice\"}"
+              }
+            ]
+          },
+          {
+            "url": "urn:easy-health:lab-results",
+            "extension": [
+              {
+                "url": "entry",
+                "valueString": "{\"testName\":\"HbA1c\",\"testCode\":\"83036\",\"value\":5.9,\"unit\":\"%\",\"referenceMin\":4,\"referenceMax\":5.6,\"status\":\"high\",\"source\":\"practice\",\"collectedDate\":\"2024-03-18\",\"resultDate\":\"2024-03-20\",\"orderingProvider\":\"Dr. Karen Miller\",\"category\":\"diabetes\"}"
+              },
+              {
+                "url": "entry",
+                "valueString": "{\"testName\":\"Fasting Glucose\",\"testCode\":\"82947\",\"value\":119,\"unit\":\"mg/dL\",\"referenceMin\":70,\"referenceMax\":100,\"status\":\"high\",\"source\":\"practice\",\"collectedDate\":\"2024-03-18\",\"resultDate\":\"2024-03-20\",\"orderingProvider\":\"Dr. Karen Miller\",\"category\":\"diabetes\"}"
+              },
+              {
+                "url": "entry",
+                "valueString": "{\"testName\":\"HbA1c\",\"testCode\":\"83036\",\"value\":5.8,\"unit\":\"%\",\"referenceMin\":4,\"referenceMax\":5.6,\"status\":\"high\",\"source\":\"practice\",\"collectedDate\":\"2024-06-20\",\"resultDate\":\"2024-06-22\",\"orderingProvider\":\"Dr. Karen Miller\",\"category\":\"diabetes\"}"
+              },
+              {
+                "url": "entry",
+                "valueString": "{\"testName\":\"Fasting Glucose\",\"testCode\":\"82947\",\"value\":116,\"unit\":\"mg/dL\",\"referenceMin\":70,\"referenceMax\":100,\"status\":\"high\",\"source\":\"practice\",\"collectedDate\":\"2024-06-20\",\"resultDate\":\"2024-06-22\",\"orderingProvider\":\"Dr. Karen Miller\",\"category\":\"diabetes\"}"
+              },
+              {
+                "url": "entry",
+                "valueString": "{\"testName\":\"HbA1c\",\"testCode\":\"83036\",\"value\":5.9,\"unit\":\"%\",\"referenceMin\":4,\"referenceMax\":5.6,\"status\":\"high\",\"source\":\"practice\",\"collectedDate\":\"2024-09-22\",\"resultDate\":\"2024-09-24\",\"orderingProvider\":\"Dr. Karen Miller\",\"category\":\"diabetes\"}"
+              },
+              {
+                "url": "entry",
+                "valueString": "{\"testName\":\"Fasting Glucose\",\"testCode\":\"82947\",\"value\":103,\"unit\":\"mg/dL\",\"referenceMin\":70,\"referenceMax\":100,\"status\":\"high\",\"source\":\"practice\",\"collectedDate\":\"2024-09-22\",\"resultDate\":\"2024-09-24\",\"orderingProvider\":\"Dr. Karen Miller\",\"category\":\"diabetes\"}"
+              },
+              {
+                "url": "entry",
+                "valueString": "{\"testName\":\"HbA1c\",\"testCode\":\"83036\",\"value\":5.9,\"unit\":\"%\",\"referenceMin\":4,\"referenceMax\":5.6,\"status\":\"high\",\"source\":\"practice\",\"collectedDate\":\"2024-12-16\",\"resultDate\":\"2024-12-18\",\"orderingProvider\":\"Dr. Karen Miller\",\"category\":\"diabetes\"}"
+              },
+              {
+                "url": "entry",
+                "valueString": "{\"testName\":\"Fasting Glucose\",\"testCode\":\"82947\",\"value\":104,\"unit\":\"mg/dL\",\"referenceMin\":70,\"referenceMax\":100,\"status\":\"high\",\"source\":\"practice\",\"collectedDate\":\"2024-12-16\",\"resultDate\":\"2024-12-18\",\"orderingProvider\":\"Dr. Karen Miller\",\"category\":\"diabetes\"}"
+              },
+              {
+                "url": "entry",
+                "valueString": "{\"testName\":\"HbA1c\",\"testCode\":\"83036\",\"value\":5.8,\"unit\":\"%\",\"referenceMin\":4,\"referenceMax\":5.6,\"status\":\"high\",\"source\":\"practice\",\"collectedDate\":\"2025-03-17\",\"resultDate\":\"2025-03-19\",\"orderingProvider\":\"Dr. Karen Miller\",\"category\":\"diabetes\"}"
+              },
+              {
+                "url": "entry",
+                "valueString": "{\"testName\":\"Fasting Glucose\",\"testCode\":\"82947\",\"value\":111,\"unit\":\"mg/dL\",\"referenceMin\":70,\"referenceMax\":100,\"status\":\"high\",\"source\":\"practice\",\"collectedDate\":\"2025-03-17\",\"resultDate\":\"2025-03-19\",\"orderingProvider\":\"Dr. Karen Miller\",\"category\":\"diabetes\"}"
+              },
+              {
+                "url": "entry",
+                "valueString": "{\"testName\":\"HbA1c\",\"testCode\":\"83036\",\"value\":5.9,\"unit\":\"%\",\"referenceMin\":4,\"referenceMax\":5.6,\"status\":\"high\",\"source\":\"practice\",\"collectedDate\":\"2025-06-19\",\"resultDate\":\"2025-06-21\",\"orderingProvider\":\"Dr. Karen Miller\",\"category\":\"diabetes\"}"
+              },
+              {
+                "url": "entry",
+                "valueString": "{\"testName\":\"Fasting Glucose\",\"testCode\":\"82947\",\"value\":115,\"unit\":\"mg/dL\",\"referenceMin\":70,\"referenceMax\":100,\"status\":\"high\",\"source\":\"practice\",\"collectedDate\":\"2025-06-19\",\"resultDate\":\"2025-06-21\",\"orderingProvider\":\"Dr. Karen Miller\",\"category\":\"diabetes\"}"
+              },
+              {
+                "url": "entry",
+                "valueString": "{\"testName\":\"HbA1c\",\"testCode\":\"83036\",\"value\":6.1,\"unit\":\"%\",\"referenceMin\":4,\"referenceMax\":5.6,\"status\":\"high\",\"source\":\"practice\",\"collectedDate\":\"2025-09-21\",\"resultDate\":\"2025-09-23\",\"orderingProvider\":\"Dr. Karen Miller\",\"category\":\"diabetes\"}"
+              },
+              {
+                "url": "entry",
+                "valueString": "{\"testName\":\"Fasting Glucose\",\"testCode\":\"82947\",\"value\":105,\"unit\":\"mg/dL\",\"referenceMin\":70,\"referenceMax\":100,\"status\":\"high\",\"source\":\"practice\",\"collectedDate\":\"2025-09-21\",\"resultDate\":\"2025-09-23\",\"orderingProvider\":\"Dr. Karen Miller\",\"category\":\"diabetes\"}"
+              },
+              {
+                "url": "entry",
+                "valueString": "{\"testName\":\"HbA1c\",\"testCode\":\"83036\",\"value\":5.8,\"unit\":\"%\",\"referenceMin\":4,\"referenceMax\":5.6,\"status\":\"high\",\"source\":\"practice\",\"collectedDate\":\"2025-12-15\",\"resultDate\":\"2025-12-17\",\"orderingProvider\":\"Dr. Karen Miller\",\"category\":\"diabetes\"}"
+              },
+              {
+                "url": "entry",
+                "valueString": "{\"testName\":\"Fasting Glucose\",\"testCode\":\"82947\",\"value\":118,\"unit\":\"mg/dL\",\"referenceMin\":70,\"referenceMax\":100,\"status\":\"high\",\"source\":\"practice\",\"collectedDate\":\"2025-12-15\",\"resultDate\":\"2025-12-17\",\"orderingProvider\":\"Dr. Karen Miller\",\"category\":\"diabetes\"}"
+              },
+              {
+                "url": "entry",
+                "valueString": "{\"testName\":\"Total Cholesterol\",\"testCode\":\"2093-3\",\"value\":242,\"unit\":\"mg/dL\",\"referenceMin\":0,\"referenceMax\":200,\"status\":\"high\",\"source\":\"practice\",\"collectedDate\":\"2024-03-18\",\"resultDate\":\"2024-03-20\",\"orderingProvider\":\"Dr. Karen Miller\",\"category\":\"lipid\"}"
+              },
+              {
+                "url": "entry",
+                "valueString": "{\"testName\":\"LDL Cholesterol\",\"testCode\":\"2089-1\",\"value\":152,\"unit\":\"mg/dL\",\"referenceMin\":0,\"referenceMax\":100,\"status\":\"high\",\"source\":\"practice\",\"collectedDate\":\"2024-03-18\",\"resultDate\":\"2024-03-20\",\"orderingProvider\":\"Dr. Karen Miller\",\"category\":\"lipid\"}"
+              },
+              {
+                "url": "entry",
+                "valueString": "{\"testName\":\"HDL Cholesterol\",\"testCode\":\"2085-9\",\"value\":40,\"unit\":\"mg/dL\",\"referenceMin\":40,\"referenceMax\":60,\"status\":\"low\",\"source\":\"practice\",\"collectedDate\":\"2024-03-18\",\"resultDate\":\"2024-03-20\",\"orderingProvider\":\"Dr. Karen Miller\",\"category\":\"lipid\"}"
+              },
+              {
+                "url": "entry",
+                "valueString": "{\"testName\":\"Triglycerides\",\"testCode\":\"2571-8\",\"value\":235,\"unit\":\"mg/dL\",\"referenceMin\":0,\"referenceMax\":150,\"status\":\"high\",\"source\":\"practice\",\"collectedDate\":\"2024-03-18\",\"resultDate\":\"2024-03-20\",\"orderingProvider\":\"Dr. Karen Miller\",\"category\":\"lipid\"}"
+              },
+              {
+                "url": "entry",
+                "valueString": "{\"testName\":\"ALT\",\"testCode\":\"1742-6\",\"value\":46,\"unit\":\"U/L\",\"referenceMin\":7,\"referenceMax\":35,\"status\":\"high\",\"source\":\"practice\",\"collectedDate\":\"2024-03-18\",\"resultDate\":\"2024-03-20\",\"orderingProvider\":\"Dr. Karen Miller\",\"category\":\"hepatic\"}"
+              },
+              {
+                "url": "entry",
+                "valueString": "{\"testName\":\"AST\",\"testCode\":\"1920-8\",\"value\":35,\"unit\":\"U/L\",\"referenceMin\":10,\"referenceMax\":34,\"status\":\"high\",\"source\":\"practice\",\"collectedDate\":\"2024-03-18\",\"resultDate\":\"2024-03-20\",\"orderingProvider\":\"Dr. Karen Miller\",\"category\":\"hepatic\"}"
+              },
+              {
+                "url": "entry",
+                "valueString": "{\"testName\":\"TSH\",\"testCode\":\"3016-3\",\"value\":3.1,\"unit\":\"mIU/L\",\"referenceMin\":0.4,\"referenceMax\":4,\"status\":\"normal\",\"source\":\"practice\",\"collectedDate\":\"2024-03-18\",\"resultDate\":\"2024-03-20\",\"orderingProvider\":\"Dr. Karen Miller\",\"category\":\"thyroid\"}"
+              },
+              {
+                "url": "entry",
+                "valueString": "{\"testName\":\"Total Cholesterol\",\"testCode\":\"2093-3\",\"value\":259,\"unit\":\"mg/dL\",\"referenceMin\":0,\"referenceMax\":200,\"status\":\"high\",\"source\":\"practice\",\"collectedDate\":\"2024-09-22\",\"resultDate\":\"2024-09-24\",\"orderingProvider\":\"Dr. Karen Miller\",\"category\":\"lipid\"}"
+              },
+              {
+                "url": "entry",
+                "valueString": "{\"testName\":\"LDL Cholesterol\",\"testCode\":\"2089-1\",\"value\":169,\"unit\":\"mg/dL\",\"referenceMin\":0,\"referenceMax\":100,\"status\":\"high\",\"source\":\"practice\",\"collectedDate\":\"2024-09-22\",\"resultDate\":\"2024-09-24\",\"orderingProvider\":\"Dr. Karen Miller\",\"category\":\"lipid\"}"
+              },
+              {
+                "url": "entry",
+                "valueString": "{\"testName\":\"HDL Cholesterol\",\"testCode\":\"2085-9\",\"value\":42,\"unit\":\"mg/dL\",\"referenceMin\":40,\"referenceMax\":60,\"status\":\"low\",\"source\":\"practice\",\"collectedDate\":\"2024-09-22\",\"resultDate\":\"2024-09-24\",\"orderingProvider\":\"Dr. Karen Miller\",\"category\":\"lipid\"}"
+              },
+              {
+                "url": "entry",
+                "valueString": "{\"testName\":\"Triglycerides\",\"testCode\":\"2571-8\",\"value\":194,\"unit\":\"mg/dL\",\"referenceMin\":0,\"referenceMax\":150,\"status\":\"high\",\"source\":\"practice\",\"collectedDate\":\"2024-09-22\",\"resultDate\":\"2024-09-24\",\"orderingProvider\":\"Dr. Karen Miller\",\"category\":\"lipid\"}"
+              },
+              {
+                "url": "entry",
+                "valueString": "{\"testName\":\"ALT\",\"testCode\":\"1742-6\",\"value\":46,\"unit\":\"U/L\",\"referenceMin\":7,\"referenceMax\":35,\"status\":\"high\",\"source\":\"practice\",\"collectedDate\":\"2024-09-22\",\"resultDate\":\"2024-09-24\",\"orderingProvider\":\"Dr. Karen Miller\",\"category\":\"hepatic\"}"
+              },
+              {
+                "url": "entry",
+                "valueString": "{\"testName\":\"AST\",\"testCode\":\"1920-8\",\"value\":35,\"unit\":\"U/L\",\"referenceMin\":10,\"referenceMax\":34,\"status\":\"high\",\"source\":\"practice\",\"collectedDate\":\"2024-09-22\",\"resultDate\":\"2024-09-24\",\"orderingProvider\":\"Dr. Karen Miller\",\"category\":\"hepatic\"}"
+              },
+              {
+                "url": "entry",
+                "valueString": "{\"testName\":\"TSH\",\"testCode\":\"3016-3\",\"value\":2.6,\"unit\":\"mIU/L\",\"referenceMin\":0.4,\"referenceMax\":4,\"status\":\"normal\",\"source\":\"practice\",\"collectedDate\":\"2024-09-22\",\"resultDate\":\"2024-09-24\",\"orderingProvider\":\"Dr. Karen Miller\",\"category\":\"thyroid\"}"
+              },
+              {
+                "url": "entry",
+                "valueString": "{\"testName\":\"Total Cholesterol\",\"testCode\":\"2093-3\",\"value\":229,\"unit\":\"mg/dL\",\"referenceMin\":0,\"referenceMax\":200,\"status\":\"high\",\"source\":\"practice\",\"collectedDate\":\"2025-03-17\",\"resultDate\":\"2025-03-19\",\"orderingProvider\":\"Dr. Karen Miller\",\"category\":\"lipid\"}"
+              },
+              {
+                "url": "entry",
+                "valueString": "{\"testName\":\"LDL Cholesterol\",\"testCode\":\"2089-1\",\"value\":148,\"unit\":\"mg/dL\",\"referenceMin\":0,\"referenceMax\":100,\"status\":\"high\",\"source\":\"practice\",\"collectedDate\":\"2025-03-17\",\"resultDate\":\"2025-03-19\",\"orderingProvider\":\"Dr. Karen Miller\",\"category\":\"lipid\"}"
+              },
+              {
+                "url": "entry",
+                "valueString": "{\"testName\":\"HDL Cholesterol\",\"testCode\":\"2085-9\",\"value\":38,\"unit\":\"mg/dL\",\"referenceMin\":40,\"referenceMax\":60,\"status\":\"low\",\"source\":\"practice\",\"collectedDate\":\"2025-03-17\",\"resultDate\":\"2025-03-19\",\"orderingProvider\":\"Dr. Karen Miller\",\"category\":\"lipid\"}"
+              },
+              {
+                "url": "entry",
+                "valueString": "{\"testName\":\"Triglycerides\",\"testCode\":\"2571-8\",\"value\":235,\"unit\":\"mg/dL\",\"referenceMin\":0,\"referenceMax\":150,\"status\":\"high\",\"source\":\"practice\",\"collectedDate\":\"2025-03-17\",\"resultDate\":\"2025-03-19\",\"orderingProvider\":\"Dr. Karen Miller\",\"category\":\"lipid\"}"
+              },
+              {
+                "url": "entry",
+                "valueString": "{\"testName\":\"ALT\",\"testCode\":\"1742-6\",\"value\":49,\"unit\":\"U/L\",\"referenceMin\":7,\"referenceMax\":35,\"status\":\"high\",\"source\":\"practice\",\"collectedDate\":\"2025-03-17\",\"resultDate\":\"2025-03-19\",\"orderingProvider\":\"Dr. Karen Miller\",\"category\":\"hepatic\"}"
+              },
+              {
+                "url": "entry",
+                "valueString": "{\"testName\":\"AST\",\"testCode\":\"1920-8\",\"value\":39,\"unit\":\"U/L\",\"referenceMin\":10,\"referenceMax\":34,\"status\":\"high\",\"source\":\"practice\",\"collectedDate\":\"2025-03-17\",\"resultDate\":\"2025-03-19\",\"orderingProvider\":\"Dr. Karen Miller\",\"category\":\"hepatic\"}"
+              },
+              {
+                "url": "entry",
+                "valueString": "{\"testName\":\"TSH\",\"testCode\":\"3016-3\",\"value\":3.4,\"unit\":\"mIU/L\",\"referenceMin\":0.4,\"referenceMax\":4,\"status\":\"normal\",\"source\":\"practice\",\"collectedDate\":\"2025-03-17\",\"resultDate\":\"2025-03-19\",\"orderingProvider\":\"Dr. Karen Miller\",\"category\":\"thyroid\"}"
+              },
+              {
+                "url": "entry",
+                "valueString": "{\"testName\":\"Total Cholesterol\",\"testCode\":\"2093-3\",\"value\":250,\"unit\":\"mg/dL\",\"referenceMin\":0,\"referenceMax\":200,\"status\":\"high\",\"source\":\"practice\",\"collectedDate\":\"2025-09-21\",\"resultDate\":\"2025-09-23\",\"orderingProvider\":\"Dr. Karen Miller\",\"category\":\"lipid\"}"
+              },
+              {
+                "url": "entry",
+                "valueString": "{\"testName\":\"LDL Cholesterol\",\"testCode\":\"2089-1\",\"value\":165,\"unit\":\"mg/dL\",\"referenceMin\":0,\"referenceMax\":100,\"status\":\"high\",\"source\":\"practice\",\"collectedDate\":\"2025-09-21\",\"resultDate\":\"2025-09-23\",\"orderingProvider\":\"Dr. Karen Miller\",\"category\":\"lipid\"}"
+              },
+              {
+                "url": "entry",
+                "valueString": "{\"testName\":\"HDL Cholesterol\",\"testCode\":\"2085-9\",\"value\":32,\"unit\":\"mg/dL\",\"referenceMin\":40,\"referenceMax\":60,\"status\":\"low\",\"source\":\"practice\",\"collectedDate\":\"2025-09-21\",\"resultDate\":\"2025-09-23\",\"orderingProvider\":\"Dr. Karen Miller\",\"category\":\"lipid\"}"
+              },
+              {
+                "url": "entry",
+                "valueString": "{\"testName\":\"Triglycerides\",\"testCode\":\"2571-8\",\"value\":266,\"unit\":\"mg/dL\",\"referenceMin\":0,\"referenceMax\":150,\"status\":\"high\",\"source\":\"practice\",\"collectedDate\":\"2025-09-21\",\"resultDate\":\"2025-09-23\",\"orderingProvider\":\"Dr. Karen Miller\",\"category\":\"lipid\"}"
+              },
+              {
+                "url": "entry",
+                "valueString": "{\"testName\":\"ALT\",\"testCode\":\"1742-6\",\"value\":50,\"unit\":\"U/L\",\"referenceMin\":7,\"referenceMax\":35,\"status\":\"high\",\"source\":\"practice\",\"collectedDate\":\"2025-09-21\",\"resultDate\":\"2025-09-23\",\"orderingProvider\":\"Dr. Karen Miller\",\"category\":\"hepatic\"}"
+              },
+              {
+                "url": "entry",
+                "valueString": "{\"testName\":\"AST\",\"testCode\":\"1920-8\",\"value\":44,\"unit\":\"U/L\",\"referenceMin\":10,\"referenceMax\":34,\"status\":\"high\",\"source\":\"practice\",\"collectedDate\":\"2025-09-21\",\"resultDate\":\"2025-09-23\",\"orderingProvider\":\"Dr. Karen Miller\",\"category\":\"hepatic\"}"
+              },
+              {
+                "url": "entry",
+                "valueString": "{\"testName\":\"TSH\",\"testCode\":\"3016-3\",\"value\":2.8,\"unit\":\"mIU/L\",\"referenceMin\":0.4,\"referenceMax\":4,\"status\":\"normal\",\"source\":\"practice\",\"collectedDate\":\"2025-09-21\",\"resultDate\":\"2025-09-23\",\"orderingProvider\":\"Dr. Karen Miller\",\"category\":\"thyroid\"}"
+              }
+            ]
+          },
+          {
+            "url": "urn:easy-health:medication-history",
+            "extension": [
+              {
+                "url": "entry",
+                "valueString": "{\"medicationName\":\"Sertraline 50mg daily\",\"genericName\":\"Sertraline\",\"dosage\":\"50mg\",\"frequency\":\"once daily\",\"route\":\"oral\",\"prescriber\":\"Dr. Karen Miller\",\"startDate\":\"2022-09-01\",\"endDate\":\"2023-06-15\",\"status\":\"changed\",\"source\":\"practice\",\"category\":\"mental_health\",\"reason\":\"Major Depressive Disorder\",\"changeType\":\"dose_increase\",\"changeReason\":\"Inadequate symptom control, dose increased to 100mg\"}"
+              },
+              {
+                "url": "entry",
+                "valueString": "{\"medicationName\":\"Sertraline 100mg daily\",\"genericName\":\"Sertraline\",\"dosage\":\"100mg\",\"frequency\":\"once daily\",\"route\":\"oral\",\"prescriber\":\"Dr. Karen Miller\",\"startDate\":\"2023-06-15\",\"endDate\":null,\"status\":\"active\",\"source\":\"practice\",\"category\":\"mental_health\",\"reason\":\"Major Depressive Disorder\",\"changeType\":null,\"changeReason\":null}"
+              },
+              {
+                "url": "entry",
+                "valueString": "{\"medicationName\":\"Gabapentin 300mg TID\",\"genericName\":\"Gabapentin\",\"dosage\":\"300mg\",\"frequency\":\"three times daily\",\"route\":\"oral\",\"prescriber\":\"Dr. Karen Miller\",\"startDate\":\"2023-01-10\",\"endDate\":null,\"status\":\"active\",\"source\":\"practice\",\"category\":\"pain\",\"reason\":\"Low Back Pain, neuropathic component\",\"changeType\":null,\"changeReason\":null}"
+              },
+              {
+                "url": "entry",
+                "valueString": "{\"medicationName\":\"Naproxen 500mg BID PRN\",\"genericName\":\"Naproxen\",\"dosage\":\"500mg\",\"frequency\":\"twice daily as needed\",\"route\":\"oral\",\"prescriber\":\"Dr. Karen Miller\",\"startDate\":\"2022-05-20\",\"endDate\":null,\"status\":\"active\",\"source\":\"practice\",\"category\":\"pain\",\"reason\":\"Low Back Pain\",\"changeType\":null,\"changeReason\":null}"
+              },
+              {
+                "url": "entry",
+                "valueString": "{\"medicationName\":\"Melatonin 5mg nightly\",\"genericName\":\"Melatonin\",\"dosage\":\"5mg\",\"frequency\":\"nightly\",\"route\":\"oral\",\"prescriber\":\"Dr. Karen Miller\",\"startDate\":\"2023-08-01\",\"endDate\":null,\"status\":\"active\",\"source\":\"practice\",\"category\":\"other\",\"reason\":\"Sleep disruption from OSA and depression\",\"changeType\":null,\"changeReason\":null}"
+              }
+            ]
           }
         ]
       },
@@ -1481,7 +2412,9 @@
           ]
         },
         "type": "allergy",
-        "category": ["medication"],
+        "category": [
+          "medication"
+        ],
         "code": {
           "coding": [
             {
@@ -1525,7 +2458,9 @@
           ]
         },
         "type": "intolerance",
-        "category": ["medication"],
+        "category": [
+          "medication"
+        ],
         "code": {
           "text": "NSAIDs (topical only)"
         },
@@ -1700,7 +2635,9 @@
           {
             "use": "official",
             "family": "Sanchez",
-            "given": ["Gloria"]
+            "given": [
+              "Gloria"
+            ]
           }
         ],
         "birthDate": "1943-12-19",
@@ -1719,7 +2656,9 @@
         "address": [
           {
             "use": "home",
-            "line": ["234 Mission Drive"],
+            "line": [
+              "234 Mission Drive"
+            ],
             "city": "Springfield",
             "state": "IL",
             "postalCode": "62707"
@@ -1734,42 +2673,361 @@
           {
             "url": "urn:easy-health:conditions",
             "extension": [
-              { "url": "condition", "valueString": "Congestive Heart Failure" },
-              { "url": "condition", "valueString": "Type 2 Diabetes with Neuropathy" },
-              { "url": "condition", "valueString": "Hypothyroidism" },
-              { "url": "condition", "valueString": "Peripheral Vascular Disease" }
+              {
+                "url": "condition",
+                "valueString": "Congestive Heart Failure"
+              },
+              {
+                "url": "condition",
+                "valueString": "Type 2 Diabetes with Neuropathy"
+              },
+              {
+                "url": "condition",
+                "valueString": "Hypothyroidism"
+              },
+              {
+                "url": "condition",
+                "valueString": "Peripheral Vascular Disease"
+              }
             ]
           },
           {
             "url": "urn:easy-health:medications",
             "extension": [
-              { "url": "medication", "valueString": "Furosemide 40mg daily" },
-              { "url": "medication", "valueString": "Carvedilol 25mg BID" },
-              { "url": "medication", "valueString": "Insulin Glargine 20 units nightly" },
-              { "url": "medication", "valueString": "Levothyroxine 100mcg daily" },
-              { "url": "medication", "valueString": "Gabapentin 300mg TID" },
-              { "url": "medication", "valueString": "Aspirin 81mg daily" }
+              {
+                "url": "medication",
+                "valueString": "Furosemide 40mg daily"
+              },
+              {
+                "url": "medication",
+                "valueString": "Carvedilol 25mg BID"
+              },
+              {
+                "url": "medication",
+                "valueString": "Insulin Glargine 20 units nightly"
+              },
+              {
+                "url": "medication",
+                "valueString": "Levothyroxine 100mcg daily"
+              },
+              {
+                "url": "medication",
+                "valueString": "Gabapentin 300mg TID"
+              },
+              {
+                "url": "medication",
+                "valueString": "Aspirin 81mg daily"
+              }
             ]
           },
           {
             "url": "urn:easy-health:allergies",
             "extension": [
-              { "url": "allergy", "valueString": "ACE inhibitors (cough)" },
-              { "url": "allergy", "valueString": "Metformin (GI intolerance)" }
+              {
+                "url": "allergy",
+                "valueString": "ACE inhibitors (cough)"
+              },
+              {
+                "url": "allergy",
+                "valueString": "Metformin (GI intolerance)"
+              }
             ]
           },
           {
             "url": "urn:easy-health:risk-flags",
             "extension": [
-              { "url": "flag", "valueString": "Heart failure monitoring" },
-              { "url": "flag", "valueString": "Insulin-dependent" },
-              { "url": "flag", "valueString": "Fall risk" },
-              { "url": "flag", "valueString": "Polypharmacy" }
+              {
+                "url": "flag",
+                "valueString": "Heart failure monitoring"
+              },
+              {
+                "url": "flag",
+                "valueString": "Insulin-dependent"
+              },
+              {
+                "url": "flag",
+                "valueString": "Fall risk"
+              },
+              {
+                "url": "flag",
+                "valueString": "Polypharmacy"
+              }
             ]
           },
           {
             "url": "urn:easy-health:insurance-plan",
             "valueString": "MA-PLAN-001"
+          },
+          {
+            "url": "urn:easy-health:vitals-history",
+            "extension": [
+              {
+                "url": "entry",
+                "valueString": "{\"measureDate\":\"2024-02-12\",\"systolic\":142,\"diastolic\":81,\"heartRate\":86,\"oxygenSaturation\":97,\"weight\":166.4,\"bmi\":26.2,\"temperature\":97.7,\"respiratoryRate\":19,\"source\":\"hie\"}"
+              },
+              {
+                "url": "entry",
+                "valueString": "{\"measureDate\":\"2024-05-08\",\"systolic\":146,\"diastolic\":90,\"heartRate\":86,\"oxygenSaturation\":94,\"weight\":161.9,\"bmi\":28,\"temperature\":97.9,\"respiratoryRate\":18,\"source\":\"practice\"}"
+              },
+              {
+                "url": "entry",
+                "valueString": "{\"measureDate\":\"2024-08-14\",\"systolic\":134,\"diastolic\":87,\"heartRate\":77,\"oxygenSaturation\":97,\"weight\":158,\"bmi\":27.7,\"temperature\":97.7,\"respiratoryRate\":19,\"source\":\"practice\"}"
+              },
+              {
+                "url": "entry",
+                "valueString": "{\"measureDate\":\"2024-11-06\",\"systolic\":131,\"diastolic\":78,\"heartRate\":77,\"oxygenSaturation\":93,\"weight\":167.7,\"bmi\":26.8,\"temperature\":97.5,\"respiratoryRate\":17,\"source\":\"hie\"}"
+              },
+              {
+                "url": "entry",
+                "valueString": "{\"measureDate\":\"2025-02-10\",\"systolic\":144,\"diastolic\":79,\"heartRate\":88,\"oxygenSaturation\":94,\"weight\":161.4,\"bmi\":27.1,\"temperature\":97.5,\"respiratoryRate\":16,\"source\":\"practice\"}"
+              },
+              {
+                "url": "entry",
+                "valueString": "{\"measureDate\":\"2025-05-07\",\"systolic\":139,\"diastolic\":90,\"heartRate\":78,\"oxygenSaturation\":93,\"weight\":160.4,\"bmi\":27.7,\"temperature\":97.6,\"respiratoryRate\":16,\"source\":\"practice\"}"
+              },
+              {
+                "url": "entry",
+                "valueString": "{\"measureDate\":\"2025-08-13\",\"systolic\":135,\"diastolic\":83,\"heartRate\":83,\"oxygenSaturation\":97,\"weight\":161.1,\"bmi\":26.5,\"temperature\":97.3,\"respiratoryRate\":18,\"source\":\"hie\"}"
+              },
+              {
+                "url": "entry",
+                "valueString": "{\"measureDate\":\"2025-11-05\",\"systolic\":142,\"diastolic\":81,\"heartRate\":77,\"oxygenSaturation\":93,\"weight\":166.3,\"bmi\":26.3,\"temperature\":97.5,\"respiratoryRate\":19,\"source\":\"practice\"}"
+              }
+            ]
+          },
+          {
+            "url": "urn:easy-health:lab-results",
+            "extension": [
+              {
+                "url": "entry",
+                "valueString": "{\"testName\":\"BNP\",\"testCode\":\"42637-9\",\"value\":476,\"unit\":\"pg/mL\",\"referenceMin\":0,\"referenceMax\":100,\"status\":\"high\",\"source\":\"practice\",\"collectedDate\":\"2024-02-20\",\"resultDate\":\"2024-02-22\",\"orderingProvider\":\"Dr. Eduardo Reyes\",\"category\":\"cardiac\"}"
+              },
+              {
+                "url": "entry",
+                "valueString": "{\"testName\":\"HbA1c\",\"testCode\":\"83036\",\"value\":8,\"unit\":\"%\",\"referenceMin\":4,\"referenceMax\":5.6,\"status\":\"high\",\"source\":\"practice\",\"collectedDate\":\"2024-02-20\",\"resultDate\":\"2024-02-22\",\"orderingProvider\":\"Dr. Eduardo Reyes\",\"category\":\"diabetes\"}"
+              },
+              {
+                "url": "entry",
+                "valueString": "{\"testName\":\"Fasting Glucose\",\"testCode\":\"82947\",\"value\":197,\"unit\":\"mg/dL\",\"referenceMin\":70,\"referenceMax\":100,\"status\":\"high\",\"source\":\"practice\",\"collectedDate\":\"2024-02-20\",\"resultDate\":\"2024-02-22\",\"orderingProvider\":\"Dr. Eduardo Reyes\",\"category\":\"diabetes\"}"
+              },
+              {
+                "url": "entry",
+                "valueString": "{\"testName\":\"TSH\",\"testCode\":\"3016-3\",\"value\":7.5,\"unit\":\"mIU/L\",\"referenceMin\":0.4,\"referenceMax\":4,\"status\":\"high\",\"source\":\"practice\",\"collectedDate\":\"2024-02-20\",\"resultDate\":\"2024-02-22\",\"orderingProvider\":\"Dr. Eduardo Reyes\",\"category\":\"thyroid\"}"
+              },
+              {
+                "url": "entry",
+                "valueString": "{\"testName\":\"BNP\",\"testCode\":\"42637-9\",\"value\":401,\"unit\":\"pg/mL\",\"referenceMin\":0,\"referenceMax\":100,\"status\":\"high\",\"source\":\"practice\",\"collectedDate\":\"2024-05-15\",\"resultDate\":\"2024-05-17\",\"orderingProvider\":\"Dr. Eduardo Reyes\",\"category\":\"cardiac\"}"
+              },
+              {
+                "url": "entry",
+                "valueString": "{\"testName\":\"HbA1c\",\"testCode\":\"83036\",\"value\":8.5,\"unit\":\"%\",\"referenceMin\":4,\"referenceMax\":5.6,\"status\":\"high\",\"source\":\"practice\",\"collectedDate\":\"2024-05-15\",\"resultDate\":\"2024-05-17\",\"orderingProvider\":\"Dr. Eduardo Reyes\",\"category\":\"diabetes\"}"
+              },
+              {
+                "url": "entry",
+                "valueString": "{\"testName\":\"Fasting Glucose\",\"testCode\":\"82947\",\"value\":164,\"unit\":\"mg/dL\",\"referenceMin\":70,\"referenceMax\":100,\"status\":\"high\",\"source\":\"practice\",\"collectedDate\":\"2024-05-15\",\"resultDate\":\"2024-05-17\",\"orderingProvider\":\"Dr. Eduardo Reyes\",\"category\":\"diabetes\"}"
+              },
+              {
+                "url": "entry",
+                "valueString": "{\"testName\":\"TSH\",\"testCode\":\"3016-3\",\"value\":6.8,\"unit\":\"mIU/L\",\"referenceMin\":0.4,\"referenceMax\":4,\"status\":\"high\",\"source\":\"practice\",\"collectedDate\":\"2024-05-15\",\"resultDate\":\"2024-05-17\",\"orderingProvider\":\"Dr. Eduardo Reyes\",\"category\":\"thyroid\"}"
+              },
+              {
+                "url": "entry",
+                "valueString": "{\"testName\":\"BNP\",\"testCode\":\"42637-9\",\"value\":379,\"unit\":\"pg/mL\",\"referenceMin\":0,\"referenceMax\":100,\"status\":\"high\",\"source\":\"practice\",\"collectedDate\":\"2024-08-20\",\"resultDate\":\"2024-08-22\",\"orderingProvider\":\"Dr. Eduardo Reyes\",\"category\":\"cardiac\"}"
+              },
+              {
+                "url": "entry",
+                "valueString": "{\"testName\":\"HbA1c\",\"testCode\":\"83036\",\"value\":8.8,\"unit\":\"%\",\"referenceMin\":4,\"referenceMax\":5.6,\"status\":\"high\",\"source\":\"practice\",\"collectedDate\":\"2024-08-20\",\"resultDate\":\"2024-08-22\",\"orderingProvider\":\"Dr. Eduardo Reyes\",\"category\":\"diabetes\"}"
+              },
+              {
+                "url": "entry",
+                "valueString": "{\"testName\":\"Fasting Glucose\",\"testCode\":\"82947\",\"value\":202,\"unit\":\"mg/dL\",\"referenceMin\":70,\"referenceMax\":100,\"status\":\"high\",\"source\":\"practice\",\"collectedDate\":\"2024-08-20\",\"resultDate\":\"2024-08-22\",\"orderingProvider\":\"Dr. Eduardo Reyes\",\"category\":\"diabetes\"}"
+              },
+              {
+                "url": "entry",
+                "valueString": "{\"testName\":\"TSH\",\"testCode\":\"3016-3\",\"value\":5.7,\"unit\":\"mIU/L\",\"referenceMin\":0.4,\"referenceMax\":4,\"status\":\"high\",\"source\":\"practice\",\"collectedDate\":\"2024-08-20\",\"resultDate\":\"2024-08-22\",\"orderingProvider\":\"Dr. Eduardo Reyes\",\"category\":\"thyroid\"}"
+              },
+              {
+                "url": "entry",
+                "valueString": "{\"testName\":\"BNP\",\"testCode\":\"42637-9\",\"value\":425,\"unit\":\"pg/mL\",\"referenceMin\":0,\"referenceMax\":100,\"status\":\"high\",\"source\":\"practice\",\"collectedDate\":\"2024-11-15\",\"resultDate\":\"2024-11-17\",\"orderingProvider\":\"Dr. Eduardo Reyes\",\"category\":\"cardiac\"}"
+              },
+              {
+                "url": "entry",
+                "valueString": "{\"testName\":\"HbA1c\",\"testCode\":\"83036\",\"value\":8.3,\"unit\":\"%\",\"referenceMin\":4,\"referenceMax\":5.6,\"status\":\"high\",\"source\":\"practice\",\"collectedDate\":\"2024-11-15\",\"resultDate\":\"2024-11-17\",\"orderingProvider\":\"Dr. Eduardo Reyes\",\"category\":\"diabetes\"}"
+              },
+              {
+                "url": "entry",
+                "valueString": "{\"testName\":\"Fasting Glucose\",\"testCode\":\"82947\",\"value\":165,\"unit\":\"mg/dL\",\"referenceMin\":70,\"referenceMax\":100,\"status\":\"high\",\"source\":\"practice\",\"collectedDate\":\"2024-11-15\",\"resultDate\":\"2024-11-17\",\"orderingProvider\":\"Dr. Eduardo Reyes\",\"category\":\"diabetes\"}"
+              },
+              {
+                "url": "entry",
+                "valueString": "{\"testName\":\"TSH\",\"testCode\":\"3016-3\",\"value\":4.6,\"unit\":\"mIU/L\",\"referenceMin\":0.4,\"referenceMax\":4,\"status\":\"high\",\"source\":\"practice\",\"collectedDate\":\"2024-11-15\",\"resultDate\":\"2024-11-17\",\"orderingProvider\":\"Dr. Eduardo Reyes\",\"category\":\"thyroid\"}"
+              },
+              {
+                "url": "entry",
+                "valueString": "{\"testName\":\"BNP\",\"testCode\":\"42637-9\",\"value\":463,\"unit\":\"pg/mL\",\"referenceMin\":0,\"referenceMax\":100,\"status\":\"high\",\"source\":\"practice\",\"collectedDate\":\"2025-02-18\",\"resultDate\":\"2025-02-20\",\"orderingProvider\":\"Dr. Eduardo Reyes\",\"category\":\"cardiac\"}"
+              },
+              {
+                "url": "entry",
+                "valueString": "{\"testName\":\"HbA1c\",\"testCode\":\"83036\",\"value\":8.9,\"unit\":\"%\",\"referenceMin\":4,\"referenceMax\":5.6,\"status\":\"high\",\"source\":\"practice\",\"collectedDate\":\"2025-02-18\",\"resultDate\":\"2025-02-20\",\"orderingProvider\":\"Dr. Eduardo Reyes\",\"category\":\"diabetes\"}"
+              },
+              {
+                "url": "entry",
+                "valueString": "{\"testName\":\"Fasting Glucose\",\"testCode\":\"82947\",\"value\":144,\"unit\":\"mg/dL\",\"referenceMin\":70,\"referenceMax\":100,\"status\":\"high\",\"source\":\"practice\",\"collectedDate\":\"2025-02-18\",\"resultDate\":\"2025-02-20\",\"orderingProvider\":\"Dr. Eduardo Reyes\",\"category\":\"diabetes\"}"
+              },
+              {
+                "url": "entry",
+                "valueString": "{\"testName\":\"TSH\",\"testCode\":\"3016-3\",\"value\":7.4,\"unit\":\"mIU/L\",\"referenceMin\":0.4,\"referenceMax\":4,\"status\":\"high\",\"source\":\"practice\",\"collectedDate\":\"2025-02-18\",\"resultDate\":\"2025-02-20\",\"orderingProvider\":\"Dr. Eduardo Reyes\",\"category\":\"thyroid\"}"
+              },
+              {
+                "url": "entry",
+                "valueString": "{\"testName\":\"BNP\",\"testCode\":\"42637-9\",\"value\":463,\"unit\":\"pg/mL\",\"referenceMin\":0,\"referenceMax\":100,\"status\":\"high\",\"source\":\"practice\",\"collectedDate\":\"2025-05-14\",\"resultDate\":\"2025-05-16\",\"orderingProvider\":\"Dr. Eduardo Reyes\",\"category\":\"cardiac\"}"
+              },
+              {
+                "url": "entry",
+                "valueString": "{\"testName\":\"HbA1c\",\"testCode\":\"83036\",\"value\":8.5,\"unit\":\"%\",\"referenceMin\":4,\"referenceMax\":5.6,\"status\":\"high\",\"source\":\"practice\",\"collectedDate\":\"2025-05-14\",\"resultDate\":\"2025-05-16\",\"orderingProvider\":\"Dr. Eduardo Reyes\",\"category\":\"diabetes\"}"
+              },
+              {
+                "url": "entry",
+                "valueString": "{\"testName\":\"Fasting Glucose\",\"testCode\":\"82947\",\"value\":173,\"unit\":\"mg/dL\",\"referenceMin\":70,\"referenceMax\":100,\"status\":\"high\",\"source\":\"practice\",\"collectedDate\":\"2025-05-14\",\"resultDate\":\"2025-05-16\",\"orderingProvider\":\"Dr. Eduardo Reyes\",\"category\":\"diabetes\"}"
+              },
+              {
+                "url": "entry",
+                "valueString": "{\"testName\":\"TSH\",\"testCode\":\"3016-3\",\"value\":5.1,\"unit\":\"mIU/L\",\"referenceMin\":0.4,\"referenceMax\":4,\"status\":\"high\",\"source\":\"practice\",\"collectedDate\":\"2025-05-14\",\"resultDate\":\"2025-05-16\",\"orderingProvider\":\"Dr. Eduardo Reyes\",\"category\":\"thyroid\"}"
+              },
+              {
+                "url": "entry",
+                "valueString": "{\"testName\":\"BNP\",\"testCode\":\"42637-9\",\"value\":381,\"unit\":\"pg/mL\",\"referenceMin\":0,\"referenceMax\":100,\"status\":\"high\",\"source\":\"practice\",\"collectedDate\":\"2025-08-19\",\"resultDate\":\"2025-08-21\",\"orderingProvider\":\"Dr. Eduardo Reyes\",\"category\":\"cardiac\"}"
+              },
+              {
+                "url": "entry",
+                "valueString": "{\"testName\":\"HbA1c\",\"testCode\":\"83036\",\"value\":7.7,\"unit\":\"%\",\"referenceMin\":4,\"referenceMax\":5.6,\"status\":\"high\",\"source\":\"practice\",\"collectedDate\":\"2025-08-19\",\"resultDate\":\"2025-08-21\",\"orderingProvider\":\"Dr. Eduardo Reyes\",\"category\":\"diabetes\"}"
+              },
+              {
+                "url": "entry",
+                "valueString": "{\"testName\":\"Fasting Glucose\",\"testCode\":\"82947\",\"value\":216,\"unit\":\"mg/dL\",\"referenceMin\":70,\"referenceMax\":100,\"status\":\"high\",\"source\":\"practice\",\"collectedDate\":\"2025-08-19\",\"resultDate\":\"2025-08-21\",\"orderingProvider\":\"Dr. Eduardo Reyes\",\"category\":\"diabetes\"}"
+              },
+              {
+                "url": "entry",
+                "valueString": "{\"testName\":\"TSH\",\"testCode\":\"3016-3\",\"value\":6,\"unit\":\"mIU/L\",\"referenceMin\":0.4,\"referenceMax\":4,\"status\":\"high\",\"source\":\"practice\",\"collectedDate\":\"2025-08-19\",\"resultDate\":\"2025-08-21\",\"orderingProvider\":\"Dr. Eduardo Reyes\",\"category\":\"thyroid\"}"
+              },
+              {
+                "url": "entry",
+                "valueString": "{\"testName\":\"BNP\",\"testCode\":\"42637-9\",\"value\":427,\"unit\":\"pg/mL\",\"referenceMin\":0,\"referenceMax\":100,\"status\":\"high\",\"source\":\"practice\",\"collectedDate\":\"2025-11-13\",\"resultDate\":\"2025-11-15\",\"orderingProvider\":\"Dr. Eduardo Reyes\",\"category\":\"cardiac\"}"
+              },
+              {
+                "url": "entry",
+                "valueString": "{\"testName\":\"HbA1c\",\"testCode\":\"83036\",\"value\":8.9,\"unit\":\"%\",\"referenceMin\":4,\"referenceMax\":5.6,\"status\":\"high\",\"source\":\"practice\",\"collectedDate\":\"2025-11-13\",\"resultDate\":\"2025-11-15\",\"orderingProvider\":\"Dr. Eduardo Reyes\",\"category\":\"diabetes\"}"
+              },
+              {
+                "url": "entry",
+                "valueString": "{\"testName\":\"Fasting Glucose\",\"testCode\":\"82947\",\"value\":196,\"unit\":\"mg/dL\",\"referenceMin\":70,\"referenceMax\":100,\"status\":\"high\",\"source\":\"practice\",\"collectedDate\":\"2025-11-13\",\"resultDate\":\"2025-11-15\",\"orderingProvider\":\"Dr. Eduardo Reyes\",\"category\":\"diabetes\"}"
+              },
+              {
+                "url": "entry",
+                "valueString": "{\"testName\":\"TSH\",\"testCode\":\"3016-3\",\"value\":5.4,\"unit\":\"mIU/L\",\"referenceMin\":0.4,\"referenceMax\":4,\"status\":\"high\",\"source\":\"practice\",\"collectedDate\":\"2025-11-13\",\"resultDate\":\"2025-11-15\",\"orderingProvider\":\"Dr. Eduardo Reyes\",\"category\":\"thyroid\"}"
+              },
+              {
+                "url": "entry",
+                "valueString": "{\"testName\":\"Creatinine\",\"testCode\":\"82565\",\"value\":1.2,\"unit\":\"mg/dL\",\"referenceMin\":0.6,\"referenceMax\":1.2,\"status\":\"high\",\"source\":\"practice\",\"collectedDate\":\"2024-02-20\",\"resultDate\":\"2024-02-22\",\"orderingProvider\":\"Dr. Eduardo Reyes\",\"category\":\"renal\"}"
+              },
+              {
+                "url": "entry",
+                "valueString": "{\"testName\":\"Sodium\",\"testCode\":\"2951-2\",\"value\":135,\"unit\":\"mEq/L\",\"referenceMin\":136,\"referenceMax\":145,\"status\":\"low\",\"source\":\"practice\",\"collectedDate\":\"2024-02-20\",\"resultDate\":\"2024-02-22\",\"orderingProvider\":\"Dr. Eduardo Reyes\",\"category\":\"metabolic\"}"
+              },
+              {
+                "url": "entry",
+                "valueString": "{\"testName\":\"Potassium\",\"testCode\":\"2823-3\",\"value\":4.7,\"unit\":\"mEq/L\",\"referenceMin\":3.5,\"referenceMax\":5,\"status\":\"normal\",\"source\":\"practice\",\"collectedDate\":\"2024-02-20\",\"resultDate\":\"2024-02-22\",\"orderingProvider\":\"Dr. Eduardo Reyes\",\"category\":\"metabolic\"}"
+              },
+              {
+                "url": "entry",
+                "valueString": "{\"testName\":\"Total Cholesterol\",\"testCode\":\"2093-3\",\"value\":220,\"unit\":\"mg/dL\",\"referenceMin\":0,\"referenceMax\":200,\"status\":\"high\",\"source\":\"practice\",\"collectedDate\":\"2024-02-20\",\"resultDate\":\"2024-02-22\",\"orderingProvider\":\"Dr. Eduardo Reyes\",\"category\":\"lipid\"}"
+              },
+              {
+                "url": "entry",
+                "valueString": "{\"testName\":\"Creatinine\",\"testCode\":\"82565\",\"value\":1.4,\"unit\":\"mg/dL\",\"referenceMin\":0.6,\"referenceMax\":1.2,\"status\":\"high\",\"source\":\"practice\",\"collectedDate\":\"2024-08-20\",\"resultDate\":\"2024-08-22\",\"orderingProvider\":\"Dr. Eduardo Reyes\",\"category\":\"renal\"}"
+              },
+              {
+                "url": "entry",
+                "valueString": "{\"testName\":\"Sodium\",\"testCode\":\"2951-2\",\"value\":140,\"unit\":\"mEq/L\",\"referenceMin\":136,\"referenceMax\":145,\"status\":\"normal\",\"source\":\"practice\",\"collectedDate\":\"2024-08-20\",\"resultDate\":\"2024-08-22\",\"orderingProvider\":\"Dr. Eduardo Reyes\",\"category\":\"metabolic\"}"
+              },
+              {
+                "url": "entry",
+                "valueString": "{\"testName\":\"Potassium\",\"testCode\":\"2823-3\",\"value\":4.1,\"unit\":\"mEq/L\",\"referenceMin\":3.5,\"referenceMax\":5,\"status\":\"normal\",\"source\":\"practice\",\"collectedDate\":\"2024-08-20\",\"resultDate\":\"2024-08-22\",\"orderingProvider\":\"Dr. Eduardo Reyes\",\"category\":\"metabolic\"}"
+              },
+              {
+                "url": "entry",
+                "valueString": "{\"testName\":\"Total Cholesterol\",\"testCode\":\"2093-3\",\"value\":234,\"unit\":\"mg/dL\",\"referenceMin\":0,\"referenceMax\":200,\"status\":\"high\",\"source\":\"practice\",\"collectedDate\":\"2024-08-20\",\"resultDate\":\"2024-08-22\",\"orderingProvider\":\"Dr. Eduardo Reyes\",\"category\":\"lipid\"}"
+              },
+              {
+                "url": "entry",
+                "valueString": "{\"testName\":\"Creatinine\",\"testCode\":\"82565\",\"value\":1.1,\"unit\":\"mg/dL\",\"referenceMin\":0.6,\"referenceMax\":1.2,\"status\":\"high\",\"source\":\"practice\",\"collectedDate\":\"2025-02-18\",\"resultDate\":\"2025-02-20\",\"orderingProvider\":\"Dr. Eduardo Reyes\",\"category\":\"renal\"}"
+              },
+              {
+                "url": "entry",
+                "valueString": "{\"testName\":\"Sodium\",\"testCode\":\"2951-2\",\"value\":133,\"unit\":\"mEq/L\",\"referenceMin\":136,\"referenceMax\":145,\"status\":\"normal\",\"source\":\"practice\",\"collectedDate\":\"2025-02-18\",\"resultDate\":\"2025-02-20\",\"orderingProvider\":\"Dr. Eduardo Reyes\",\"category\":\"metabolic\"}"
+              },
+              {
+                "url": "entry",
+                "valueString": "{\"testName\":\"Potassium\",\"testCode\":\"2823-3\",\"value\":4.5,\"unit\":\"mEq/L\",\"referenceMin\":3.5,\"referenceMax\":5,\"status\":\"normal\",\"source\":\"practice\",\"collectedDate\":\"2025-02-18\",\"resultDate\":\"2025-02-20\",\"orderingProvider\":\"Dr. Eduardo Reyes\",\"category\":\"metabolic\"}"
+              },
+              {
+                "url": "entry",
+                "valueString": "{\"testName\":\"Total Cholesterol\",\"testCode\":\"2093-3\",\"value\":234,\"unit\":\"mg/dL\",\"referenceMin\":0,\"referenceMax\":200,\"status\":\"high\",\"source\":\"practice\",\"collectedDate\":\"2025-02-18\",\"resultDate\":\"2025-02-20\",\"orderingProvider\":\"Dr. Eduardo Reyes\",\"category\":\"lipid\"}"
+              },
+              {
+                "url": "entry",
+                "valueString": "{\"testName\":\"Creatinine\",\"testCode\":\"82565\",\"value\":1,\"unit\":\"mg/dL\",\"referenceMin\":0.6,\"referenceMax\":1.2,\"status\":\"normal\",\"source\":\"practice\",\"collectedDate\":\"2025-08-19\",\"resultDate\":\"2025-08-21\",\"orderingProvider\":\"Dr. Eduardo Reyes\",\"category\":\"renal\"}"
+              },
+              {
+                "url": "entry",
+                "valueString": "{\"testName\":\"Sodium\",\"testCode\":\"2951-2\",\"value\":140,\"unit\":\"mEq/L\",\"referenceMin\":136,\"referenceMax\":145,\"status\":\"low\",\"source\":\"practice\",\"collectedDate\":\"2025-08-19\",\"resultDate\":\"2025-08-21\",\"orderingProvider\":\"Dr. Eduardo Reyes\",\"category\":\"metabolic\"}"
+              },
+              {
+                "url": "entry",
+                "valueString": "{\"testName\":\"Potassium\",\"testCode\":\"2823-3\",\"value\":4.3,\"unit\":\"mEq/L\",\"referenceMin\":3.5,\"referenceMax\":5,\"status\":\"normal\",\"source\":\"practice\",\"collectedDate\":\"2025-08-19\",\"resultDate\":\"2025-08-21\",\"orderingProvider\":\"Dr. Eduardo Reyes\",\"category\":\"metabolic\"}"
+              },
+              {
+                "url": "entry",
+                "valueString": "{\"testName\":\"Total Cholesterol\",\"testCode\":\"2093-3\",\"value\":231,\"unit\":\"mg/dL\",\"referenceMin\":0,\"referenceMax\":200,\"status\":\"normal\",\"source\":\"practice\",\"collectedDate\":\"2025-08-19\",\"resultDate\":\"2025-08-21\",\"orderingProvider\":\"Dr. Eduardo Reyes\",\"category\":\"lipid\"}"
+              }
+            ]
+          },
+          {
+            "url": "urn:easy-health:medication-history",
+            "extension": [
+              {
+                "url": "entry",
+                "valueString": "{\"medicationName\":\"Furosemide 20mg daily\",\"genericName\":\"Furosemide\",\"dosage\":\"20mg\",\"frequency\":\"once daily\",\"route\":\"oral\",\"prescriber\":\"Dr. Eduardo Reyes\",\"startDate\":\"2021-08-01\",\"endDate\":\"2024-03-15\",\"status\":\"changed\",\"source\":\"practice\",\"category\":\"cardiovascular\",\"reason\":\"Congestive Heart Failure\",\"changeType\":\"dose_increase\",\"changeReason\":\"Increased fluid retention, dose increased to 40mg\"}"
+              },
+              {
+                "url": "entry",
+                "valueString": "{\"medicationName\":\"Furosemide 40mg daily\",\"genericName\":\"Furosemide\",\"dosage\":\"40mg\",\"frequency\":\"once daily\",\"route\":\"oral\",\"prescriber\":\"Dr. Eduardo Reyes\",\"startDate\":\"2024-03-15\",\"endDate\":null,\"status\":\"active\",\"source\":\"practice\",\"category\":\"cardiovascular\",\"reason\":\"Congestive Heart Failure\",\"changeType\":null,\"changeReason\":null}"
+              },
+              {
+                "url": "entry",
+                "valueString": "{\"medicationName\":\"Carvedilol 25mg BID\",\"genericName\":\"Carvedilol\",\"dosage\":\"25mg\",\"frequency\":\"twice daily\",\"route\":\"oral\",\"prescriber\":\"Dr. Eduardo Reyes\",\"startDate\":\"2021-08-01\",\"endDate\":null,\"status\":\"active\",\"source\":\"practice\",\"category\":\"cardiovascular\",\"reason\":\"Congestive Heart Failure, rate control\",\"changeType\":null,\"changeReason\":null}"
+              },
+              {
+                "url": "entry",
+                "valueString": "{\"medicationName\":\"Insulin Glargine 15 units nightly\",\"genericName\":\"Insulin Glargine\",\"dosage\":\"15 units\",\"frequency\":\"nightly\",\"route\":\"subcutaneous\",\"prescriber\":\"Dr. Eduardo Reyes\",\"startDate\":\"2022-01-10\",\"endDate\":\"2024-08-20\",\"status\":\"changed\",\"source\":\"practice\",\"category\":\"diabetes\",\"reason\":\"Type 2 Diabetes\",\"changeType\":\"dose_increase\",\"changeReason\":\"A1c above target, dose increased to 20 units\"}"
+              },
+              {
+                "url": "entry",
+                "valueString": "{\"medicationName\":\"Insulin Glargine 20 units nightly\",\"genericName\":\"Insulin Glargine\",\"dosage\":\"20 units\",\"frequency\":\"nightly\",\"route\":\"subcutaneous\",\"prescriber\":\"Dr. Eduardo Reyes\",\"startDate\":\"2024-08-20\",\"endDate\":null,\"status\":\"active\",\"source\":\"practice\",\"category\":\"diabetes\",\"reason\":\"Type 2 Diabetes\",\"changeType\":null,\"changeReason\":null}"
+              },
+              {
+                "url": "entry",
+                "valueString": "{\"medicationName\":\"Levothyroxine 100mcg daily\",\"genericName\":\"Levothyroxine\",\"dosage\":\"100mcg\",\"frequency\":\"once daily\",\"route\":\"oral\",\"prescriber\":\"Dr. Eduardo Reyes\",\"startDate\":\"2020-03-15\",\"endDate\":null,\"status\":\"active\",\"source\":\"practice\",\"category\":\"thyroid\",\"reason\":\"Hypothyroidism\",\"changeType\":null,\"changeReason\":null}"
+              },
+              {
+                "url": "entry",
+                "valueString": "{\"medicationName\":\"Gabapentin 300mg TID\",\"genericName\":\"Gabapentin\",\"dosage\":\"300mg\",\"frequency\":\"three times daily\",\"route\":\"oral\",\"prescriber\":\"Dr. Eduardo Reyes\",\"startDate\":\"2023-02-01\",\"endDate\":null,\"status\":\"active\",\"source\":\"practice\",\"category\":\"pain\",\"reason\":\"Diabetic neuropathy\",\"changeType\":null,\"changeReason\":null}"
+              },
+              {
+                "url": "entry",
+                "valueString": "{\"medicationName\":\"Aspirin 81mg daily\",\"genericName\":\"Aspirin\",\"dosage\":\"81mg\",\"frequency\":\"once daily\",\"route\":\"oral\",\"prescriber\":\"Dr. Eduardo Reyes\",\"startDate\":\"2021-08-01\",\"endDate\":null,\"status\":\"active\",\"source\":\"practice\",\"category\":\"cardiovascular\",\"reason\":\"Cardiovascular prophylaxis\",\"changeType\":null,\"changeReason\":null}"
+              }
+            ]
           }
         ]
       },
@@ -2023,7 +3281,9 @@
           ]
         },
         "type": "intolerance",
-        "category": ["medication"],
+        "category": [
+          "medication"
+        ],
         "code": {
           "text": "ACE inhibitors"
         },
@@ -2070,7 +3330,9 @@
           ]
         },
         "type": "intolerance",
-        "category": ["medication"],
+        "category": [
+          "medication"
+        ],
         "code": {
           "coding": [
             {
@@ -2337,7 +3599,9 @@
           {
             "use": "official",
             "family": "Foster",
-            "given": ["William"]
+            "given": [
+              "William"
+            ]
           }
         ],
         "birthDate": "1936-01-30",
@@ -2356,7 +3620,9 @@
         "address": [
           {
             "use": "home",
-            "line": ["456 Heritage Lane"],
+            "line": [
+              "456 Heritage Lane"
+            ],
             "city": "Springfield",
             "state": "IL",
             "postalCode": "62708"
@@ -2371,41 +3637,345 @@
           {
             "url": "urn:easy-health:conditions",
             "extension": [
-              { "url": "condition", "valueString": "Parkinson's Disease" },
-              { "url": "condition", "valueString": "Alzheimer's Disease (mild)" },
-              { "url": "condition", "valueString": "Hypertension" },
-              { "url": "condition", "valueString": "History of Falls" },
-              { "url": "condition", "valueString": "Urinary Incontinence" }
+              {
+                "url": "condition",
+                "valueString": "Parkinson's Disease"
+              },
+              {
+                "url": "condition",
+                "valueString": "Alzheimer's Disease (mild)"
+              },
+              {
+                "url": "condition",
+                "valueString": "Hypertension"
+              },
+              {
+                "url": "condition",
+                "valueString": "History of Falls"
+              },
+              {
+                "url": "condition",
+                "valueString": "Urinary Incontinence"
+              }
             ]
           },
           {
             "url": "urn:easy-health:medications",
             "extension": [
-              { "url": "medication", "valueString": "Carbidopa/Levodopa 25/100mg TID" },
-              { "url": "medication", "valueString": "Donepezil 10mg daily" },
-              { "url": "medication", "valueString": "Amlodipine 5mg daily" },
-              { "url": "medication", "valueString": "Oxybutynin 5mg BID" }
+              {
+                "url": "medication",
+                "valueString": "Carbidopa/Levodopa 25/100mg TID"
+              },
+              {
+                "url": "medication",
+                "valueString": "Donepezil 10mg daily"
+              },
+              {
+                "url": "medication",
+                "valueString": "Amlodipine 5mg daily"
+              },
+              {
+                "url": "medication",
+                "valueString": "Oxybutynin 5mg BID"
+              }
             ]
           },
           {
             "url": "urn:easy-health:allergies",
             "extension": [
-              { "url": "allergy", "valueString": "Haloperidol" },
-              { "url": "allergy", "valueString": "Tramadol" }
+              {
+                "url": "allergy",
+                "valueString": "Haloperidol"
+              },
+              {
+                "url": "allergy",
+                "valueString": "Tramadol"
+              }
             ]
           },
           {
             "url": "urn:easy-health:risk-flags",
             "extension": [
-              { "url": "flag", "valueString": "High fall risk" },
-              { "url": "flag", "valueString": "Cognitive impairment" },
-              { "url": "flag", "valueString": "Caregiver dependent" },
-              { "url": "flag", "valueString": "Polypharmacy" }
+              {
+                "url": "flag",
+                "valueString": "High fall risk"
+              },
+              {
+                "url": "flag",
+                "valueString": "Cognitive impairment"
+              },
+              {
+                "url": "flag",
+                "valueString": "Caregiver dependent"
+              },
+              {
+                "url": "flag",
+                "valueString": "Polypharmacy"
+              }
             ]
           },
           {
             "url": "urn:easy-health:insurance-plan",
             "valueString": "MA-PLAN-001"
+          },
+          {
+            "url": "urn:easy-health:vitals-history",
+            "extension": [
+              {
+                "url": "entry",
+                "valueString": "{\"measureDate\":\"2024-02-12\",\"systolic\":151,\"diastolic\":93,\"heartRate\":70,\"oxygenSaturation\":98,\"weight\":165,\"bmi\":24.5,\"temperature\":97.3,\"respiratoryRate\":16,\"source\":\"hie\"}"
+              },
+              {
+                "url": "entry",
+                "valueString": "{\"measureDate\":\"2024-05-08\",\"systolic\":146,\"diastolic\":86,\"heartRate\":74,\"oxygenSaturation\":95,\"weight\":164,\"bmi\":24.4,\"temperature\":98,\"respiratoryRate\":16,\"source\":\"practice\"}"
+              },
+              {
+                "url": "entry",
+                "valueString": "{\"measureDate\":\"2024-08-14\",\"systolic\":136,\"diastolic\":84,\"heartRate\":64,\"oxygenSaturation\":95,\"weight\":163,\"bmi\":24.2,\"temperature\":97.7,\"respiratoryRate\":17,\"source\":\"practice\"}"
+              },
+              {
+                "url": "entry",
+                "valueString": "{\"measureDate\":\"2024-11-06\",\"systolic\":144,\"diastolic\":93,\"heartRate\":71,\"oxygenSaturation\":96,\"weight\":162,\"bmi\":24.1,\"temperature\":98.2,\"respiratoryRate\":18,\"source\":\"hie\"}"
+              },
+              {
+                "url": "entry",
+                "valueString": "{\"measureDate\":\"2025-02-10\",\"systolic\":137,\"diastolic\":82,\"heartRate\":66,\"oxygenSaturation\":96,\"weight\":161,\"bmi\":23.9,\"temperature\":98.1,\"respiratoryRate\":18,\"source\":\"practice\"}"
+              },
+              {
+                "url": "entry",
+                "valueString": "{\"measureDate\":\"2025-05-07\",\"systolic\":150,\"diastolic\":84,\"heartRate\":64,\"oxygenSaturation\":96,\"weight\":160,\"bmi\":23.8,\"temperature\":97.7,\"respiratoryRate\":14,\"source\":\"practice\"}"
+              },
+              {
+                "url": "entry",
+                "valueString": "{\"measureDate\":\"2025-08-13\",\"systolic\":155,\"diastolic\":83,\"heartRate\":71,\"oxygenSaturation\":97,\"weight\":159,\"bmi\":23.6,\"temperature\":98.3,\"respiratoryRate\":17,\"source\":\"hie\"}"
+              },
+              {
+                "url": "entry",
+                "valueString": "{\"measureDate\":\"2025-11-05\",\"systolic\":138,\"diastolic\":92,\"heartRate\":76,\"oxygenSaturation\":95,\"weight\":158,\"bmi\":23.5,\"temperature\":97.7,\"respiratoryRate\":17,\"source\":\"practice\"}"
+              }
+            ]
+          },
+          {
+            "url": "urn:easy-health:lab-results",
+            "extension": [
+              {
+                "url": "entry",
+                "valueString": "{\"testName\":\"Vitamin B12\",\"testCode\":\"2132-9\",\"value\":406,\"unit\":\"pg/mL\",\"referenceMin\":200,\"referenceMax\":900,\"status\":\"normal\",\"source\":\"practice\",\"collectedDate\":\"2024-03-10\",\"resultDate\":\"2024-03-12\",\"orderingProvider\":\"Dr. Susan Park\",\"category\":\"metabolic\"}"
+              },
+              {
+                "url": "entry",
+                "valueString": "{\"testName\":\"TSH\",\"testCode\":\"3016-3\",\"value\":1.6,\"unit\":\"mIU/L\",\"referenceMin\":0.4,\"referenceMax\":4,\"status\":\"normal\",\"source\":\"practice\",\"collectedDate\":\"2024-03-10\",\"resultDate\":\"2024-03-12\",\"orderingProvider\":\"Dr. Susan Park\",\"category\":\"thyroid\"}"
+              },
+              {
+                "url": "entry",
+                "valueString": "{\"testName\":\"Vitamin B12\",\"testCode\":\"2132-9\",\"value\":387,\"unit\":\"pg/mL\",\"referenceMin\":200,\"referenceMax\":900,\"status\":\"normal\",\"source\":\"practice\",\"collectedDate\":\"2024-06-12\",\"resultDate\":\"2024-06-14\",\"orderingProvider\":\"Dr. Susan Park\",\"category\":\"metabolic\"}"
+              },
+              {
+                "url": "entry",
+                "valueString": "{\"testName\":\"TSH\",\"testCode\":\"3016-3\",\"value\":3.9,\"unit\":\"mIU/L\",\"referenceMin\":0.4,\"referenceMax\":4,\"status\":\"normal\",\"source\":\"practice\",\"collectedDate\":\"2024-06-12\",\"resultDate\":\"2024-06-14\",\"orderingProvider\":\"Dr. Susan Park\",\"category\":\"thyroid\"}"
+              },
+              {
+                "url": "entry",
+                "valueString": "{\"testName\":\"Vitamin B12\",\"testCode\":\"2132-9\",\"value\":320,\"unit\":\"pg/mL\",\"referenceMin\":200,\"referenceMax\":900,\"status\":\"normal\",\"source\":\"practice\",\"collectedDate\":\"2024-09-15\",\"resultDate\":\"2024-09-17\",\"orderingProvider\":\"Dr. Susan Park\",\"category\":\"metabolic\"}"
+              },
+              {
+                "url": "entry",
+                "valueString": "{\"testName\":\"TSH\",\"testCode\":\"3016-3\",\"value\":2.8,\"unit\":\"mIU/L\",\"referenceMin\":0.4,\"referenceMax\":4,\"status\":\"normal\",\"source\":\"practice\",\"collectedDate\":\"2024-09-15\",\"resultDate\":\"2024-09-17\",\"orderingProvider\":\"Dr. Susan Park\",\"category\":\"thyroid\"}"
+              },
+              {
+                "url": "entry",
+                "valueString": "{\"testName\":\"Vitamin B12\",\"testCode\":\"2132-9\",\"value\":404,\"unit\":\"pg/mL\",\"referenceMin\":200,\"referenceMax\":900,\"status\":\"normal\",\"source\":\"practice\",\"collectedDate\":\"2024-12-10\",\"resultDate\":\"2024-12-12\",\"orderingProvider\":\"Dr. Susan Park\",\"category\":\"metabolic\"}"
+              },
+              {
+                "url": "entry",
+                "valueString": "{\"testName\":\"TSH\",\"testCode\":\"3016-3\",\"value\":1.7,\"unit\":\"mIU/L\",\"referenceMin\":0.4,\"referenceMax\":4,\"status\":\"normal\",\"source\":\"practice\",\"collectedDate\":\"2024-12-10\",\"resultDate\":\"2024-12-12\",\"orderingProvider\":\"Dr. Susan Park\",\"category\":\"thyroid\"}"
+              },
+              {
+                "url": "entry",
+                "valueString": "{\"testName\":\"Vitamin B12\",\"testCode\":\"2132-9\",\"value\":349,\"unit\":\"pg/mL\",\"referenceMin\":200,\"referenceMax\":900,\"status\":\"normal\",\"source\":\"practice\",\"collectedDate\":\"2025-03-11\",\"resultDate\":\"2025-03-13\",\"orderingProvider\":\"Dr. Susan Park\",\"category\":\"metabolic\"}"
+              },
+              {
+                "url": "entry",
+                "valueString": "{\"testName\":\"TSH\",\"testCode\":\"3016-3\",\"value\":4,\"unit\":\"mIU/L\",\"referenceMin\":0.4,\"referenceMax\":4,\"status\":\"normal\",\"source\":\"practice\",\"collectedDate\":\"2025-03-11\",\"resultDate\":\"2025-03-13\",\"orderingProvider\":\"Dr. Susan Park\",\"category\":\"thyroid\"}"
+              },
+              {
+                "url": "entry",
+                "valueString": "{\"testName\":\"Vitamin B12\",\"testCode\":\"2132-9\",\"value\":429,\"unit\":\"pg/mL\",\"referenceMin\":200,\"referenceMax\":900,\"status\":\"normal\",\"source\":\"practice\",\"collectedDate\":\"2025-06-13\",\"resultDate\":\"2025-06-15\",\"orderingProvider\":\"Dr. Susan Park\",\"category\":\"metabolic\"}"
+              },
+              {
+                "url": "entry",
+                "valueString": "{\"testName\":\"TSH\",\"testCode\":\"3016-3\",\"value\":3.3,\"unit\":\"mIU/L\",\"referenceMin\":0.4,\"referenceMax\":4,\"status\":\"normal\",\"source\":\"practice\",\"collectedDate\":\"2025-06-13\",\"resultDate\":\"2025-06-15\",\"orderingProvider\":\"Dr. Susan Park\",\"category\":\"thyroid\"}"
+              },
+              {
+                "url": "entry",
+                "valueString": "{\"testName\":\"Vitamin B12\",\"testCode\":\"2132-9\",\"value\":438,\"unit\":\"pg/mL\",\"referenceMin\":200,\"referenceMax\":900,\"status\":\"normal\",\"source\":\"practice\",\"collectedDate\":\"2025-09-16\",\"resultDate\":\"2025-09-18\",\"orderingProvider\":\"Dr. Susan Park\",\"category\":\"metabolic\"}"
+              },
+              {
+                "url": "entry",
+                "valueString": "{\"testName\":\"TSH\",\"testCode\":\"3016-3\",\"value\":2.6,\"unit\":\"mIU/L\",\"referenceMin\":0.4,\"referenceMax\":4,\"status\":\"normal\",\"source\":\"practice\",\"collectedDate\":\"2025-09-16\",\"resultDate\":\"2025-09-18\",\"orderingProvider\":\"Dr. Susan Park\",\"category\":\"thyroid\"}"
+              },
+              {
+                "url": "entry",
+                "valueString": "{\"testName\":\"Vitamin B12\",\"testCode\":\"2132-9\",\"value\":280,\"unit\":\"pg/mL\",\"referenceMin\":200,\"referenceMax\":900,\"status\":\"normal\",\"source\":\"practice\",\"collectedDate\":\"2025-12-11\",\"resultDate\":\"2025-12-13\",\"orderingProvider\":\"Dr. Susan Park\",\"category\":\"metabolic\"}"
+              },
+              {
+                "url": "entry",
+                "valueString": "{\"testName\":\"TSH\",\"testCode\":\"3016-3\",\"value\":2.2,\"unit\":\"mIU/L\",\"referenceMin\":0.4,\"referenceMax\":4,\"status\":\"normal\",\"source\":\"practice\",\"collectedDate\":\"2025-12-11\",\"resultDate\":\"2025-12-13\",\"orderingProvider\":\"Dr. Susan Park\",\"category\":\"thyroid\"}"
+              },
+              {
+                "url": "entry",
+                "valueString": "{\"testName\":\"Albumin\",\"testCode\":\"1751-7\",\"value\":3.8,\"unit\":\"g/dL\",\"referenceMin\":3.5,\"referenceMax\":5.5,\"status\":\"normal\",\"source\":\"practice\",\"collectedDate\":\"2024-03-10\",\"resultDate\":\"2024-03-12\",\"orderingProvider\":\"Dr. Susan Park\",\"category\":\"metabolic\"}"
+              },
+              {
+                "url": "entry",
+                "valueString": "{\"testName\":\"Albumin\",\"testCode\":\"1751-7\",\"value\":3.7,\"unit\":\"g/dL\",\"referenceMin\":3.5,\"referenceMax\":5.5,\"status\":\"normal\",\"source\":\"practice\",\"collectedDate\":\"2024-06-12\",\"resultDate\":\"2024-06-14\",\"orderingProvider\":\"Dr. Susan Park\",\"category\":\"metabolic\"}"
+              },
+              {
+                "url": "entry",
+                "valueString": "{\"testName\":\"Albumin\",\"testCode\":\"1751-7\",\"value\":3.6,\"unit\":\"g/dL\",\"referenceMin\":3.5,\"referenceMax\":5.5,\"status\":\"normal\",\"source\":\"practice\",\"collectedDate\":\"2024-09-15\",\"resultDate\":\"2024-09-17\",\"orderingProvider\":\"Dr. Susan Park\",\"category\":\"metabolic\"}"
+              },
+              {
+                "url": "entry",
+                "valueString": "{\"testName\":\"Albumin\",\"testCode\":\"1751-7\",\"value\":3.6,\"unit\":\"g/dL\",\"referenceMin\":3.5,\"referenceMax\":5.5,\"status\":\"normal\",\"source\":\"practice\",\"collectedDate\":\"2024-12-10\",\"resultDate\":\"2024-12-12\",\"orderingProvider\":\"Dr. Susan Park\",\"category\":\"metabolic\"}"
+              },
+              {
+                "url": "entry",
+                "valueString": "{\"testName\":\"Albumin\",\"testCode\":\"1751-7\",\"value\":3.5,\"unit\":\"g/dL\",\"referenceMin\":3.5,\"referenceMax\":5.5,\"status\":\"normal\",\"source\":\"practice\",\"collectedDate\":\"2025-03-11\",\"resultDate\":\"2025-03-13\",\"orderingProvider\":\"Dr. Susan Park\",\"category\":\"metabolic\"}"
+              },
+              {
+                "url": "entry",
+                "valueString": "{\"testName\":\"Albumin\",\"testCode\":\"1751-7\",\"value\":3.4,\"unit\":\"g/dL\",\"referenceMin\":3.5,\"referenceMax\":5.5,\"status\":\"low\",\"source\":\"practice\",\"collectedDate\":\"2025-06-13\",\"resultDate\":\"2025-06-15\",\"orderingProvider\":\"Dr. Susan Park\",\"category\":\"metabolic\"}"
+              },
+              {
+                "url": "entry",
+                "valueString": "{\"testName\":\"Albumin\",\"testCode\":\"1751-7\",\"value\":3.3,\"unit\":\"g/dL\",\"referenceMin\":3.5,\"referenceMax\":5.5,\"status\":\"low\",\"source\":\"practice\",\"collectedDate\":\"2025-09-16\",\"resultDate\":\"2025-09-18\",\"orderingProvider\":\"Dr. Susan Park\",\"category\":\"metabolic\"}"
+              },
+              {
+                "url": "entry",
+                "valueString": "{\"testName\":\"Albumin\",\"testCode\":\"1751-7\",\"value\":3.2,\"unit\":\"g/dL\",\"referenceMin\":3.5,\"referenceMax\":5.5,\"status\":\"low\",\"source\":\"practice\",\"collectedDate\":\"2025-12-11\",\"resultDate\":\"2025-12-13\",\"orderingProvider\":\"Dr. Susan Park\",\"category\":\"metabolic\"}"
+              },
+              {
+                "url": "entry",
+                "valueString": "{\"testName\":\"WBC\",\"testCode\":\"6690-2\",\"value\":6.9,\"unit\":\"K/uL\",\"referenceMin\":4.5,\"referenceMax\":11,\"status\":\"normal\",\"source\":\"practice\",\"collectedDate\":\"2024-03-10\",\"resultDate\":\"2024-03-12\",\"orderingProvider\":\"Dr. Susan Park\",\"category\":\"hematology\"}"
+              },
+              {
+                "url": "entry",
+                "valueString": "{\"testName\":\"Hemoglobin\",\"testCode\":\"718-7\",\"value\":12.6,\"unit\":\"g/dL\",\"referenceMin\":13.5,\"referenceMax\":17.5,\"status\":\"low\",\"source\":\"practice\",\"collectedDate\":\"2024-03-10\",\"resultDate\":\"2024-03-12\",\"orderingProvider\":\"Dr. Susan Park\",\"category\":\"hematology\"}"
+              },
+              {
+                "url": "entry",
+                "valueString": "{\"testName\":\"Folate\",\"testCode\":\"2284-8\",\"value\":11.9,\"unit\":\"ng/mL\",\"referenceMin\":3,\"referenceMax\":20,\"status\":\"normal\",\"source\":\"practice\",\"collectedDate\":\"2024-03-10\",\"resultDate\":\"2024-03-12\",\"orderingProvider\":\"Dr. Susan Park\",\"category\":\"metabolic\"}"
+              },
+              {
+                "url": "entry",
+                "valueString": "{\"testName\":\"Sodium\",\"testCode\":\"2951-2\",\"value\":141,\"unit\":\"mEq/L\",\"referenceMin\":136,\"referenceMax\":145,\"status\":\"normal\",\"source\":\"practice\",\"collectedDate\":\"2024-03-10\",\"resultDate\":\"2024-03-12\",\"orderingProvider\":\"Dr. Susan Park\",\"category\":\"metabolic\"}"
+              },
+              {
+                "url": "entry",
+                "valueString": "{\"testName\":\"Potassium\",\"testCode\":\"2823-3\",\"value\":4.3,\"unit\":\"mEq/L\",\"referenceMin\":3.5,\"referenceMax\":5,\"status\":\"normal\",\"source\":\"practice\",\"collectedDate\":\"2024-03-10\",\"resultDate\":\"2024-03-12\",\"orderingProvider\":\"Dr. Susan Park\",\"category\":\"metabolic\"}"
+              },
+              {
+                "url": "entry",
+                "valueString": "{\"testName\":\"Creatinine\",\"testCode\":\"82565\",\"value\":1,\"unit\":\"mg/dL\",\"referenceMin\":0.7,\"referenceMax\":1.3,\"status\":\"normal\",\"source\":\"practice\",\"collectedDate\":\"2024-03-10\",\"resultDate\":\"2024-03-12\",\"orderingProvider\":\"Dr. Susan Park\",\"category\":\"renal\"}"
+              },
+              {
+                "url": "entry",
+                "valueString": "{\"testName\":\"WBC\",\"testCode\":\"6690-2\",\"value\":7.3,\"unit\":\"K/uL\",\"referenceMin\":4.5,\"referenceMax\":11,\"status\":\"normal\",\"source\":\"practice\",\"collectedDate\":\"2024-09-15\",\"resultDate\":\"2024-09-17\",\"orderingProvider\":\"Dr. Susan Park\",\"category\":\"hematology\"}"
+              },
+              {
+                "url": "entry",
+                "valueString": "{\"testName\":\"Hemoglobin\",\"testCode\":\"718-7\",\"value\":13.8,\"unit\":\"g/dL\",\"referenceMin\":13.5,\"referenceMax\":17.5,\"status\":\"low\",\"source\":\"practice\",\"collectedDate\":\"2024-09-15\",\"resultDate\":\"2024-09-17\",\"orderingProvider\":\"Dr. Susan Park\",\"category\":\"hematology\"}"
+              },
+              {
+                "url": "entry",
+                "valueString": "{\"testName\":\"Folate\",\"testCode\":\"2284-8\",\"value\":14.6,\"unit\":\"ng/mL\",\"referenceMin\":3,\"referenceMax\":20,\"status\":\"normal\",\"source\":\"practice\",\"collectedDate\":\"2024-09-15\",\"resultDate\":\"2024-09-17\",\"orderingProvider\":\"Dr. Susan Park\",\"category\":\"metabolic\"}"
+              },
+              {
+                "url": "entry",
+                "valueString": "{\"testName\":\"Sodium\",\"testCode\":\"2951-2\",\"value\":141,\"unit\":\"mEq/L\",\"referenceMin\":136,\"referenceMax\":145,\"status\":\"normal\",\"source\":\"practice\",\"collectedDate\":\"2024-09-15\",\"resultDate\":\"2024-09-17\",\"orderingProvider\":\"Dr. Susan Park\",\"category\":\"metabolic\"}"
+              },
+              {
+                "url": "entry",
+                "valueString": "{\"testName\":\"Potassium\",\"testCode\":\"2823-3\",\"value\":3.9,\"unit\":\"mEq/L\",\"referenceMin\":3.5,\"referenceMax\":5,\"status\":\"normal\",\"source\":\"practice\",\"collectedDate\":\"2024-09-15\",\"resultDate\":\"2024-09-17\",\"orderingProvider\":\"Dr. Susan Park\",\"category\":\"metabolic\"}"
+              },
+              {
+                "url": "entry",
+                "valueString": "{\"testName\":\"Creatinine\",\"testCode\":\"82565\",\"value\":1,\"unit\":\"mg/dL\",\"referenceMin\":0.7,\"referenceMax\":1.3,\"status\":\"normal\",\"source\":\"practice\",\"collectedDate\":\"2024-09-15\",\"resultDate\":\"2024-09-17\",\"orderingProvider\":\"Dr. Susan Park\",\"category\":\"renal\"}"
+              },
+              {
+                "url": "entry",
+                "valueString": "{\"testName\":\"WBC\",\"testCode\":\"6690-2\",\"value\":6.6,\"unit\":\"K/uL\",\"referenceMin\":4.5,\"referenceMax\":11,\"status\":\"normal\",\"source\":\"practice\",\"collectedDate\":\"2025-03-11\",\"resultDate\":\"2025-03-13\",\"orderingProvider\":\"Dr. Susan Park\",\"category\":\"hematology\"}"
+              },
+              {
+                "url": "entry",
+                "valueString": "{\"testName\":\"Hemoglobin\",\"testCode\":\"718-7\",\"value\":14.3,\"unit\":\"g/dL\",\"referenceMin\":13.5,\"referenceMax\":17.5,\"status\":\"normal\",\"source\":\"practice\",\"collectedDate\":\"2025-03-11\",\"resultDate\":\"2025-03-13\",\"orderingProvider\":\"Dr. Susan Park\",\"category\":\"hematology\"}"
+              },
+              {
+                "url": "entry",
+                "valueString": "{\"testName\":\"Folate\",\"testCode\":\"2284-8\",\"value\":12.8,\"unit\":\"ng/mL\",\"referenceMin\":3,\"referenceMax\":20,\"status\":\"normal\",\"source\":\"practice\",\"collectedDate\":\"2025-03-11\",\"resultDate\":\"2025-03-13\",\"orderingProvider\":\"Dr. Susan Park\",\"category\":\"metabolic\"}"
+              },
+              {
+                "url": "entry",
+                "valueString": "{\"testName\":\"Sodium\",\"testCode\":\"2951-2\",\"value\":138,\"unit\":\"mEq/L\",\"referenceMin\":136,\"referenceMax\":145,\"status\":\"normal\",\"source\":\"practice\",\"collectedDate\":\"2025-03-11\",\"resultDate\":\"2025-03-13\",\"orderingProvider\":\"Dr. Susan Park\",\"category\":\"metabolic\"}"
+              },
+              {
+                "url": "entry",
+                "valueString": "{\"testName\":\"Potassium\",\"testCode\":\"2823-3\",\"value\":3.8,\"unit\":\"mEq/L\",\"referenceMin\":3.5,\"referenceMax\":5,\"status\":\"normal\",\"source\":\"practice\",\"collectedDate\":\"2025-03-11\",\"resultDate\":\"2025-03-13\",\"orderingProvider\":\"Dr. Susan Park\",\"category\":\"metabolic\"}"
+              },
+              {
+                "url": "entry",
+                "valueString": "{\"testName\":\"Creatinine\",\"testCode\":\"82565\",\"value\":1,\"unit\":\"mg/dL\",\"referenceMin\":0.7,\"referenceMax\":1.3,\"status\":\"normal\",\"source\":\"practice\",\"collectedDate\":\"2025-03-11\",\"resultDate\":\"2025-03-13\",\"orderingProvider\":\"Dr. Susan Park\",\"category\":\"renal\"}"
+              },
+              {
+                "url": "entry",
+                "valueString": "{\"testName\":\"WBC\",\"testCode\":\"6690-2\",\"value\":4.9,\"unit\":\"K/uL\",\"referenceMin\":4.5,\"referenceMax\":11,\"status\":\"normal\",\"source\":\"practice\",\"collectedDate\":\"2025-09-16\",\"resultDate\":\"2025-09-18\",\"orderingProvider\":\"Dr. Susan Park\",\"category\":\"hematology\"}"
+              },
+              {
+                "url": "entry",
+                "valueString": "{\"testName\":\"Hemoglobin\",\"testCode\":\"718-7\",\"value\":14.2,\"unit\":\"g/dL\",\"referenceMin\":13.5,\"referenceMax\":17.5,\"status\":\"normal\",\"source\":\"practice\",\"collectedDate\":\"2025-09-16\",\"resultDate\":\"2025-09-18\",\"orderingProvider\":\"Dr. Susan Park\",\"category\":\"hematology\"}"
+              },
+              {
+                "url": "entry",
+                "valueString": "{\"testName\":\"Folate\",\"testCode\":\"2284-8\",\"value\":15,\"unit\":\"ng/mL\",\"referenceMin\":3,\"referenceMax\":20,\"status\":\"normal\",\"source\":\"practice\",\"collectedDate\":\"2025-09-16\",\"resultDate\":\"2025-09-18\",\"orderingProvider\":\"Dr. Susan Park\",\"category\":\"metabolic\"}"
+              },
+              {
+                "url": "entry",
+                "valueString": "{\"testName\":\"Sodium\",\"testCode\":\"2951-2\",\"value\":143,\"unit\":\"mEq/L\",\"referenceMin\":136,\"referenceMax\":145,\"status\":\"normal\",\"source\":\"practice\",\"collectedDate\":\"2025-09-16\",\"resultDate\":\"2025-09-18\",\"orderingProvider\":\"Dr. Susan Park\",\"category\":\"metabolic\"}"
+              },
+              {
+                "url": "entry",
+                "valueString": "{\"testName\":\"Potassium\",\"testCode\":\"2823-3\",\"value\":4.4,\"unit\":\"mEq/L\",\"referenceMin\":3.5,\"referenceMax\":5,\"status\":\"normal\",\"source\":\"practice\",\"collectedDate\":\"2025-09-16\",\"resultDate\":\"2025-09-18\",\"orderingProvider\":\"Dr. Susan Park\",\"category\":\"metabolic\"}"
+              },
+              {
+                "url": "entry",
+                "valueString": "{\"testName\":\"Creatinine\",\"testCode\":\"82565\",\"value\":1,\"unit\":\"mg/dL\",\"referenceMin\":0.7,\"referenceMax\":1.3,\"status\":\"normal\",\"source\":\"practice\",\"collectedDate\":\"2025-09-16\",\"resultDate\":\"2025-09-18\",\"orderingProvider\":\"Dr. Susan Park\",\"category\":\"renal\"}"
+              }
+            ]
+          },
+          {
+            "url": "urn:easy-health:medication-history",
+            "extension": [
+              {
+                "url": "entry",
+                "valueString": "{\"medicationName\":\"Carbidopa/Levodopa 25/100mg TID\",\"genericName\":\"Carbidopa/Levodopa\",\"dosage\":\"25/100mg\",\"frequency\":\"three times daily\",\"route\":\"oral\",\"prescriber\":\"Dr. Susan Park\",\"startDate\":\"2020-06-15\",\"endDate\":null,\"status\":\"active\",\"source\":\"practice\",\"category\":\"other\",\"reason\":\"Parkinson's Disease\",\"changeType\":null,\"changeReason\":null}"
+              },
+              {
+                "url": "entry",
+                "valueString": "{\"medicationName\":\"Donepezil 5mg daily\",\"genericName\":\"Donepezil\",\"dosage\":\"5mg\",\"frequency\":\"once daily\",\"route\":\"oral\",\"prescriber\":\"Dr. Susan Park\",\"startDate\":\"2024-04-01\",\"endDate\":\"2024-10-15\",\"status\":\"changed\",\"source\":\"practice\",\"category\":\"other\",\"reason\":\"Alzheimer's Disease (mild)\",\"changeType\":\"dose_increase\",\"changeReason\":\"Tolerated well, increased to 10mg for better cognitive support\"}"
+              },
+              {
+                "url": "entry",
+                "valueString": "{\"medicationName\":\"Donepezil 10mg daily\",\"genericName\":\"Donepezil\",\"dosage\":\"10mg\",\"frequency\":\"once daily\",\"route\":\"oral\",\"prescriber\":\"Dr. Susan Park\",\"startDate\":\"2024-10-15\",\"endDate\":null,\"status\":\"active\",\"source\":\"practice\",\"category\":\"other\",\"reason\":\"Alzheimer's Disease (mild)\",\"changeType\":null,\"changeReason\":null}"
+              },
+              {
+                "url": "entry",
+                "valueString": "{\"medicationName\":\"Amlodipine 5mg daily\",\"genericName\":\"Amlodipine\",\"dosage\":\"5mg\",\"frequency\":\"once daily\",\"route\":\"oral\",\"prescriber\":\"Dr. Susan Park\",\"startDate\":\"2019-09-01\",\"endDate\":null,\"status\":\"active\",\"source\":\"practice\",\"category\":\"cardiovascular\",\"reason\":\"Hypertension\",\"changeType\":null,\"changeReason\":null}"
+              },
+              {
+                "url": "entry",
+                "valueString": "{\"medicationName\":\"Oxybutynin 5mg BID\",\"genericName\":\"Oxybutynin\",\"dosage\":\"5mg\",\"frequency\":\"twice daily\",\"route\":\"oral\",\"prescriber\":\"Dr. Susan Park\",\"startDate\":\"2022-11-01\",\"endDate\":null,\"status\":\"active\",\"source\":\"practice\",\"category\":\"other\",\"reason\":\"Urinary Incontinence\",\"changeType\":null,\"changeReason\":null}"
+              }
+            ]
           }
         ]
       },
@@ -2706,7 +4276,9 @@
           ]
         },
         "type": "allergy",
-        "category": ["medication"],
+        "category": [
+          "medication"
+        ],
         "code": {
           "coding": [
             {
@@ -2750,7 +4322,9 @@
           ]
         },
         "type": "allergy",
-        "category": ["medication"],
+        "category": [
+          "medication"
+        ],
         "code": {
           "coding": [
             {

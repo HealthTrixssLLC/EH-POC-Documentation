@@ -214,6 +214,15 @@ export default function IntakeDashboard() {
     },
   });
 
+  const progressNoteRaw = overview?.progressNote || [];
+  const noteCompletionSummary = useMemo(() => {
+    const total = progressNoteRaw.length;
+    const complete = progressNoteRaw.filter((s: any) => s.completeness === "Complete").length;
+    const incomplete = progressNoteRaw.filter((s: any) => s.completeness === "Incomplete").length;
+    const exception = progressNoteRaw.filter((s: any) => s.completeness === "Exception").length;
+    return { total, complete, incomplete, exception };
+  }, [progressNoteRaw]);
+
   if (isLoading) {
     return (
       <div className="p-6 space-y-6">
@@ -353,13 +362,6 @@ export default function IntakeDashboard() {
     window.open(`/api/visits/${visitId}/progress-note/export`, "_blank");
   };
 
-  const noteCompletionSummary = useMemo(() => {
-    const total = progressNote.length;
-    const complete = progressNote.filter((s: any) => s.completeness === "Complete").length;
-    const incomplete = progressNote.filter((s: any) => s.completeness === "Incomplete").length;
-    const exception = progressNote.filter((s: any) => s.completeness === "Exception").length;
-    return { total, complete, incomplete, exception };
-  }, [progressNote]);
 
   const statusColors = {
     completed: { bg: "#27749315", border: "#277493", text: "#277493", icon: CheckCircle2 },

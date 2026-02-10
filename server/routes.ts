@@ -3825,6 +3825,123 @@ ${transcript.text}`;
     }
   });
 
+  app.post("/api/visits/:id/extract-assessment", async (req, res) => {
+    try {
+      const lockMsg = await checkVisitLock(req.params.id);
+      if (lockMsg) return res.status(403).json({ message: lockMsg });
+
+      const consents = await storage.getConsentsByVisit(req.params.id);
+      const voiceConsent = consents.find((c: any) => c.consentType === "voice_transcription" && c.status === "granted");
+      if (!voiceConsent) {
+        return res.status(403).json({ message: "Voice transcription consent not granted." });
+      }
+
+      const { transcriptId, assessmentId, questions } = req.body;
+      if (!transcriptId || !assessmentId || !questions?.length) {
+        return res.status(400).json({ message: "transcriptId, assessmentId, and questions are required" });
+      }
+
+      const transcript = await storage.getTranscript(transcriptId);
+      if (!transcript || !transcript.text) return res.status(400).json({ message: "Transcript not found or has no text" });
+
+      const aiConfig = await storage.getActiveAiProvider();
+      if (!aiConfig) return res.status(400).json({ message: "No active AI provider configured" });
+      const apiKey = process.env[aiConfig.apiKeySecretName];
+      if (!apiKey) return res.status(400).json({ message: `AI API key '${aiConfig.apiKeySecretName}' not found` });
+
+      try {
+        const OpenAI = (await import("openai")).default;
+        const openai = new OpenAI({ apiKey, baseURL: aiConfig.baseUrl || undefined });
+
+        const questionsContext = questions.map((q: any, idx: number) => {
+          const options = (q.options || []).map((o: any) => `  - value: "${o.value}", label: "${o.label}"${o.score !== undefined ? `, score: ${o.score}` : ""}`).join("\n");
+          return `Q${idx + 1} (id: "${q.id}"): ${q.text}\nOptions:\n${options}`;
+        }).join("\n\n");
+
+        const extractionPrompt = `You are a clinical assessment data extraction assistant. A nurse practitioner verbally administered an assessment to a patient during an in-home visit. Extract the patient's responses from the transcript and map them to the correct assessment questions.
+
+Assessment: ${assessmentId}
+Questions and Options:
+${questionsContext}
+
+Transcript:
+${transcript.text}
+
+Instructions:
+- For each question where the patient's response can be determined from the transcript, return the matching option value.
+- Only include questions where you can confidently determine the answer.
+- Match patient responses to the closest option even if they use different words (e.g., "not at all" matches option with similar meaning).
+- Return a JSON object with "answers" array. Each answer should have:
+  - "questionId": the question id
+  - "selectedValue": the option value string that best matches the patient's response
+  - "confidence": confidence score 0.0-1.0
+  - "sourceSnippet": the relevant text from the transcript
+
+Return ONLY the JSON object, no other text.`;
+
+        const result = await openai.chat.completions.create({
+          model: aiConfig.extractionModel || "gpt-4o-mini",
+          messages: [{ role: "user", content: extractionPrompt }],
+          response_format: { type: "json_object" },
+        });
+
+        let answers: any[] = [];
+        try {
+          const content = result.choices[0]?.message?.content || "{}";
+          console.log("Assessment extraction raw response:", content.substring(0, 500));
+          const parsed = JSON.parse(content);
+          answers = parsed.answers || parsed.responses || parsed.data || [];
+          if (!Array.isArray(answers)) answers = [];
+        } catch {
+          return res.status(502).json({ message: "AI returned invalid JSON for assessment extraction" });
+        }
+
+        const validAnswers = answers.filter((a: any) => {
+          if (!a.questionId || !a.selectedValue) return false;
+          const q = questions.find((qq: any) => qq.id === a.questionId);
+          if (!q) return false;
+          const validOption = (q.options || []).find((o: any) => o.value === a.selectedValue);
+          return !!validOption;
+        });
+
+        const insertFields = validAnswers.map((a: any) => ({
+          visitId: req.params.id,
+          transcriptId,
+          fieldKey: `assessment.${assessmentId}.${a.questionId}`,
+          fieldLabel: questions.find((q: any) => q.id === a.questionId)?.text?.substring(0, 80) || a.questionId,
+          category: "assessment",
+          proposedValue: a.selectedValue,
+          confidence: a.confidence || 0.5,
+          sourceSnippet: a.sourceSnippet || "",
+          status: "accepted" as const,
+        }));
+
+        const created = insertFields.length > 0 ? await storage.createExtractedFields(insertFields) : [];
+
+        await storage.createAuditEvent({
+          eventType: "assessment_extraction_completed",
+          userId: req.body.userId || "system",
+          userName: req.body.userName || "System",
+          userRole: "np",
+          details: `Extracted ${created.length} assessment answers for ${assessmentId} from transcript ${transcriptId}`,
+          resourceType: "assessment",
+          resourceId: assessmentId,
+        });
+
+        return res.json({
+          answers: validAnswers,
+          fields: created,
+          count: validAnswers.length,
+          totalQuestions: questions.length,
+        });
+      } catch (aiErr: any) {
+        return res.status(502).json({ message: `AI extraction failed: ${aiErr.message}` });
+      }
+    } catch (err: any) {
+      return res.status(500).json({ message: err.message });
+    }
+  });
+
   app.get("/api/visits/:id/extracted-fields", async (req, res) => {
     try {
       const fields = await storage.getExtractedFieldsByVisit(req.params.id);

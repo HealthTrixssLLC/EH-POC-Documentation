@@ -53,6 +53,12 @@ import {
   type VisitAlert, type InsertVisitAlert,
   type NoteEdit, type InsertNoteEdit,
   type NoteSignature, type InsertNoteSignature,
+  demoConfig,
+  type DemoConfig, type InsertDemoConfig,
+  auditAssignments,
+  type AuditAssignment, type InsertAuditAssignment,
+  auditOutcomes,
+  type AuditOutcome, type InsertAuditOutcome,
 } from "@shared/schema";
 
 export interface IStorage {
@@ -221,6 +227,22 @@ export interface IStorage {
 
   // Clinical Rule updates (CR-001-12)
   updateClinicalRule(id: string, updates: Partial<ClinicalRule>): Promise<ClinicalRule | undefined>;
+
+  // Demo Config (CR-001-18)
+  getDemoConfig(): Promise<DemoConfig | undefined>;
+  upsertDemoConfig(config: Partial<DemoConfig>): Promise<DemoConfig>;
+
+  // Audit Assignments & Outcomes (CR-001-19)
+  getAuditAssignments(): Promise<AuditAssignment[]>;
+  getAuditAssignment(id: string): Promise<AuditAssignment | undefined>;
+  createAuditAssignment(assignment: InsertAuditAssignment): Promise<AuditAssignment>;
+  updateAuditAssignment(id: string, updates: Partial<AuditAssignment>): Promise<AuditAssignment | undefined>;
+  getAuditOutcomesByAssignment(assignmentId: string): Promise<AuditOutcome[]>;
+  getAuditOutcomesByVisit(visitId: string): Promise<AuditOutcome[]>;
+  createAuditOutcome(outcome: InsertAuditOutcome): Promise<AuditOutcome>;
+
+  // Review Sign-offs for rework tracking (CR-001-20)
+  getAllReviewSignOffs(): Promise<ReviewSignOff[]>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -862,6 +884,60 @@ export class DatabaseStorage implements IStorage {
   async updateClinicalRule(id: string, updates: Partial<ClinicalRule>) {
     const [updated] = await db.update(clinicalRules).set(updates).where(eq(clinicalRules.id, id)).returning();
     return updated;
+  }
+
+  // Demo Config (CR-001-18)
+  async getDemoConfig() {
+    const [config] = await db.select().from(demoConfig);
+    return config;
+  }
+
+  async upsertDemoConfig(config: Partial<DemoConfig>) {
+    const existing = await this.getDemoConfig();
+    if (existing) {
+      const [updated] = await db.update(demoConfig).set(config).where(eq(demoConfig.id, existing.id)).returning();
+      return updated;
+    }
+    const [created] = await db.insert(demoConfig).values(config as any).returning();
+    return created;
+  }
+
+  // Audit Assignments & Outcomes (CR-001-19)
+  async getAuditAssignments() {
+    return db.select().from(auditAssignments).orderBy(desc(auditAssignments.assignedAt));
+  }
+
+  async getAuditAssignment(id: string) {
+    const [assignment] = await db.select().from(auditAssignments).where(eq(auditAssignments.id, id));
+    return assignment;
+  }
+
+  async createAuditAssignment(assignment: InsertAuditAssignment) {
+    const [created] = await db.insert(auditAssignments).values(assignment).returning();
+    return created;
+  }
+
+  async updateAuditAssignment(id: string, updates: Partial<AuditAssignment>) {
+    const [updated] = await db.update(auditAssignments).set(updates).where(eq(auditAssignments.id, id)).returning();
+    return updated;
+  }
+
+  async getAuditOutcomesByAssignment(assignmentId: string) {
+    return db.select().from(auditOutcomes).where(eq(auditOutcomes.assignmentId, assignmentId));
+  }
+
+  async getAuditOutcomesByVisit(visitId: string) {
+    return db.select().from(auditOutcomes).where(eq(auditOutcomes.visitId, visitId));
+  }
+
+  async createAuditOutcome(outcome: InsertAuditOutcome) {
+    const [created] = await db.insert(auditOutcomes).values(outcome).returning();
+    return created;
+  }
+
+  // Review Sign-offs for rework tracking (CR-001-20)
+  async getAllReviewSignOffs() {
+    return db.select().from(reviewSignOffs).orderBy(desc(reviewSignOffs.signedAt));
   }
 }
 

@@ -135,6 +135,30 @@ client/src/pages/         - All page components
   - New routes: /api/ai-providers, /api/visits/:id/recordings, /api/visits/:id/transcribe, /api/visits/:id/extract, /api/visits/:id/extracted-fields, /api/extracted-fields/:id, /api/visits/:id/extracted-fields/bulk-accept
   - New page: /visits/:id/intake/voice-capture (Record/Transcripts/Review tabs)
   - Integrated into intake dashboard quick navigation
+- 2026-02-10: CR-001 Phase 4 Implementation (3 polish items)
+  - CR-001-18: Demo Mode & Access Governance
+    - Server-side RBAC middleware with requireRole guards on protected routes
+    - demo_config table with watermark text, max exports/day, demo mode toggle
+    - Auth headers (x-user-id, x-user-role, x-user-name) sent from client on all API requests
+    - Demo watermark banner in authenticated layout when demoMode=true
+    - Admin Console "Demo Mode" and "Access Log" tabs for configuration and audit trail
+    - Access audit logging for sensitive operations (login, export, review decisions, audit events)
+  - CR-001-19: Human Audit Workflow Overlay
+    - audit_assignments and audit_outcomes tables for compliance audit tracking
+    - Random sampling based on configurable percentage of eligible visits
+    - Audit Queue page (/audit-queue) with assignment management and structured outcome capture
+    - Findings by category (documentation, coding, clinical, compliance) with severity levels
+    - Audit event logging for sampling and outcomes
+  - CR-001-20: Supervisor Review Queue UX Enhancements
+    - Summary metrics cards (total, pending, approved, returned, avg completeness, high risk)
+    - Filters by status (all/pending/approved/returned/reworked), NP name, and sorting (date/completeness/flags/rework)
+    - Rework cycle tracking with badge indicators and count
+    - Return reasons display with remediation links to intake dashboard
+    - Adjudication summary scorecard in approve/return dialog
+    - Structured return reasons with categories (incomplete assessment, missing vitals, etc.)
+  - New tables: demo_config, audit_assignments, audit_outcomes
+  - New routes: /api/demo-config, /api/access-log, /api/audit/sample, /api/audit/assignments, /api/audit/outcomes, /api/reviews/enhanced
+  - New page: /audit-queue (Compliance role)
 - 2026-02-07: Initial POC build - schema, frontend, backend, seed data
 
 ## User Preferences

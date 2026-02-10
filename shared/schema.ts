@@ -839,3 +839,66 @@ export const noteSignatures = pgTable("note_signatures", {
 export const insertNoteSignatureSchema = createInsertSchema(noteSignatures).omit({ id: true });
 export type InsertNoteSignature = z.infer<typeof insertNoteSignatureSchema>;
 export type NoteSignature = typeof noteSignatures.$inferSelect;
+
+export const demoConfig = pgTable("demo_config", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  demoMode: boolean("demo_mode").default(false),
+  watermarkText: text("watermark_text").default("DEMO MODE"),
+  allowedRoles: jsonb("allowed_roles").$type<string[]>(),
+  restrictedModules: jsonb("restricted_modules").$type<string[]>(),
+  maxExportsPerDay: integer("max_exports_per_day").default(10),
+  updatedAt: text("updated_at"),
+  updatedBy: varchar("updated_by"),
+});
+
+export const insertDemoConfigSchema = createInsertSchema(demoConfig).omit({ id: true });
+export type InsertDemoConfig = z.infer<typeof insertDemoConfigSchema>;
+export type DemoConfig = typeof demoConfig.$inferSelect;
+
+export const auditAssignments = pgTable("audit_assignments", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  visitId: varchar("visit_id").notNull(),
+  assignedTo: varchar("assigned_to"),
+  assignedToName: text("assigned_to_name"),
+  status: text("status").notNull().default("pending"),
+  samplingReason: text("sampling_reason"),
+  priority: text("priority").default("normal"),
+  dueDate: text("due_date"),
+  assignedAt: text("assigned_at").notNull(),
+  completedAt: text("completed_at"),
+});
+
+export const insertAuditAssignmentSchema = createInsertSchema(auditAssignments).omit({ id: true });
+export type InsertAuditAssignment = z.infer<typeof insertAuditAssignmentSchema>;
+export type AuditAssignment = typeof auditAssignments.$inferSelect;
+
+export const auditOutcomes = pgTable("audit_outcomes", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  assignmentId: varchar("assignment_id").notNull(),
+  visitId: varchar("visit_id").notNull(),
+  reviewerId: varchar("reviewer_id").notNull(),
+  reviewerName: text("reviewer_name").notNull(),
+  findings: jsonb("findings").$type<{ category: string; description: string; severity: string }[]>(),
+  overallSeverity: text("overall_severity").notNull(),
+  recommendation: text("recommendation").notNull(),
+  notes: text("notes"),
+  completedAt: text("completed_at").notNull(),
+});
+
+export const insertAuditOutcomeSchema = createInsertSchema(auditOutcomes).omit({ id: true });
+export type InsertAuditOutcome = z.infer<typeof insertAuditOutcomeSchema>;
+export type AuditOutcome = typeof auditOutcomes.$inferSelect;
+
+export const AUDIT_FINDING_CATEGORIES = [
+  { code: "documentation_quality", label: "Documentation Quality", description: "Completeness and accuracy of clinical documentation" },
+  { code: "coding_accuracy", label: "Coding Accuracy", description: "CPT/ICD-10 code correctness and specificity" },
+  { code: "clinical_appropriateness", label: "Clinical Appropriateness", description: "Clinical decisions align with guidelines" },
+  { code: "regulatory_compliance", label: "Regulatory Compliance", description: "HEDIS, NCQA, and CMS compliance" },
+  { code: "consent_verification", label: "Consent Verification", description: "Consent and NOPP properly documented" },
+  { code: "assessment_completeness", label: "Assessment Completeness", description: "All required screenings performed" },
+  { code: "medication_safety", label: "Medication Safety", description: "Medication reconciliation and safety checks" },
+  { code: "care_coordination", label: "Care Coordination", description: "Referrals and follow-up properly documented" },
+] as const;
+
+export const AUDIT_SEVERITIES = ["none", "minor", "moderate", "major", "critical"] as const;
+export const AUDIT_RECOMMENDATIONS = ["accept", "accept_with_findings", "remediate", "escalate"] as const;

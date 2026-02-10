@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -62,6 +62,8 @@ export default function AdminConsole() {
           <TabsTrigger value="assessments" data-testid="tab-assessments"><ClipboardList className="w-3 h-3 mr-1" /> Assessments</TabsTrigger>
           <TabsTrigger value="measures" data-testid="tab-measures"><Target className="w-3 h-3 mr-1" /> Measures</TabsTrigger>
           <TabsTrigger value="ai" data-testid="tab-ai-providers"><Bot className="w-3 h-3 mr-1" /> AI Providers</TabsTrigger>
+          <TabsTrigger value="demo" data-testid="tab-demo-config"><Settings2 className="w-3 h-3 mr-1" /> Demo Mode</TabsTrigger>
+          <TabsTrigger value="access-log" data-testid="tab-access-log"><Shield className="w-3 h-3 mr-1" /> Access Log</TabsTrigger>
         </TabsList>
 
         <TabsContent value="packs" className="mt-4 space-y-3">
@@ -147,6 +149,14 @@ export default function AdminConsole() {
 
         <TabsContent value="ai" className="mt-4">
           <AiProviderConfig />
+        </TabsContent>
+
+        <TabsContent value="demo" className="mt-4">
+          <DemoConfigPanel />
+        </TabsContent>
+
+        <TabsContent value="access-log" className="mt-4">
+          <AccessLogPanel />
         </TabsContent>
       </Tabs>
     </div>
@@ -885,5 +895,170 @@ function AddProviderForm({ onSubmit, onCancel, isPending }: { onSubmit: (d: any)
         </div>
       </CardContent>
     </Card>
+  );
+}
+
+function DemoConfigPanel() {
+  const { toast } = useToast();
+  const { data: config, isLoading } = useQuery<any>({ queryKey: ["/api/demo-config"] });
+  const [demoMode, setDemoMode] = useState(false);
+  const [watermarkText, setWatermarkText] = useState("DEMO MODE");
+  const [maxExports, setMaxExports] = useState(10);
+
+  useEffect(() => {
+    if (config) {
+      setDemoMode(config.demoMode || false);
+      setWatermarkText(config.watermarkText || "DEMO MODE");
+      setMaxExports(config.maxExportsPerDay || 10);
+    }
+  }, [config]);
+
+  const saveMutation = useMutation({
+    mutationFn: async () => {
+      await apiRequest("PUT", "/api/demo-config", {
+        demoMode,
+        watermarkText,
+        maxExportsPerDay: maxExports,
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/demo-config"] });
+      toast({ title: "Demo configuration saved" });
+    },
+    onError: (err: any) => toast({ title: "Save failed", description: err.message, variant: "destructive" }),
+  });
+
+  if (isLoading) return <Skeleton className="h-40 w-full" />;
+
+  return (
+    <div className="space-y-4">
+      <Card>
+        <CardContent className="p-4 space-y-4">
+          <div className="flex items-center justify-between gap-3 flex-wrap">
+            <div>
+              <p className="text-sm font-medium">Demo Mode</p>
+              <p className="text-xs text-muted-foreground">When enabled, a watermark banner appears and access is logged</p>
+            </div>
+            <Switch
+              checked={demoMode}
+              onCheckedChange={setDemoMode}
+              data-testid="switch-demo-mode"
+            />
+          </div>
+
+          <Separator />
+
+          <div className="space-y-3">
+            <div className="space-y-1">
+              <Label className="text-xs">Watermark Text</Label>
+              <Input
+                value={watermarkText}
+                onChange={(e) => setWatermarkText(e.target.value)}
+                placeholder="DEMO MODE"
+                data-testid="input-watermark-text"
+              />
+            </div>
+            <div className="space-y-1">
+              <Label className="text-xs">Max Exports Per Day</Label>
+              <Input
+                type="number"
+                value={maxExports}
+                onChange={(e) => setMaxExports(Number(e.target.value))}
+                min={1}
+                max={100}
+                data-testid="input-max-exports"
+              />
+            </div>
+          </div>
+
+          <Button
+            onClick={() => saveMutation.mutate()}
+            disabled={saveMutation.isPending}
+            data-testid="button-save-demo-config"
+          >
+            <Save className="w-4 h-4 mr-1" /> Save Configuration
+          </Button>
+        </CardContent>
+      </Card>
+
+      {demoMode && (
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex items-center gap-2 mb-2">
+              <AlertTriangle className="w-4 h-4 text-amber-500" />
+              <span className="text-sm font-medium">Demo Mode Active</span>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              A watermark banner reading "{watermarkText}" will appear at the top of the application. All access to sensitive operations will be logged to the audit trail.
+            </p>
+          </CardContent>
+        </Card>
+      )}
+    </div>
+  );
+}
+
+function AccessLogPanel() {
+  const { data: events, isLoading } = useQuery<any[]>({ queryKey: ["/api/access-log"] });
+
+  if (isLoading) return <Skeleton className="h-40 w-full" />;
+
+  const eventTypeLabels: Record<string, string> = {
+    login: "Login",
+    access_denied: "Access Denied",
+    demo_config_updated: "Demo Config Updated",
+    export: "Data Export",
+    fhir_export: "FHIR Export",
+    review_decision: "Review Decision",
+    audit_assignment: "Audit Assignment",
+    audit_outcome: "Audit Outcome",
+    audit_sampling: "Audit Sampling",
+  };
+
+  const eventTypeColors: Record<string, string> = {
+    login: "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200",
+    access_denied: "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200",
+    demo_config_updated: "bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200",
+    export: "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200",
+    fhir_export: "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200",
+    review_decision: "bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200",
+    audit_assignment: "bg-teal-100 text-teal-800 dark:bg-teal-900 dark:text-teal-200",
+    audit_outcome: "bg-teal-100 text-teal-800 dark:bg-teal-900 dark:text-teal-200",
+    audit_sampling: "bg-teal-100 text-teal-800 dark:bg-teal-900 dark:text-teal-200",
+  };
+
+  return (
+    <div className="space-y-3">
+      <p className="text-xs text-muted-foreground">{events?.length || 0} access events (most recent first)</p>
+      {events?.length ? (
+        events.map((e: any) => (
+          <Card key={e.id} data-testid={`card-access-event-${e.id}`}>
+            <CardContent className="p-3">
+              <div className="flex items-center justify-between gap-3 flex-wrap">
+                <div className="flex items-center gap-2 flex-wrap min-w-0">
+                  <Badge className={`text-xs ${eventTypeColors[e.eventType] || ""}`}>
+                    {eventTypeLabels[e.eventType] || e.eventType}
+                  </Badge>
+                  <span className="text-xs text-muted-foreground truncate">{e.userName || "System"}</span>
+                  {e.userRole && <Badge variant="outline" className="text-xs">{e.userRole}</Badge>}
+                </div>
+                <span className="text-xs text-muted-foreground flex-shrink-0">
+                  {e.timestamp ? new Date(e.timestamp).toLocaleString() : ""}
+                </span>
+              </div>
+              {e.details && (
+                <p className="text-xs text-muted-foreground mt-1 truncate">{e.details}</p>
+              )}
+            </CardContent>
+          </Card>
+        ))
+      ) : (
+        <Card>
+          <CardContent className="py-8 text-center text-muted-foreground text-sm">
+            No access events recorded yet
+          </CardContent>
+        </Card>
+      )}
+    </div>
   );
 }

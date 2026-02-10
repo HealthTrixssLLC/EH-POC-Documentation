@@ -9,6 +9,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Progress } from "@/components/ui/progress";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Separator } from "@/components/ui/separator";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
   FileCheck,
   CheckCircle2,
@@ -22,8 +23,12 @@ import {
   AlertTriangle,
   Lock,
   Loader2,
+  ArrowUpDown,
+  RefreshCw,
+  ExternalLink,
+  Filter,
 } from "lucide-react";
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { RETURN_REASON_CATEGORIES } from "@shared/schema";
@@ -36,10 +41,20 @@ interface AdjudicationSummary {
   recommendation: "approve" | "review" | "return";
 }
 
-function getRecommendationColor(rec: string) {
-  if (rec === "approve") return "border-l-green-500";
-  if (rec === "review") return "border-l-amber-500";
-  return "border-l-red-500";
+interface EnhancedVisit {
+  id: string;
+  memberName: string;
+  npName: string;
+  scheduledDate: string;
+  status: string;
+  reviewStatus: string | null;
+  reworkCount: number;
+  completenessScore: number | null;
+  diagnosisSupportScore: number | null;
+  flagCount: number;
+  lastReturnReasons: any;
+  lastReturnComments: string | null;
+  lastReviewDate: string | null;
 }
 
 function SeverityBadge({ severity }: { severity: string }) {
@@ -51,11 +66,6 @@ function SeverityBadge({ severity }: { severity: string }) {
 function AdjudicationCard({ visitId }: { visitId: string }) {
   const { data: summary, isLoading } = useQuery<AdjudicationSummary>({
     queryKey: ["/api/visits", visitId, "adjudication-summary"],
-    queryFn: async () => {
-      const res = await fetch(`/api/visits/${visitId}/adjudication-summary`);
-      if (!res.ok) throw new Error("Failed to fetch");
-      return res.json();
-    },
   });
 
   if (isLoading) {
@@ -130,37 +140,68 @@ function AdjudicationCard({ visitId }: { visitId: string }) {
   );
 }
 
-function MiniSummary({ visitId }: { visitId: string }) {
-  const { data: summary } = useQuery<AdjudicationSummary>({
-    queryKey: ["/api/visits", visitId, "adjudication-summary"],
-    queryFn: async () => {
-      const res = await fetch(`/api/visits/${visitId}/adjudication-summary`);
-      if (!res.ok) throw new Error("Failed to fetch");
-      return res.json();
-    },
-    staleTime: 60000,
-  });
-
-  if (!summary) return null;
-
+function MiniSummary({ visit }: { visit: EnhancedVisit }) {
   return (
     <div className="flex items-center gap-2 flex-wrap">
-      <Badge variant="outline" className="text-xs">{summary.completeness.score}% complete</Badge>
-      <Badge variant="outline" className="text-xs">{summary.diagnosisSupport.supported}/{summary.diagnosisSupport.total} dx supported</Badge>
-      {summary.qualityFlags.length > 0 && (
-        <Badge variant="secondary" className="text-xs">{summary.qualityFlags.length} flag{summary.qualityFlags.length > 1 ? "s" : ""}</Badge>
+      {visit.completenessScore != null && (
+        <Badge variant="outline" className="text-xs">{visit.completenessScore}% complete</Badge>
+      )}
+      {visit.diagnosisSupportScore != null && (
+        <Badge variant="outline" className="text-xs">{visit.diagnosisSupportScore}% dx supported</Badge>
+      )}
+      {visit.flagCount > 0 && (
+        <Badge variant="secondary" className="text-xs">{visit.flagCount} flag{visit.flagCount > 1 ? "s" : ""}</Badge>
+      )}
+      {visit.reworkCount > 0 && (
+        <Badge variant="destructive" className="text-xs">
+          <RefreshCw className="w-3 h-3 mr-1" />
+          {visit.reworkCount} rework{visit.reworkCount > 1 ? "s" : ""}
+        </Badge>
       )}
     </div>
   );
 }
 
+function ReturnReasonsCard({ visit }: { visit: EnhancedVisit }) {
+  if (!visit.lastReturnReasons) return null;
+  const reasons = Array.isArray(visit.lastReturnReasons) ? visit.lastReturnReasons : [];
+  if (reasons.length === 0 && !visit.lastReturnComments) return null;
+
+  return (
+    <div className="mt-2 rounded-md border border-destructive/30 bg-destructive/5 p-2 space-y-1">
+      <p className="text-xs font-medium text-destructive flex items-center gap-1">
+        <AlertTriangle className="w-3 h-3" /> Return Reasons
+      </p>
+      {reasons.map((r: string, i: number) => {
+        const cat = RETURN_REASON_CATEGORIES.find(c => c.code === r);
+        return (
+          <p key={i} className="text-xs text-muted-foreground pl-4">
+            {cat?.label || r}
+          </p>
+        );
+      })}
+      {visit.lastReturnComments && (
+        <p className="text-xs text-muted-foreground pl-4 italic">"{visit.lastReturnComments}"</p>
+      )}
+      <Link href={`/visits/${visit.id}/intake`}>
+        <Button variant="ghost" size="sm" className="text-xs mt-1" data-testid={`button-remediate-${visit.id}`}>
+          <ExternalLink className="w-3 h-3 mr-1" /> Open Intake for Remediation
+        </Button>
+      </Link>
+    </div>
+  );
+}
+
 export default function SupervisorReviews() {
-  const { data: visits, isLoading } = useQuery<any[]>({ queryKey: ["/api/reviews"] });
+  const { data: visits, isLoading } = useQuery<EnhancedVisit[]>({ queryKey: ["/api/reviews/enhanced"] });
   const { toast } = useToast();
   const [reviewVisitId, setReviewVisitId] = useState<string | null>(null);
   const [decision, setDecision] = useState<"approve" | "return" | null>(null);
   const [comments, setComments] = useState("");
   const [selectedReasons, setSelectedReasons] = useState<string[]>([]);
+  const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [npFilter, setNpFilter] = useState<string>("all");
+  const [sortBy, setSortBy] = useState<string>("date");
 
   const toggleReason = (code: string) => {
     setSelectedReasons(prev =>
@@ -183,7 +224,7 @@ export default function SupervisorReviews() {
       });
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/reviews"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/reviews/enhanced"] });
       toast({ title: decision === "approve" ? "Visit approved and locked" : "Returned for correction" });
       closeDialog();
     },
@@ -199,6 +240,46 @@ export default function SupervisorReviews() {
     setSelectedReasons([]);
   };
 
+  const npNames = useMemo(() => {
+    const names = new Set<string>();
+    visits?.forEach(v => { if (v.npName) names.add(v.npName); });
+    return Array.from(names).sort();
+  }, [visits]);
+
+  const filteredAndSorted = useMemo(() => {
+    let result = visits || [];
+
+    if (statusFilter !== "all") {
+      if (statusFilter === "pending") result = result.filter(v => !v.reviewStatus);
+      else if (statusFilter === "approved") result = result.filter(v => v.reviewStatus === "approved");
+      else if (statusFilter === "returned") result = result.filter(v => v.reviewStatus === "correction_requested");
+      else if (statusFilter === "reworked") result = result.filter(v => v.reworkCount > 0);
+    }
+
+    if (npFilter !== "all") {
+      result = result.filter(v => v.npName === npFilter);
+    }
+
+    const sorted = [...result];
+    if (sortBy === "date") sorted.sort((a, b) => b.scheduledDate.localeCompare(a.scheduledDate));
+    else if (sortBy === "completeness") sorted.sort((a, b) => (a.completenessScore ?? 0) - (b.completenessScore ?? 0));
+    else if (sortBy === "flags") sorted.sort((a, b) => b.flagCount - a.flagCount);
+    else if (sortBy === "rework") sorted.sort((a, b) => b.reworkCount - a.reworkCount);
+
+    return sorted;
+  }, [visits, statusFilter, npFilter, sortBy]);
+
+  const stats = useMemo(() => {
+    if (!visits) return { total: 0, pending: 0, approved: 0, returned: 0, avgCompleteness: 0, highRisk: 0 };
+    const pending = visits.filter(v => !v.reviewStatus).length;
+    const approved = visits.filter(v => v.reviewStatus === "approved").length;
+    const returned = visits.filter(v => v.reviewStatus === "correction_requested").length;
+    const completenessScores = visits.filter(v => v.completenessScore != null).map(v => v.completenessScore!);
+    const avgCompleteness = completenessScores.length > 0 ? Math.round(completenessScores.reduce((a, b) => a + b, 0) / completenessScores.length) : 0;
+    const highRisk = visits.filter(v => v.flagCount > 0 || v.reworkCount > 0).length;
+    return { total: visits.length, pending, approved, returned, avgCompleteness, highRisk };
+  }, [visits]);
+
   return (
     <div className="space-y-6">
       <div>
@@ -208,22 +289,107 @@ export default function SupervisorReviews() {
         </p>
       </div>
 
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+        <Card>
+          <CardContent className="p-3">
+            <p className="text-xs text-muted-foreground">Total</p>
+            <p className="text-xl font-bold" data-testid="text-review-total">{stats.total}</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-3">
+            <p className="text-xs text-muted-foreground">Pending</p>
+            <p className="text-xl font-bold text-amber-600 dark:text-amber-400" data-testid="text-review-pending">{stats.pending}</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-3">
+            <p className="text-xs text-muted-foreground">Approved</p>
+            <p className="text-xl font-bold text-green-600 dark:text-green-400" data-testid="text-review-approved">{stats.approved}</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-3">
+            <p className="text-xs text-muted-foreground">Returned</p>
+            <p className="text-xl font-bold text-red-600 dark:text-red-400" data-testid="text-review-returned">{stats.returned}</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-3">
+            <p className="text-xs text-muted-foreground">Avg Completeness</p>
+            <p className="text-xl font-bold text-teal-600 dark:text-teal-400" data-testid="text-review-avg-completeness">{stats.avgCompleteness}%</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-3">
+            <p className="text-xs text-muted-foreground">High Risk</p>
+            <p className="text-xl font-bold text-orange-600 dark:text-orange-400" data-testid="text-review-high-risk">{stats.highRisk}</p>
+          </CardContent>
+        </Card>
+      </div>
+
+      <div className="flex items-center gap-3 flex-wrap">
+        <div className="flex items-center gap-1.5">
+          <Filter className="w-3.5 h-3.5 text-muted-foreground" />
+          <span className="text-xs text-muted-foreground">Filters:</span>
+        </div>
+        <Select value={statusFilter} onValueChange={setStatusFilter}>
+          <SelectTrigger className="w-36" data-testid="select-review-status">
+            <SelectValue placeholder="Status" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Status</SelectItem>
+            <SelectItem value="pending">Pending</SelectItem>
+            <SelectItem value="approved">Approved</SelectItem>
+            <SelectItem value="returned">Returned</SelectItem>
+            <SelectItem value="reworked">Has Rework</SelectItem>
+          </SelectContent>
+        </Select>
+        <Select value={npFilter} onValueChange={setNpFilter}>
+          <SelectTrigger className="w-40" data-testid="select-review-np">
+            <SelectValue placeholder="NP" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All NPs</SelectItem>
+            {npNames.map(name => (
+              <SelectItem key={name} value={name}>{name}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <Select value={sortBy} onValueChange={setSortBy}>
+          <SelectTrigger className="w-40" data-testid="select-review-sort">
+            <SelectValue placeholder="Sort by" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="date">Date (newest)</SelectItem>
+            <SelectItem value="completeness">Completeness (lowest)</SelectItem>
+            <SelectItem value="flags">Flags (most)</SelectItem>
+            <SelectItem value="rework">Rework count</SelectItem>
+          </SelectContent>
+        </Select>
+        <span className="text-xs text-muted-foreground ml-auto">{filteredAndSorted.length} visits</span>
+      </div>
+
       <div className="space-y-3">
         {isLoading ? (
           Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-20 w-full" />)
-        ) : visits?.length ? (
-          visits.map((v: any) => (
-            <Card key={v.id} className={`border-l-4 rounded-none rounded-r-md ${
-              v.reviewStatus === "approved" ? "border-l-green-500" :
-              v.reviewStatus === "correction_requested" ? "border-l-red-500" :
-              "border-l-amber-500"
-            }`}>
+        ) : filteredAndSorted.length > 0 ? (
+          filteredAndSorted.map((v) => (
+            <Card key={v.id} data-testid={`card-review-visit-${v.id}`}>
               <CardContent className="p-4">
                 <div className="flex flex-col gap-3">
                   <div className="flex items-center justify-between gap-3 flex-wrap">
                     <div className="flex items-center gap-3 min-w-0 flex-1 flex-wrap">
-                      <div className="flex items-center justify-center w-10 h-10 rounded-md flex-shrink-0" style={{ backgroundColor: "#2E456B15" }}>
-                        <FileCheck className="w-5 h-5" style={{ color: "#2E456B" }} />
+                      <div className={`flex items-center justify-center w-10 h-10 rounded-md flex-shrink-0 ${
+                        v.reviewStatus === "approved" ? "bg-green-100 dark:bg-green-900/30" :
+                        v.reviewStatus === "correction_requested" ? "bg-red-100 dark:bg-red-900/30" :
+                        "bg-amber-100 dark:bg-amber-900/30"
+                      }`}>
+                        <FileCheck className={`w-5 h-5 ${
+                          v.reviewStatus === "approved" ? "text-green-600 dark:text-green-400" :
+                          v.reviewStatus === "correction_requested" ? "text-red-600 dark:text-red-400" :
+                          "text-amber-600 dark:text-amber-400"
+                        }`} />
                       </div>
                       <div className="flex flex-col gap-0.5 min-w-0">
                         <span className="text-sm font-semibold truncate" data-testid={`text-review-member-${v.id}`}>
@@ -236,6 +402,11 @@ export default function SupervisorReviews() {
                           <span className="flex items-center gap-1">
                             <User className="w-3 h-3" /> {v.npName || "NP"}
                           </span>
+                          {v.lastReviewDate && (
+                            <span className="text-xs text-muted-foreground">
+                              Last review: {new Date(v.lastReviewDate).toLocaleDateString()}
+                            </span>
+                          )}
                         </div>
                       </div>
                     </div>
@@ -263,7 +434,7 @@ export default function SupervisorReviews() {
                               onClick={() => { setReviewVisitId(v.id); setDecision("approve"); }}
                               data-testid={`button-approve-${v.id}`}
                             >
-                              <CheckCircle2 className="w-4 h-4" style={{ color: "#277493" }} />
+                              <CheckCircle2 className="w-4 h-4 text-teal-600 dark:text-teal-400" />
                             </Button>
                             <Button
                               variant="ghost"
@@ -278,8 +449,11 @@ export default function SupervisorReviews() {
                       </div>
                     </div>
                   </div>
-                  {!v.reviewStatus && (
-                    <MiniSummary visitId={v.id} />
+
+                  <MiniSummary visit={v} />
+
+                  {v.reviewStatus === "correction_requested" && (
+                    <ReturnReasonsCard visit={v} />
                   )}
                 </div>
               </CardContent>
@@ -289,7 +463,7 @@ export default function SupervisorReviews() {
           <Card>
             <CardContent className="flex flex-col items-center py-12">
               <ClipboardList className="w-10 h-10 mb-3 text-muted-foreground opacity-40" />
-              <span className="text-sm text-muted-foreground">No visits pending review</span>
+              <span className="text-sm text-muted-foreground">No visits matching filters</span>
             </CardContent>
           </Card>
         )}
@@ -302,7 +476,7 @@ export default function SupervisorReviews() {
               <DialogTitle className="flex items-center gap-2">
                 {decision === "approve" ? (
                   <>
-                    <Shield className="w-5 h-5" style={{ color: "#277493" }} />
+                    <Shield className="w-5 h-5 text-teal-600 dark:text-teal-400" />
                     Approve & Sign Visit
                   </>
                 ) : (

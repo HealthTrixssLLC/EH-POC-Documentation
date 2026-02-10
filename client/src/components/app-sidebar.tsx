@@ -27,6 +27,7 @@ import {
   FileText,
   HelpCircle,
   Database,
+  ClipboardCheck,
 } from "lucide-react";
 
 const roleMenus: Record<string, Array<{ title: string; url: string; icon: any }>> = {
@@ -54,6 +55,7 @@ const roleMenus: Record<string, Array<{ title: string; url: string; icon: any }>
   compliance: [
     { title: "Dashboard", url: "/", icon: LayoutDashboard },
     { title: "Audit Log", url: "/audit", icon: Shield },
+    { title: "Audit Queue", url: "/audit/queue", icon: ClipboardCheck },
     { title: "All Visits", url: "/visits", icon: ClipboardList },
   ],
 };

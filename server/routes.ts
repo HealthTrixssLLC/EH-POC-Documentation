@@ -3578,5 +3578,252 @@ ${transcript.text}`;
     }
   });
 
+  // ===== CR-001-18: Demo Config & Access Governance =====
+
+  const ROLE_HIERARCHY: Record<string, string[]> = {
+    admin: ["admin"],
+    supervisor: ["admin", "supervisor"],
+    compliance: ["admin", "compliance"],
+    np: ["admin", "np"],
+    care_coordinator: ["admin", "care_coordinator"],
+  };
+
+  function requireRole(allowedRoles: string[]) {
+    return (req: any, res: any, next: any) => {
+      const userRole = req.headers["x-user-role"] as string;
+      const userId = req.headers["x-user-id"] as string;
+      if (!userRole || !userId) {
+        return res.status(401).json({ message: "Authentication required" });
+      }
+      if (!allowedRoles.includes(userRole) && userRole !== "admin") {
+        storage.createAuditEvent({
+          eventType: "access_denied",
+          userId,
+          userName: req.headers["x-user-name"] as string,
+          userRole,
+          details: `Access denied to ${req.method} ${req.path} - required roles: ${allowedRoles.join(", ")}`,
+        });
+        return res.status(403).json({ message: "Insufficient permissions" });
+      }
+      next();
+    };
+  }
+
+  app.get("/api/demo-config", async (_req, res) => {
+    try {
+      const config = await storage.getDemoConfig();
+      return res.json(config || { demoMode: false, watermarkText: "DEMO MODE", allowedRoles: null, restrictedModules: null, maxExportsPerDay: 10 });
+    } catch (err: any) {
+      return res.status(500).json({ message: err.message });
+    }
+  });
+
+  app.put("/api/demo-config", requireRole(["admin"]), async (req, res) => {
+    try {
+      const updated = await storage.upsertDemoConfig({
+        ...req.body,
+        updatedAt: new Date().toISOString(),
+        updatedBy: req.headers["x-user-id"] as string,
+      });
+      await storage.createAuditEvent({
+        eventType: "demo_config_updated",
+        userId: req.headers["x-user-id"] as string,
+        userName: req.headers["x-user-name"] as string,
+        userRole: req.headers["x-user-role"] as string,
+        details: `Demo config updated: demoMode=${req.body.demoMode}`,
+      });
+      return res.json(updated);
+    } catch (err: any) {
+      return res.status(500).json({ message: err.message });
+    }
+  });
+
+  app.get("/api/access-log", requireRole(["admin", "compliance"]), async (_req, res) => {
+    try {
+      const events = await storage.getAuditEvents();
+      const accessEvents = events.filter(e =>
+        ["login", "access_denied", "demo_config_updated", "export", "fhir_export", "review_decision", "audit_assignment", "audit_outcome"].includes(e.eventType)
+      );
+      return res.json(accessEvents.slice(0, 200));
+    } catch (err: any) {
+      return res.status(500).json({ message: err.message });
+    }
+  });
+
+  // ===== CR-001-19: Human Audit Workflow =====
+
+  app.get("/api/audit-assignments", requireRole(["admin", "compliance", "supervisor"]), async (_req, res) => {
+    try {
+      const assignments = await storage.getAuditAssignments();
+      const allVisits = await storage.getAllVisits();
+      const memberMap = await storage.getMemberMap();
+
+      const enriched = assignments.map(a => {
+        const visit = allVisits.find(v => v.id === a.visitId);
+        const member = visit ? memberMap.get(visit.memberId) : undefined;
+        return {
+          ...a,
+          memberName: member ? `${member.firstName} ${member.lastName}` : "Unknown",
+          scheduledDate: visit?.scheduledDate || "",
+          visitStatus: visit?.status || "",
+        };
+      });
+
+      return res.json(enriched);
+    } catch (err: any) {
+      return res.status(500).json({ message: err.message });
+    }
+  });
+
+  app.post("/api/audit-assignments", requireRole(["admin", "compliance"]), async (req, res) => {
+    try {
+      const assignment = await storage.createAuditAssignment({
+        ...req.body,
+        assignedAt: new Date().toISOString(),
+      });
+      await storage.createAuditEvent({
+        eventType: "audit_assignment",
+        userId: req.headers["x-user-id"] as string,
+        userName: req.headers["x-user-name"] as string,
+        userRole: req.headers["x-user-role"] as string,
+        visitId: req.body.visitId,
+        details: `Audit assigned: ${req.body.samplingReason || "manual"}`,
+      });
+      return res.json(assignment);
+    } catch (err: any) {
+      return res.status(500).json({ message: err.message });
+    }
+  });
+
+  app.post("/api/audit-assignments/sample", requireRole(["admin", "compliance"]), async (req, res) => {
+    try {
+      const { samplePercent = 20, criteria } = req.body;
+      const allVisits = await storage.getAllVisits();
+      const existingAssignments = await storage.getAuditAssignments();
+      const assignedVisitIds = new Set(existingAssignments.map(a => a.visitId));
+
+      const eligibleVisits = allVisits.filter(v =>
+        (v.status === "finalized" || v.status === "in_progress") &&
+        !assignedVisitIds.has(v.id)
+      );
+
+      const sampleSize = Math.max(1, Math.ceil(eligibleVisits.length * samplePercent / 100));
+      const shuffled = [...eligibleVisits].sort(() => Math.random() - 0.5);
+      const sampled = shuffled.slice(0, sampleSize);
+
+      const created = [];
+      for (const visit of sampled) {
+        const assignment = await storage.createAuditAssignment({
+          visitId: visit.id,
+          assignedTo: req.headers["x-user-id"] as string,
+          assignedToName: req.headers["x-user-name"] as string,
+          status: "pending",
+          samplingReason: `Random ${samplePercent}% sample${criteria ? ` - ${criteria}` : ""}`,
+          priority: "normal",
+          assignedAt: new Date().toISOString(),
+        });
+        created.push(assignment);
+      }
+
+      await storage.createAuditEvent({
+        eventType: "audit_sampling",
+        userId: req.headers["x-user-id"] as string,
+        userName: req.headers["x-user-name"] as string,
+        userRole: req.headers["x-user-role"] as string,
+        details: `Sampled ${created.length} visits at ${samplePercent}% rate`,
+      });
+
+      return res.json({ sampled: created.length, total: eligibleVisits.length, assignments: created });
+    } catch (err: any) {
+      return res.status(500).json({ message: err.message });
+    }
+  });
+
+  app.put("/api/audit-assignments/:id", requireRole(["admin", "compliance"]), async (req, res) => {
+    try {
+      const updated = await storage.updateAuditAssignment(req.params.id, req.body);
+      if (!updated) return res.status(404).json({ message: "Assignment not found" });
+      return res.json(updated);
+    } catch (err: any) {
+      return res.status(500).json({ message: err.message });
+    }
+  });
+
+  app.get("/api/audit-assignments/:id/outcomes", requireRole(["admin", "compliance", "supervisor"]), async (req, res) => {
+    try {
+      const outcomes = await storage.getAuditOutcomesByAssignment(req.params.id);
+      return res.json(outcomes);
+    } catch (err: any) {
+      return res.status(500).json({ message: err.message });
+    }
+  });
+
+  app.post("/api/audit-outcomes", requireRole(["admin", "compliance"]), async (req, res) => {
+    try {
+      const outcome = await storage.createAuditOutcome({
+        ...req.body,
+        completedAt: new Date().toISOString(),
+      });
+
+      await storage.updateAuditAssignment(req.body.assignmentId, {
+        status: "completed",
+        completedAt: new Date().toISOString(),
+      });
+
+      await storage.createAuditEvent({
+        eventType: "audit_outcome",
+        userId: req.headers["x-user-id"] as string,
+        userName: req.headers["x-user-name"] as string,
+        userRole: req.headers["x-user-role"] as string,
+        visitId: req.body.visitId,
+        details: `Audit outcome: ${req.body.recommendation} (${req.body.overallSeverity})`,
+      });
+
+      return res.json(outcome);
+    } catch (err: any) {
+      return res.status(500).json({ message: err.message });
+    }
+  });
+
+  // ===== CR-001-20: Enhanced Review Queue =====
+
+  app.get("/api/reviews/enhanced", async (req, res) => {
+    try {
+      const visits = await storage.getReviewVisitsEnriched();
+      const allSignOffs = await storage.getAllReviewSignOffs();
+
+      const enhanced = await Promise.all(visits.map(async (v) => {
+        const visitSignOffs = allSignOffs.filter(s => s.visitId === v.id);
+        const reworkCount = visitSignOffs.filter(s => s.decision === "return").length;
+        const lastSignOff = visitSignOffs[0];
+
+        let completenessScore: number | null = null;
+        let diagnosisSupportScore: number | null = null;
+        let flagCount = 0;
+
+        if (lastSignOff) {
+          completenessScore = lastSignOff.completenessScore;
+          diagnosisSupportScore = lastSignOff.diagnosisSupportScore;
+          flagCount = Array.isArray(lastSignOff.qualityFlags) ? (lastSignOff.qualityFlags as any[]).length : 0;
+        }
+
+        return {
+          ...v,
+          reworkCount,
+          completenessScore,
+          diagnosisSupportScore,
+          flagCount,
+          lastReturnReasons: lastSignOff?.decision === "return" ? lastSignOff.returnReasons : null,
+          lastReturnComments: lastSignOff?.decision === "return" ? lastSignOff.comments : null,
+          lastReviewDate: lastSignOff?.signedAt || null,
+        };
+      }));
+
+      return res.json(enhanced);
+    } catch (err: any) {
+      return res.status(500).json({ message: err.message });
+    }
+  });
+
   return httpServer;
 }

@@ -34,6 +34,27 @@ import PatientContext from "@/pages/patient-context";
 import TechDocs from "@/pages/tech-docs";
 import VisitConsents from "@/pages/visit-consents";
 import VoiceCapture from "@/pages/voice-capture";
+import AuditQueue from "@/pages/audit-queue";
+import { useQuery as useQueryHook } from "@tanstack/react-query";
+
+function DemoWatermark() {
+  const { data: config } = useQueryHook<{ demoMode: boolean; watermarkText: string }>({
+    queryKey: ["/api/demo-config"],
+    staleTime: 30000,
+  });
+
+  if (!config?.demoMode) return null;
+
+  return (
+    <div
+      className="text-center text-xs font-semibold py-1 tracking-wider"
+      style={{ backgroundColor: "#FEA002", color: "#2E456B" }}
+      data-testid="banner-demo-mode"
+    >
+      {config.watermarkText || "DEMO MODE"}
+    </div>
+  );
+}
 
 function Router() {
   return (
@@ -60,6 +81,7 @@ function Router() {
       <Route path="/admin/fhir" component={FhirPlayground} />
       <Route path="/admin/tech-docs" component={TechDocs} />
       <Route path="/audit" component={AuditViewer} />
+      <Route path="/audit/queue" component={AuditQueue} />
       <Route path="/help" component={HelpSupport} />
       <Route path="/demo" component={DemoManagement} />
       <Route component={NotFound} />
@@ -78,6 +100,7 @@ function AuthenticatedLayout() {
       <div className="flex h-screen w-full">
         <AppSidebar />
         <div className="flex flex-col flex-1 min-w-0">
+          <DemoWatermark />
           <header className="flex items-center justify-between gap-3 p-2 border-b bg-background sticky top-0 z-50">
             <SidebarTrigger data-testid="button-sidebar-toggle" />
             <ThemeToggle />

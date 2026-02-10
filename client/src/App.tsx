@@ -32,6 +32,7 @@ import DemoManagement from "@/pages/demo-management";
 import MedReconciliation from "@/pages/med-reconciliation";
 import PatientContext from "@/pages/patient-context";
 import TechDocs from "@/pages/tech-docs";
+import VisitConsents from "@/pages/visit-consents";
 
 function Router() {
   return (
@@ -47,6 +48,7 @@ function Router() {
       <Route path="/visits/:id/intake/medications" component={MedReconciliation} />
       <Route path="/visits/:id/intake/careplan" component={CarePlan} />
       <Route path="/visits/:id/intake/timeline" component={PatientTimeline} />
+      <Route path="/visits/:id/intake/consents" component={VisitConsents} />
       <Route path="/visits/:id/intake/patient-context" component={PatientContext} />
       <Route path="/visits/:id/finalize" component={ReviewFinalize} />
       <Route path="/visits/:id/detail" component={VisitDetail} />

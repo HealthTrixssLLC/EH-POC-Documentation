@@ -18,7 +18,7 @@ Core compliance, workflow gating, and data integrity items forming the backbone 
 ---
 
 ### CR-001-01: Voice Transcription Consent Gate
-**Priority:** Must | **Status:** Not Started
+**Priority:** Must | **Status:** Implemented
 
 **Business Requirements:**
 - Mandatory consent step before any audio capture or transcription
@@ -44,7 +44,7 @@ Core compliance, workflow gating, and data integrity items forming the backbone 
 ---
 
 ### CR-001-02: Notice of Privacy Practices (NOPP) Acknowledgement
-**Priority:** Must | **Status:** Not Started
+**Priority:** Must | **Status:** Implemented
 
 **Business Requirements:**
 - Capture NOPP delivery method (in-person, digital, previously delivered) and acknowledgement
@@ -89,7 +89,7 @@ Core compliance, workflow gating, and data integrity items forming the backbone 
 ---
 
 ### CR-001-04: Structured Documentation Enforcement
-**Priority:** Must | **Status:** Not Started
+**Priority:** Must | **Status:** Implemented
 
 **Business Requirements:**
 - Define required structured sections for each program package
@@ -113,7 +113,7 @@ Core compliance, workflow gating, and data integrity items forming the backbone 
 ---
 
 ### CR-001-05: Structured 'Unable to Assess' and Exception Reasons
-**Priority:** Must | **Status:** Partially Implemented
+**Priority:** Must | **Status:** Implemented
 
 **Current State:** Basic `UNABLE_TO_ASSESS_REASONS` exists in schema with exclusion support on the intake dashboard. Needs standardization and expansion.
 
@@ -139,7 +139,7 @@ Core compliance, workflow gating, and data integrity items forming the backbone 
 ---
 
 ### CR-001-06: NP Pre-Submit Completeness Engine (Hard Stop)
-**Priority:** Must | **Status:** Partially Implemented
+**Priority:** Must | **Status:** Implemented
 
 **Current State:** Basic gating exists on Review & Finalize page. Needs enhancement to be package-driven with clear remediation guidance.
 
@@ -166,7 +166,7 @@ Core compliance, workflow gating, and data integrity items forming the backbone 
 ---
 
 ### CR-001-07: Supervisor Sign-Off with Automated Adjudication Summary
-**Priority:** Must | **Status:** Partially Implemented
+**Priority:** Must | **Status:** Implemented
 
 **Current State:** Basic supervisor review queue exists with approve/return actions. Needs summary scorecard, completeness/quality flags, and proper sign-off workflow.
 
@@ -192,7 +192,7 @@ Core compliance, workflow gating, and data integrity items forming the backbone 
 ---
 
 ### CR-001-08: Diagnosis Support Validation Rules (50-100 Initial Set)
-**Priority:** Must | **Status:** Not Started
+**Priority:** Must | **Status:** Implemented
 
 **Business Requirements:**
 - Configurable ruleset mapping diagnoses to required evidence elements (ROS, PE, assessment results, etc.)
@@ -217,7 +217,7 @@ Core compliance, workflow gating, and data integrity items forming the backbone 
 ---
 
 ### CR-001-09: Fix PRAPARE or Assessment Incompletion Blocking Storage
-**Priority:** Must | **Status:** Not Started
+**Priority:** Must | **Status:** Implemented
 
 **Business Requirements:**
 - Clinical incompleteness must not be treated as a technical failure
@@ -526,4 +526,11 @@ Demo governance, human audit overlay, and supervisor UX enhancements.
 | Date | Round | Changes Made |
 |------|-------|-------------|
 | 2026-02-10 | -- | Initial development plan created from CR-001 v2 document |
-| | | |
+| 2026-02-10 | 1 | CR-001-01: Added visit_consents table, consent API (GET/POST), voice transcription consent UI with grant/decline/exception flows |
+| 2026-02-10 | 1 | CR-001-02: Added NOPP acknowledgement with delivery method capture, exception reasons, gating on review-finalize |
+| 2026-02-10 | 1 | CR-001-03: Added identityVerificationRequired/noppRequired flags to planPacks, defaulted identity to optional, intake dashboard/finalize conditionally show based on plan config |
+| 2026-02-10 | 1 | CR-001-05: Created reason_codes table with 45 standardized codes across 8 categories, API endpoint, updated assessment-runner and hedis-measure to use DB reason codes |
+| 2026-02-10 | 1 | CR-001-09: Assessment runner and HEDIS measure pages use DB reason codes for "unable to assess", partial save/draft already supported |
+| 2026-02-10 | 1 | CR-001-04/06: Created completeness_rules table (20 rules, 10 per plan pack), completeness evaluation engine API, replaced Review & Finalize gating with grouped completeness report |
+| 2026-02-10 | 1 | CR-001-08: Created diagnosis_rules table with 60 rules across 10 clinical categories, diagnosis validation API, evidence checking against vitals/assessments/meds/labs, validation UI on finalize page |
+| 2026-02-10 | 1 | CR-001-07: Enhanced supervisor reviews with adjudication summary scorecard, structured return reasons (10 categories), review_sign_offs table, encounter locking (lockedAt/lockedBy), locked visit banner on intake dashboard |

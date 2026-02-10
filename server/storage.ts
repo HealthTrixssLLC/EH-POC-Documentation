@@ -1,4 +1,4 @@
-import { eq, and, desc, inArray } from "drizzle-orm";
+import { eq, and, desc, asc, inArray } from "drizzle-orm";
 import { db } from "./db";
 import {
   users, members, visits, planTargets, assessmentDefinitions,
@@ -31,6 +31,16 @@ import {
   type MedReconciliation, type InsertMedReconciliation,
   objectiveExclusions,
   type ObjectiveExclusion, type InsertObjectiveExclusion,
+  visitConsents,
+  type VisitConsent, type InsertVisitConsent,
+  reasonCodes,
+  type ReasonCode, type InsertReasonCode,
+  completenessRules,
+  type CompletenessRule, type InsertCompletenessRule,
+  diagnosisRules,
+  type DiagnosisRule, type InsertDiagnosisRule,
+  reviewSignOffs,
+  type ReviewSignOff, type InsertReviewSignOff,
 } from "@shared/schema";
 
 export interface IStorage {
@@ -140,6 +150,23 @@ export interface IStorage {
   getExclusionsByVisit(visitId: string): Promise<ObjectiveExclusion[]>;
   createExclusion(excl: InsertObjectiveExclusion): Promise<ObjectiveExclusion>;
   deleteExclusion(id: string): Promise<void>;
+
+  getConsentsByVisit(visitId: string): Promise<VisitConsent[]>;
+  createConsent(consent: InsertVisitConsent): Promise<VisitConsent>;
+  updateConsent(id: string, updates: Partial<VisitConsent>): Promise<VisitConsent | undefined>;
+
+  getReasonCodes(category?: string): Promise<ReasonCode[]>;
+  createReasonCode(code: InsertReasonCode): Promise<ReasonCode>;
+
+  getCompletenessRules(planPackId: string): Promise<CompletenessRule[]>;
+  createCompletenessRule(rule: InsertCompletenessRule): Promise<CompletenessRule>;
+
+  getDiagnosisRules(): Promise<DiagnosisRule[]>;
+  getDiagnosisRuleByCode(icdCode: string): Promise<DiagnosisRule | undefined>;
+  createDiagnosisRule(rule: InsertDiagnosisRule): Promise<DiagnosisRule>;
+
+  getReviewSignOffs(visitId: string): Promise<ReviewSignOff[]>;
+  createReviewSignOff(signOff: InsertReviewSignOff): Promise<ReviewSignOff>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -578,6 +605,72 @@ export class DatabaseStorage implements IStorage {
 
   async deleteExclusion(id: string) {
     await db.delete(objectiveExclusions).where(eq(objectiveExclusions.id, id));
+  }
+
+  async getConsentsByVisit(visitId: string) {
+    return db.select().from(visitConsents).where(eq(visitConsents.visitId, visitId));
+  }
+
+  async createConsent(consent: InsertVisitConsent) {
+    const [created] = await db.insert(visitConsents).values(consent).returning();
+    return created;
+  }
+
+  async updateConsent(id: string, updates: Partial<VisitConsent>) {
+    const [updated] = await db.update(visitConsents).set(updates).where(eq(visitConsents.id, id)).returning();
+    return updated;
+  }
+
+  async getReasonCodes(category?: string) {
+    if (category) {
+      return db.select().from(reasonCodes)
+        .where(and(eq(reasonCodes.category, category), eq(reasonCodes.active, true)))
+        .orderBy(asc(reasonCodes.sortOrder));
+    }
+    return db.select().from(reasonCodes)
+      .where(eq(reasonCodes.active, true))
+      .orderBy(asc(reasonCodes.sortOrder));
+  }
+
+  async createReasonCode(code: InsertReasonCode) {
+    const [created] = await db.insert(reasonCodes).values(code).returning();
+    return created;
+  }
+
+  async getCompletenessRules(planPackId: string) {
+    return db.select().from(completenessRules)
+      .where(eq(completenessRules.planPackId, planPackId))
+      .orderBy(asc(completenessRules.sortOrder));
+  }
+
+  async createCompletenessRule(rule: InsertCompletenessRule) {
+    const [created] = await db.insert(completenessRules).values(rule).returning();
+    return created;
+  }
+
+  async getDiagnosisRules() {
+    return db.select().from(diagnosisRules).where(eq(diagnosisRules.active, true));
+  }
+
+  async getDiagnosisRuleByCode(icdCode: string) {
+    const [rule] = await db.select().from(diagnosisRules).where(eq(diagnosisRules.icdCode, icdCode));
+    return rule;
+  }
+
+  async createDiagnosisRule(rule: InsertDiagnosisRule) {
+    const [created] = await db.insert(diagnosisRules).values(rule).returning();
+    return created;
+  }
+
+  async getReviewSignOffs(visitId: string) {
+    return db.select().from(reviewSignOffs)
+      .where(eq(reviewSignOffs.visitId, visitId))
+      .orderBy(desc(reviewSignOffs.signedAt));
+  }
+
+  async createReviewSignOff(signOff: InsertReviewSignOff) {
+    const [created] = await db.insert(reviewSignOffs).values(signOff).returning();
+    return created;
   }
 }
 

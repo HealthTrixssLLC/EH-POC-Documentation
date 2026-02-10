@@ -38,10 +38,11 @@ import {
   Ban,
   XCircle,
   Trash2,
+  Lock,
 } from "lucide-react";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
-import { EXCLUSION_REASONS } from "@shared/schema";
+import type { ReasonCode } from "@shared/schema";
 
 const taskTypes = [
   { value: "referral", label: "Referral" },
@@ -97,6 +98,14 @@ export default function IntakeDashboard() {
     queryKey: ["/api/visits", visitId, "overview"],
     enabled: !!visitId,
   });
+
+  const { data: reasonCodesData } = useQuery<ReasonCode[]>({
+    queryKey: ["/api/reason-codes"],
+  });
+
+  const exclusionReasonOptions = (reasonCodesData || []).filter(
+    (rc) => rc.category === "unable_to_assess" || rc.category === "patient_declined" || rc.category === "environmental"
+  );
 
   const createTaskMutation = useMutation({
     mutationFn: async () => {
@@ -177,6 +186,13 @@ export default function IntakeDashboard() {
   const progressNote = overview?.progressNote || [];
   const targets = overview?.targets || [];
   const exclusions = overview?.exclusions || [];
+  const consents = overview?.consents || [];
+
+  const noppConsent = consents.find((c: any) => c.consentType === "nopp");
+  const voiceConsent = consents.find((c: any) => c.consentType === "voice_transcription");
+  const noppDone = noppConsent && (noppConsent.status === "granted" || noppConsent.status === "exception");
+  const voiceDone = voiceConsent && (voiceConsent.status === "granted" || voiceConsent.status === "declined");
+  const complianceStatus: "completed" | "partial" | "pending" = noppDone && voiceDone ? "completed" : (noppDone || voiceDone) ? "partial" : "pending";
 
   const assessmentItems = checklist.filter((c: any) => c.itemType === "assessment");
   const measureItems = checklist.filter((c: any) => c.itemType === "measure");
@@ -185,14 +201,15 @@ export default function IntakeDashboard() {
   const pendingTasks = tasks.filter((t: any) => t.status !== "completed");
   const completedTasks = tasks.filter((t: any) => t.status === "completed");
 
+  const identityRequired = overview?.planPack?.identityVerificationRequired === true;
   const objectiveSteps = [
-    {
+    ...(identityRequired ? [{
       id: "identity",
       label: "Identity Verification",
       href: `/visits/${visitId}/intake/identity`,
       done: visit?.identityVerified,
       required: true,
-    },
+    }] : []),
     {
       id: "vitals",
       label: "Vitals & Physical Exam",
@@ -286,6 +303,14 @@ export default function IntakeDashboard() {
 
   return (
     <div className="space-y-4">
+      {visit?.lockedAt && (
+        <div className="flex items-center gap-2 rounded-md border border-amber-300 bg-amber-50 dark:bg-amber-950 dark:border-amber-700 p-3" data-testid="banner-visit-locked">
+          <Lock className="w-4 h-4 text-amber-600 dark:text-amber-400 flex-shrink-0" />
+          <span className="text-sm font-medium text-amber-800 dark:text-amber-300">
+            Visit Locked {visit.lockedBy ? `by ${visit.lockedBy}` : ""} {visit.lockedAt ? `on ${new Date(visit.lockedAt).toLocaleDateString()}` : ""}
+          </span>
+        </div>
+      )}
       <div className="flex items-center justify-between gap-3 flex-wrap">
         <div className="flex items-center gap-3 flex-wrap">
           <Link href={`/visits/${visitId}/summary`}>
@@ -363,6 +388,41 @@ export default function IntakeDashboard() {
               </div>
             </CardHeader>
             <CardContent className="space-y-1.5 pt-0">
+              <Link href={`/visits/${visitId}/intake/consents`}>
+                <div className="flex items-center gap-3 p-2.5 rounded-md border hover-elevate" style={{
+                  borderColor: complianceStatus === "completed" ? "#27749340" : complianceStatus === "partial" ? "#FEA00240" : undefined,
+                  backgroundColor: complianceStatus === "completed" ? "#27749308" : complianceStatus === "partial" ? "#FEA00208" : undefined,
+                  opacity: complianceStatus === "completed" ? 0.7 : 1,
+                }} data-testid="task-compliance">
+                  <div className="flex items-center justify-center w-7 h-7 rounded-md flex-shrink-0" style={{
+                    backgroundColor: complianceStatus === "completed" ? "#27749315" : complianceStatus === "partial" ? "#FEA00215" : "#2E456B08",
+                  }}>
+                    <ShieldCheck className="w-3.5 h-3.5" style={{ color: complianceStatus === "completed" ? "#277493" : complianceStatus === "partial" ? "#9a6700" : "#64748b" }} />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <span className={`text-sm ${complianceStatus === "completed" ? "line-through text-muted-foreground" : ""}`}>
+                      NOPP & Consents
+                    </span>
+                    {complianceStatus === "partial" && (
+                      <p className="text-[11px] mt-0.5" style={{ color: "#9a6700" }}>Partially complete</p>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-1 flex-shrink-0">
+                    {complianceStatus === "completed" && (
+                      <CheckCircle2 className="w-4 h-4" style={{ color: "#277493" }} data-testid="status-done-compliance" />
+                    )}
+                    {complianceStatus === "partial" && (
+                      <AlertTriangle className="w-4 h-4" style={{ color: "#FEA002" }} data-testid="status-partial-compliance" />
+                    )}
+                    {complianceStatus === "pending" && (
+                      <ArrowRight className="w-3 h-3 text-muted-foreground" />
+                    )}
+                  </div>
+                </div>
+              </Link>
+
+              <Separator className="my-1" />
+
               {objectiveSteps.map((step) => {
                 const objStatus = getObjectiveStatus(step);
                 const exclusion = getExclusionForObjective(step.id);
@@ -896,8 +956,8 @@ export default function IntakeDashboard() {
               <Select value={exclusionReason} onValueChange={setExclusionReason}>
                 <SelectTrigger data-testid="select-exclusion-reason"><SelectValue placeholder="Select a reason..." /></SelectTrigger>
                 <SelectContent>
-                  {EXCLUSION_REASONS.map((r) => (
-                    <SelectItem key={r} value={r}>{r}</SelectItem>
+                  {exclusionReasonOptions.map((rc) => (
+                    <SelectItem key={rc.id} value={rc.label} data-testid={`select-item-reason-${rc.code}`}>{rc.label}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>

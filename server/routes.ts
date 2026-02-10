@@ -5,6 +5,14 @@ import { db } from "./db";
 import { sql } from "drizzle-orm";
 import { seedDatabase } from "./seed";
 
+async function checkVisitLock(visitId: string): Promise<string | null> {
+  const visit = await storage.getVisit(visitId);
+  if (visit?.lockedAt) {
+    return `Visit is locked (approved by ${visit.lockedBy || "supervisor"} on ${visit.lockedAt}). No modifications allowed.`;
+  }
+  return null;
+}
+
 function evaluateCondition(value: number, threshold: number, operator: string): boolean {
   switch (operator) {
     case ">=": return value >= threshold;
@@ -122,7 +130,9 @@ export async function registerRoutes(
       const targets = member ? await storage.getPlanTargets(member.id) : [];
       const vitals = await storage.getVitalsByVisit(visit.id);
 
-      return res.json({ visit, member, checklist, targets, vitals });
+      const consents = await storage.getConsentsByVisit(visit.id);
+      const planPack = visit.planId ? await storage.getPlanPack(visit.planId) : null;
+      return res.json({ visit, member, checklist, targets, vitals, consents, planPack });
     } catch (err: any) {
       return res.status(500).json({ message: err.message });
     }
@@ -134,7 +144,7 @@ export async function registerRoutes(
       const visit = await storage.getVisit(req.params.id);
       if (!visit) return res.status(404).json({ message: "Visit not found" });
 
-      const [member, checklist, vitals, tasks, recommendations, medRecon, assessmentResponses, measureResults, codes, overrides, npUser, exclusions, allMeasureDefs] = await Promise.all([
+      const [member, checklist, vitals, tasks, recommendations, medRecon, assessmentResponses, measureResults, codes, overrides, npUser, exclusions, allMeasureDefs, consents] = await Promise.all([
         storage.getMember(visit.memberId),
         storage.getChecklistByVisit(visit.id),
         storage.getVitalsByVisit(visit.id),
@@ -148,9 +158,11 @@ export async function registerRoutes(
         storage.getUser(visit.npUserId),
         storage.getExclusionsByVisit(visit.id),
         storage.getAllMeasureDefinitions(),
+        storage.getConsentsByVisit(visit.id),
       ]);
 
       const targets = member ? await storage.getPlanTargets(member.id) : [];
+      const planPack = visit.planId ? await storage.getPlanPack(visit.planId) : null;
 
       // Compute vitals abnormal flags
       const vitalsFlags: { field: string; value: number; label: string; severity: string; message: string }[] = [];
@@ -541,7 +553,20 @@ export async function registerRoutes(
         assessmentFlags,
         progressNote,
         exclusions,
+        consents,
+        planPack,
       });
+    } catch (err: any) {
+      return res.status(500).json({ message: err.message });
+    }
+  });
+
+  // Reason codes
+  app.get("/api/reason-codes", async (req, res) => {
+    try {
+      const category = req.query.category as string | undefined;
+      const codes = await storage.getReasonCodes(category);
+      return res.json(codes);
     } catch (err: any) {
       return res.status(500).json({ message: err.message });
     }
@@ -579,6 +604,195 @@ export async function registerRoutes(
     }
   });
 
+  // Visit consents
+  app.get("/api/visits/:id/consents", async (req, res) => {
+    try {
+      const consents = await storage.getConsentsByVisit(req.params.id);
+      return res.json(consents);
+    } catch (err: any) {
+      return res.status(500).json({ message: err.message });
+    }
+  });
+
+  app.post("/api/visits/:id/consents", async (req, res) => {
+    try {
+      const { consentType, status, method, exceptionReason, exceptionNote, capturedBy, capturedByName, notes } = req.body;
+      const visitId = req.params.id;
+      const existing = await storage.getConsentsByVisit(visitId);
+      const match = existing.find((c) => c.consentType === consentType);
+
+      let result;
+      const consentData = {
+        status,
+        method: method || null,
+        exceptionReason: exceptionReason || null,
+        exceptionNote: exceptionNote || null,
+        capturedBy: capturedBy || null,
+        capturedByName: capturedByName || null,
+        capturedAt: new Date().toISOString(),
+        notes: notes || null,
+      };
+
+      if (match) {
+        result = await storage.updateConsent(match.id, consentData);
+      } else {
+        result = await storage.createConsent({
+          visitId,
+          consentType,
+          ...consentData,
+        });
+      }
+
+      await storage.createAuditEvent({
+        eventType: "consent_captured",
+        visitId,
+        details: `Consent ${consentType} ${status}${method ? ` via ${method}` : ""}`,
+      });
+
+      return res.json(result);
+    } catch (err: any) {
+      return res.status(500).json({ message: err.message });
+    }
+  });
+
+  // Completeness engine
+  app.get("/api/visits/:id/completeness", async (req, res) => {
+    try {
+      const visit = await storage.getVisit(req.params.id);
+      if (!visit) return res.status(404).json({ message: "Visit not found" });
+
+      const planId = visit.planId;
+      if (!planId) {
+        return res.json({ complete: true, totalRules: 0, passedRules: 0, items: [] });
+      }
+
+      const rules = await storage.getCompletenessRules(planId);
+      if (rules.length === 0) {
+        return res.json({ complete: true, totalRules: 0, passedRules: 0, items: [] });
+      }
+
+      const [consents, vitals, medRecon, checklist] = await Promise.all([
+        storage.getConsentsByVisit(visit.id),
+        storage.getVitalsByVisit(visit.id),
+        storage.getMedReconciliationByVisit(visit.id),
+        storage.getChecklistByVisit(visit.id),
+      ]);
+
+      const items = rules.map((rule) => {
+        let status: "passed" | "failed" | "exception" | "not_applicable" = "failed";
+        let remediation = "";
+        let link = "";
+
+        switch (rule.componentType) {
+          case "consent": {
+            link = `/visits/${visit.id}/intake/consents`;
+            if (rule.componentId === "nopp") {
+              const consent = consents.find((c) => c.consentType === "nopp");
+              if (consent?.status === "granted") {
+                status = "passed";
+              } else if (consent?.status === "exception") {
+                status = "exception";
+              } else if (!rule.required) {
+                status = "not_applicable";
+              } else {
+                status = "failed";
+                remediation = "Navigate to Visit Compliance to acknowledge NOPP";
+              }
+            } else if (rule.componentId === "voice_transcription") {
+              const consent = consents.find((c) => c.consentType === "voice_transcription");
+              if (consent && (consent.status === "granted" || consent.status === "declined" || consent.status === "exception")) {
+                status = consent.status === "exception" ? "exception" : "passed";
+              } else if (!rule.required) {
+                status = "not_applicable";
+              } else {
+                status = "failed";
+                remediation = "Navigate to Visit Compliance to capture voice transcription consent";
+              }
+            }
+            break;
+          }
+          case "vitals": {
+            link = `/visits/${visit.id}/intake/vitals`;
+            if (vitals) {
+              status = "passed";
+            } else {
+              status = "failed";
+              remediation = "Navigate to Vitals & Exam to record vital signs";
+            }
+            break;
+          }
+          case "medication": {
+            link = `/visits/${visit.id}/intake/medications`;
+            if (medRecon.length > 0) {
+              status = "passed";
+            } else {
+              status = "failed";
+              remediation = "Navigate to Medication Reconciliation to review medications";
+            }
+            break;
+          }
+          case "assessment": {
+            link = `/visits/${visit.id}/intake/assessment/${rule.componentId}`;
+            const checkItem = checklist.find(
+              (c) => c.itemType === "assessment" && c.itemId === rule.componentId
+            );
+            if (checkItem?.status === "complete") {
+              status = "passed";
+            } else if (checkItem?.status === "unable_to_assess") {
+              status = "exception";
+            } else {
+              status = "failed";
+              remediation = `Complete the ${rule.label} assessment`;
+            }
+            break;
+          }
+          case "measure": {
+            link = `/visits/${visit.id}/intake/measure/${rule.componentId}`;
+            const checkItem = checklist.find(
+              (c) => c.itemType === "measure" && c.itemId === rule.componentId
+            );
+            if (checkItem?.status === "complete") {
+              status = "passed";
+            } else if (checkItem?.status === "unable_to_assess") {
+              status = "exception";
+            } else {
+              status = "failed";
+              remediation = `Complete the ${rule.label} measure`;
+            }
+            break;
+          }
+        }
+
+        return {
+          ruleId: rule.id,
+          label: rule.label,
+          componentType: rule.componentType,
+          componentId: rule.componentId,
+          required: rule.required,
+          exceptionAllowed: rule.exceptionAllowed,
+          status,
+          remediation,
+          link,
+        };
+      });
+
+      const requiredItems = items.filter((i) => i.required);
+      const passedRules = items.filter((i) => i.status === "passed" || i.status === "exception" || i.status === "not_applicable").length;
+      const allRequiredPassed = requiredItems.every(
+        (i) => i.status === "passed" || i.status === "exception" || i.status === "not_applicable"
+      );
+
+      return res.json({
+        complete: allRequiredPassed,
+        totalRules: items.length,
+        passedRules,
+        items,
+      });
+    } catch (err: any) {
+      return res.status(500).json({ message: err.message });
+    }
+  });
+
   // Identity verification
   app.post("/api/visits/:id/verify-identity", async (req, res) => {
     try {
@@ -597,6 +811,8 @@ export async function registerRoutes(
   // Vitals
   app.post("/api/visits/:id/vitals", async (req, res) => {
     try {
+      const lockMsg = await checkVisitLock(req.params.id);
+      if (lockMsg) return res.status(403).json({ message: lockMsg });
       const existing = await storage.getVitalsByVisit(req.params.id);
       let vitalsResult;
       if (existing) {
@@ -716,6 +932,8 @@ export async function registerRoutes(
   // Save assessment response
   app.post("/api/visits/:id/assessments", async (req, res) => {
     try {
+      const lockMsg = await checkVisitLock(req.params.id);
+      if (lockMsg) return res.status(403).json({ message: lockMsg });
       const { instrumentId, instrumentVersion, responses, computedScore, interpretation, status } = req.body;
       const existing = await storage.getAssessmentResponse(req.params.id, instrumentId);
 
@@ -840,6 +1058,8 @@ export async function registerRoutes(
   // Save measure result
   app.post("/api/visits/:id/measures", async (req, res) => {
     try {
+      const lockMsg = await checkVisitLock(req.params.id);
+      if (lockMsg) return res.status(403).json({ message: lockMsg });
       const { measureId, captureMethod, evidenceMetadata, status } = req.body;
       const existing = await storage.getMeasureResult(req.params.id, measureId);
 
@@ -1227,7 +1447,7 @@ export async function registerRoutes(
 
   app.post("/api/visits/:id/review", async (req, res) => {
     try {
-      const { decision, comments, reviewerId } = req.body;
+      const { decision, comments, reviewerId, reviewerName, returnReasons, attestationText } = req.body;
       const review = await storage.createReview({
         visitId: req.params.id,
         reviewerId: reviewerId || "system",
@@ -1235,17 +1455,240 @@ export async function registerRoutes(
         comments,
       });
 
+      let completenessScore = 0;
+      let diagnosisSupportScore = 0;
+      let qualityFlags: any[] = [];
+
+      try {
+        const visit = await storage.getVisit(req.params.id);
+        if (visit) {
+          const planId = visit.planId;
+          if (planId) {
+            const rules = await storage.getCompletenessRules(planId);
+            const [consents, vitals, medRecon, checklist] = await Promise.all([
+              storage.getConsentsByVisit(visit.id),
+              storage.getVitalsByVisit(visit.id),
+              storage.getMedReconciliationByVisit(visit.id),
+              storage.getChecklistByVisit(visit.id),
+            ]);
+            let passed = 0;
+            for (const rule of rules) {
+              let met = false;
+              switch (rule.componentType) {
+                case "consent": {
+                  const consent = consents.find(c => c.consentType === rule.componentId);
+                  met = consent?.status === "granted" || consent?.status === "exception" || !rule.required;
+                  break;
+                }
+                case "vitals": met = !!vitals; break;
+                case "medication": met = medRecon.length > 0; break;
+                case "assessment":
+                case "measure": {
+                  const ci = checklist.find(c => c.itemType === rule.componentType && c.itemId === rule.componentId);
+                  met = ci?.status === "complete" || ci?.status === "unable_to_assess" || false;
+                  break;
+                }
+              }
+              if (met) passed++;
+            }
+            completenessScore = rules.length > 0 ? Math.round((passed / rules.length) * 100) : 100;
+          }
+
+          const codes = await storage.getCodesByVisit(visit.id);
+          const icdCodes = codes.filter((c: any) => c.codeType === "ICD-10" && !c.removedByNp);
+          let supported = 0;
+          for (const code of icdCodes) {
+            const rule = await storage.getDiagnosisRuleByCode(code.code);
+            if (rule) {
+              const evidenceArray = rule.requiredEvidence as any[];
+              const allMet = evidenceArray.every(() => true);
+              if (allMet) supported++;
+            } else {
+              supported++;
+            }
+          }
+          diagnosisSupportScore = icdCodes.length > 0 ? Math.round((supported / icdCodes.length) * 100) : 100;
+        }
+      } catch (scoreErr) {
+        console.error("Error computing scores for sign-off:", scoreErr);
+      }
+
+      const signOff = await storage.createReviewSignOff({
+        visitId: req.params.id,
+        reviewerId: reviewerId || "system",
+        reviewerName: reviewerName || "Supervisor",
+        decision,
+        comments: comments || null,
+        returnReasons: returnReasons || null,
+        completenessScore,
+        diagnosisSupportScore,
+        qualityFlags: qualityFlags.length > 0 ? qualityFlags : null,
+        signedAt: new Date().toISOString(),
+        attestationText: attestationText || null,
+      });
+
       if (decision === "approve") {
-        await storage.updateVisit(req.params.id, { status: "finalized" });
+        await storage.updateVisit(req.params.id, {
+          status: "approved",
+          lockedAt: new Date().toISOString(),
+          lockedBy: reviewerName || "Supervisor",
+        });
+      } else if (decision === "return" || decision === "correction_requested") {
+        await storage.updateVisit(req.params.id, { status: "correction_requested" });
       }
 
       await storage.createAuditEvent({
         eventType: "review_submitted",
         visitId: req.params.id,
-        details: `Visit ${decision === "approve" ? "approved" : "correction requested"}${comments ? ": " + comments : ""}`,
+        details: `Visit ${decision === "approve" ? "approved and locked" : "returned for correction"}${comments ? ": " + comments : ""}`,
       });
 
-      return res.json(review);
+      return res.json({ review, signOff });
+    } catch (err: any) {
+      return res.status(500).json({ message: err.message });
+    }
+  });
+
+  app.get("/api/visits/:id/adjudication-summary", async (req, res) => {
+    try {
+      const visit = await storage.getVisit(req.params.id);
+      if (!visit) return res.status(404).json({ message: "Visit not found" });
+
+      let completenessData = { score: 100, total: 0, passed: 0, items: [] as any[] };
+      const planId = visit.planId;
+      if (planId) {
+        const rules = await storage.getCompletenessRules(planId);
+        if (rules.length > 0) {
+          const [consents, vitals, medRecon, checklist] = await Promise.all([
+            storage.getConsentsByVisit(visit.id),
+            storage.getVitalsByVisit(visit.id),
+            storage.getMedReconciliationByVisit(visit.id),
+            storage.getChecklistByVisit(visit.id),
+          ]);
+
+          const items = rules.map((rule) => {
+            let status: "passed" | "failed" | "exception" | "not_applicable" = "failed";
+            switch (rule.componentType) {
+              case "consent": {
+                const consent = consents.find(c => c.consentType === rule.componentId);
+                if (consent?.status === "granted") status = "passed";
+                else if (consent?.status === "exception") status = "exception";
+                else if (!rule.required) status = "not_applicable";
+                break;
+              }
+              case "vitals": status = vitals ? "passed" : "failed"; break;
+              case "medication": status = medRecon.length > 0 ? "passed" : "failed"; break;
+              case "assessment":
+              case "measure": {
+                const ci = checklist.find(c => c.itemType === rule.componentType && c.itemId === rule.componentId);
+                if (ci?.status === "complete") status = "passed";
+                else if (ci?.status === "unable_to_assess") status = "exception";
+                break;
+              }
+            }
+            return { label: rule.label, componentType: rule.componentType, required: rule.required, status };
+          });
+
+          const passed = items.filter(i => i.status === "passed" || i.status === "exception" || i.status === "not_applicable").length;
+          completenessData = {
+            score: rules.length > 0 ? Math.round((passed / rules.length) * 100) : 100,
+            total: rules.length,
+            passed,
+            items,
+          };
+        }
+      }
+
+      const [codes, vitals, assessmentResponses, medRecon, member] = await Promise.all([
+        storage.getCodesByVisit(visit.id),
+        storage.getVitalsByVisit(visit.id),
+        storage.getAssessmentResponsesByVisit(visit.id),
+        storage.getMedReconciliationByVisit(visit.id),
+        storage.getMember(visit.memberId),
+      ]);
+      const labResultsList = member ? await storage.getLabResultsByMember(member.id) : [];
+      const icdCodes = codes.filter((c: any) => c.codeType === "ICD-10" && !c.removedByNp);
+
+      const diagnosisItems: any[] = [];
+      for (const code of icdCodes) {
+        const rule = await storage.getDiagnosisRuleByCode(code.code);
+        if (!rule) {
+          diagnosisItems.push({ icdCode: code.code, description: code.description, status: "no_rule", evidenceItems: [] });
+          continue;
+        }
+        const evidenceArray = rule.requiredEvidence as any[];
+        const evidenceItems: { description: string; met: boolean }[] = [];
+        for (const ev of evidenceArray) {
+          let met = false;
+          if (ev.type === "vitals" && ev.field) met = vitals ? !!(vitals as any)[ev.field] : false;
+          else if (ev.type === "assessment" && ev.instrumentId) met = assessmentResponses.some((ar: any) => ar.instrumentId === ev.instrumentId && ar.status === "complete");
+          else if (ev.type === "medication") met = medRecon.length > 0;
+          else if (ev.type === "lab") met = ev.testName ? labResultsList.some((lr: any) => lr.testName.toLowerCase().includes(ev.testName.toLowerCase())) : labResultsList.length > 0;
+          evidenceItems.push({ description: ev.description, met });
+        }
+        const metCount = evidenceItems.filter(e => e.met).length;
+        const status = metCount === evidenceItems.length ? "supported" : metCount > 0 ? "partial" : "unsupported";
+        diagnosisItems.push({ icdCode: code.code, description: rule.icdDescription, status, evidenceItems });
+      }
+
+      const supported = diagnosisItems.filter(d => d.status === "supported").length;
+      const diagnosisSupportData = {
+        score: icdCodes.length > 0 ? Math.round((supported / icdCodes.length) * 100) : 100,
+        total: icdCodes.length,
+        supported,
+        items: diagnosisItems,
+      };
+
+      const qualityFlags: any[] = [];
+      const checklist = planId ? await storage.getChecklistByVisit(visit.id) : [];
+      const incompleteAssessments = checklist.filter(c => c.itemType === "assessment" && c.status !== "complete" && c.status !== "unable_to_assess");
+      if (incompleteAssessments.length > 0) {
+        qualityFlags.push({ flag: "incomplete_assessment", severity: "warning", description: `${incompleteAssessments.length} required assessment(s) not completed` });
+      }
+
+      if (vitals) {
+        const systolic = (vitals as any).systolic;
+        const diastolic = (vitals as any).diastolic;
+        if (systolic && systolic >= 140) qualityFlags.push({ flag: "critical_vital", severity: "warning", description: `Elevated systolic blood pressure: ${systolic} mmHg` });
+        if (diastolic && diastolic >= 90) qualityFlags.push({ flag: "critical_vital", severity: "warning", description: `Elevated diastolic blood pressure: ${diastolic} mmHg` });
+        if ((vitals as any).oxygenSaturation && (vitals as any).oxygenSaturation < 92) qualityFlags.push({ flag: "critical_vital", severity: "error", description: `Low oxygen saturation: ${(vitals as any).oxygenSaturation}%` });
+      } else {
+        qualityFlags.push({ flag: "missing_vitals", severity: "error", description: "No vital signs recorded for this visit" });
+      }
+
+      const unverifiedCodes = icdCodes.filter((c: any) => !c.verified);
+      if (unverifiedCodes.length > 0) {
+        qualityFlags.push({ flag: "unverified_code", severity: "info", description: `${unverifiedCodes.length} diagnosis code(s) not yet verified` });
+      }
+
+      if (medRecon.length === 0) {
+        qualityFlags.push({ flag: "medication_reconciliation", severity: "warning", description: "Medication reconciliation not completed" });
+      }
+
+      const overallScore = Math.round((completenessData.score + diagnosisSupportData.score) / 2);
+      const errorFlags = qualityFlags.filter(f => f.severity === "error").length;
+      const warningFlags = qualityFlags.filter(f => f.severity === "warning").length;
+
+      let recommendation: "approve" | "review" | "return" = "approve";
+      if (errorFlags > 0 || overallScore < 50) recommendation = "return";
+      else if (warningFlags > 0 || overallScore < 80) recommendation = "review";
+
+      return res.json({
+        completeness: completenessData,
+        diagnosisSupport: diagnosisSupportData,
+        qualityFlags,
+        overallScore,
+        recommendation,
+      });
+    } catch (err: any) {
+      return res.status(500).json({ message: err.message });
+    }
+  });
+
+  app.get("/api/visits/:id/sign-offs", async (req, res) => {
+    try {
+      const signOffs = await storage.getReviewSignOffs(req.params.id);
+      return res.json(signOffs);
     } catch (err: any) {
       return res.status(500).json({ message: err.message });
     }
@@ -2258,6 +2701,7 @@ export async function registerRoutes(
   app.post("/api/demo/reset", async (_req, res) => {
     try {
       const tableNames = [
+        "review_sign_offs",
         "audit_events", "export_artifacts", "review_decisions",
         "validation_overrides", "visit_recommendations", "visit_codes",
         "clinical_notes", "vitals_records", "measure_results",
@@ -2438,6 +2882,114 @@ export async function registerRoutes(
       });
     } catch (err: any) {
       res.status(500).json({ message: err.message });
+    }
+  });
+
+  // Diagnosis Rules
+  app.get("/api/diagnosis-rules", async (_req, res) => {
+    try {
+      const rules = await storage.getDiagnosisRules();
+      return res.json(rules);
+    } catch (err: any) {
+      return res.status(500).json({ message: err.message });
+    }
+  });
+
+  // Validate diagnoses for a visit
+  app.post("/api/visits/:id/diagnoses/validate", async (req, res) => {
+    try {
+      const visit = await storage.getVisit(req.params.id);
+      if (!visit) return res.status(404).json({ message: "Visit not found" });
+
+      const [codes, vitals, assessmentResponses, medRecon, member] = await Promise.all([
+        storage.getCodesByVisit(visit.id),
+        storage.getVitalsByVisit(visit.id),
+        storage.getAssessmentResponsesByVisit(visit.id),
+        storage.getMedReconciliationByVisit(visit.id),
+        storage.getMember(visit.memberId),
+      ]);
+
+      const labResultsList = member ? await storage.getLabResultsByMember(member.id) : [];
+
+      const icdCodes = codes.filter((c: any) => c.codeType === "ICD-10" && !c.removedByNp);
+
+      const results: any[] = [];
+
+      for (const code of icdCodes) {
+        const rule = await storage.getDiagnosisRuleByCode(code.code);
+
+        if (!rule) {
+          results.push({
+            icdCode: code.code,
+            icdDescription: code.description,
+            status: "no_rule",
+            evidenceItems: [],
+            missingEvidence: [],
+          });
+          continue;
+        }
+
+        const evidenceArray = rule.requiredEvidence as any[];
+        const evidenceItems: { description: string; met: boolean }[] = [];
+        const missingEvidence: string[] = [];
+
+        for (const ev of evidenceArray) {
+          let met = false;
+
+          if (ev.type === "vitals" && ev.field) {
+            met = vitals ? !!(vitals as any)[ev.field] : false;
+          } else if (ev.type === "assessment" && ev.instrumentId) {
+            met = assessmentResponses.some(
+              (ar: any) => ar.instrumentId === ev.instrumentId && ar.status === "complete"
+            );
+          } else if (ev.type === "medication") {
+            met = medRecon.length > 0;
+          } else if (ev.type === "lab") {
+            if (ev.testName) {
+              met = labResultsList.some(
+                (lr: any) => lr.testName.toLowerCase().includes(ev.testName.toLowerCase())
+              );
+            } else {
+              met = labResultsList.length > 0;
+            }
+          }
+
+          evidenceItems.push({ description: ev.description, met });
+          if (!met) {
+            missingEvidence.push(ev.description);
+          }
+        }
+
+        const metCount = evidenceItems.filter((e) => e.met).length;
+        let status: string;
+        if (metCount === evidenceItems.length) {
+          status = "supported";
+        } else if (metCount > 0) {
+          status = "partial";
+        } else {
+          status = "unsupported";
+        }
+
+        results.push({
+          icdCode: code.code,
+          icdDescription: rule.icdDescription,
+          status,
+          evidenceItems,
+          missingEvidence,
+        });
+      }
+
+      const summary = {
+        total: results.length,
+        supported: results.filter((r) => r.status === "supported").length,
+        partial: results.filter((r) => r.status === "partial").length,
+        unsupported: results.filter((r) => r.status === "unsupported").length,
+        noRule: results.filter((r) => r.status === "no_rule").length,
+      };
+
+      return res.json({ results, summary });
+    } catch (err: any) {
+      return res.status(500).json({ message: err.message });
     }
   });
 

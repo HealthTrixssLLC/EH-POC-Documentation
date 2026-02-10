@@ -17,7 +17,6 @@ import {
 } from "lucide-react";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
-import { UNABLE_TO_ASSESS_REASONS } from "@shared/schema";
 
 const captureMethods = [
   { value: "in_home_visit", label: "In-Home Visit Evidence" },
@@ -46,6 +45,21 @@ export default function HedisMeasure() {
   const { data: overview } = useQuery<any>({
     queryKey: ["/api/visits", visitId, "overview"],
     enabled: !!visitId,
+  });
+
+  const { data: reasonCodes } = useQuery<any[]>({
+    queryKey: ["/api/reason-codes", { category: "unable_to_assess" }],
+    queryFn: async () => {
+      const res = await fetch("/api/reason-codes?category=unable_to_assess");
+      if (!res.ok) return [];
+      const data = await res.json();
+      const contra = await fetch("/api/reason-codes?category=clinical_contraindication");
+      if (contra.ok) {
+        const c = await contra.json();
+        return [...data, ...c];
+      }
+      return data;
+    },
   });
 
   const [captureMethod, setCaptureMethod] = useState("");
@@ -764,8 +778,8 @@ export default function HedisMeasure() {
                   <SelectValue placeholder="Select reason" />
                 </SelectTrigger>
                 <SelectContent>
-                  {UNABLE_TO_ASSESS_REASONS.map((r) => (
-                    <SelectItem key={r} value={r}>{r}</SelectItem>
+                  {(reasonCodes || []).map((r: any) => (
+                    <SelectItem key={r.id} value={r.label}>{r.label}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>

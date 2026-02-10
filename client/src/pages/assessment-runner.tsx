@@ -13,7 +13,6 @@ import { Progress } from "@/components/ui/progress";
 import { ChevronLeft, ClipboardList, Save, AlertCircle, CheckCircle2 } from "lucide-react";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
-import { UNABLE_TO_ASSESS_REASONS } from "@shared/schema";
 
 export default function AssessmentRunner() {
   const [, params] = useRoute("/visits/:id/intake/assessment/:aid");
@@ -30,6 +29,21 @@ export default function AssessmentRunner() {
   const { data: existingResponse } = useQuery<any>({
     queryKey: ["/api/visits", visitId, "assessments", assessmentId],
     enabled: !!visitId && !!assessmentId,
+  });
+
+  const { data: reasonCodes } = useQuery<any[]>({
+    queryKey: ["/api/reason-codes", { category: "unable_to_assess" }],
+    queryFn: async () => {
+      const res = await fetch("/api/reason-codes?category=unable_to_assess");
+      if (!res.ok) return [];
+      const data = await res.json();
+      const declined = await fetch("/api/reason-codes?category=patient_declined");
+      if (declined.ok) {
+        const d = await declined.json();
+        return [...data, ...d];
+      }
+      return data;
+    },
   });
 
   const [responses, setResponses] = useState<Record<string, string>>({});
@@ -232,8 +246,8 @@ export default function AssessmentRunner() {
                   <SelectValue placeholder="Select reason" />
                 </SelectTrigger>
                 <SelectContent>
-                  {UNABLE_TO_ASSESS_REASONS.map((r) => (
-                    <SelectItem key={r} value={r}>{r}</SelectItem>
+                  {(reasonCodes || []).map((r: any) => (
+                    <SelectItem key={r.id} value={r.label}>{r.label}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>

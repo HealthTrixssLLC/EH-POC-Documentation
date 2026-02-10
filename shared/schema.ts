@@ -60,6 +60,8 @@ export const visits = pgTable("visits", {
   syncStatus: text("sync_status").default("draft_local"),
   travelNotes: text("travel_notes"),
   safetyNotes: text("safety_notes"),
+  lockedAt: text("locked_at"),
+  lockedBy: text("locked_by"),
   createdAt: timestamp("created_at").defaultNow(),
 });
 
@@ -292,6 +294,8 @@ export const planPacks = pgTable("plan_packs", {
   visitType: text("visit_type").notNull(),
   requiredAssessments: text("required_assessments").array(),
   requiredMeasures: text("required_measures").array(),
+  identityVerificationRequired: boolean("identity_verification_required").notNull().default(false),
+  noppRequired: boolean("nopp_required").notNull().default(true),
   version: text("version").notNull().default("1.0"),
   active: boolean("active").notNull().default(true),
 });
@@ -487,6 +491,92 @@ export const EXCLUSION_REASONS = [
   "Other (see notes)",
 ] as const;
 
+export const reasonCodes = pgTable("reason_codes", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  category: text("category").notNull(),
+  code: text("code").notNull(),
+  label: text("label").notNull(),
+  description: text("description"),
+  active: boolean("active").notNull().default(true),
+  sortOrder: integer("sort_order").notNull().default(0),
+});
+
+export const insertReasonCodeSchema = createInsertSchema(reasonCodes).omit({ id: true });
+export type InsertReasonCode = z.infer<typeof insertReasonCodeSchema>;
+export type ReasonCode = typeof reasonCodes.$inferSelect;
+
+export const completenessRules = pgTable("completeness_rules", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  planPackId: text("plan_pack_id").notNull(),
+  componentType: text("component_type").notNull(),
+  componentId: text("component_id"),
+  label: text("label").notNull(),
+  description: text("description"),
+  required: boolean("required").notNull().default(true),
+  exceptionAllowed: boolean("exception_allowed").notNull().default(true),
+  sortOrder: integer("sort_order").notNull().default(0),
+});
+
+export const insertCompletenessRuleSchema = createInsertSchema(completenessRules).omit({ id: true });
+export type InsertCompletenessRule = z.infer<typeof insertCompletenessRuleSchema>;
+export type CompletenessRule = typeof completenessRules.$inferSelect;
+
+export const diagnosisRules = pgTable("diagnosis_rules", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  icdCode: text("icd_code").notNull(),
+  icdDescription: text("icd_description").notNull(),
+  category: text("category").notNull(),
+  requiredEvidence: jsonb("required_evidence").notNull(),
+  active: boolean("active").notNull().default(true),
+});
+
+export const insertDiagnosisRuleSchema = createInsertSchema(diagnosisRules).omit({ id: true });
+export type InsertDiagnosisRule = z.infer<typeof insertDiagnosisRuleSchema>;
+export type DiagnosisRule = typeof diagnosisRules.$inferSelect;
+
+export const reviewSignOffs = pgTable("review_sign_offs", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  visitId: varchar("visit_id").notNull(),
+  reviewerId: varchar("reviewer_id").notNull(),
+  reviewerName: text("reviewer_name").notNull(),
+  decision: text("decision").notNull(),
+  comments: text("comments"),
+  returnReasons: jsonb("return_reasons"),
+  completenessScore: integer("completeness_score"),
+  diagnosisSupportScore: integer("diagnosis_support_score"),
+  qualityFlags: jsonb("quality_flags"),
+  signedAt: text("signed_at").notNull(),
+  attestationText: text("attestation_text"),
+});
+
+export const insertReviewSignOffSchema = createInsertSchema(reviewSignOffs).omit({ id: true });
+export type InsertReviewSignOff = z.infer<typeof insertReviewSignOffSchema>;
+export type ReviewSignOff = typeof reviewSignOffs.$inferSelect;
+
+export const RETURN_REASON_CATEGORIES = [
+  { code: "incomplete_assessment", label: "Incomplete Assessment", description: "One or more required assessments are missing or incomplete" },
+  { code: "missing_vitals", label: "Missing Vital Signs", description: "Vital signs are not documented or partially recorded" },
+  { code: "unsupported_diagnosis", label: "Unsupported Diagnosis", description: "One or more diagnoses lack sufficient clinical evidence" },
+  { code: "documentation_gap", label: "Documentation Gap", description: "Required clinical documentation is missing or insufficient" },
+  { code: "coding_error", label: "Coding Error", description: "CPT/ICD-10 codes are incorrect or missing linkage" },
+  { code: "medication_reconciliation", label: "Medication Reconciliation Issue", description: "Medication list is incomplete or has unresolved discrepancies" },
+  { code: "consent_missing", label: "Missing Consent/NOPP", description: "Required consent or NOPP acknowledgement is not documented" },
+  { code: "quality_measure", label: "Quality Measure Gap", description: "HEDIS/quality measures not properly documented" },
+  { code: "clinical_concern", label: "Clinical Concern", description: "Clinical findings require additional review or follow-up" },
+  { code: "other", label: "Other", description: "Other reason requiring correction" },
+] as const;
+
+export const REASON_CODE_CATEGORIES = [
+  "unable_to_assess",
+  "patient_declined",
+  "deferred",
+  "clinical_contraindication",
+  "equipment_unavailable",
+  "environmental",
+  "cognitive_barrier",
+  "consent_exception",
+] as const;
+
 export const objectiveExclusions = pgTable("objective_exclusions", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   visitId: varchar("visit_id").notNull(),
@@ -502,10 +592,41 @@ export const insertObjectiveExclusionSchema = createInsertSchema(objectiveExclus
 export type InsertObjectiveExclusion = z.infer<typeof insertObjectiveExclusionSchema>;
 export type ObjectiveExclusion = typeof objectiveExclusions.$inferSelect;
 
+export const visitConsents = pgTable("visit_consents", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  visitId: varchar("visit_id").notNull(),
+  consentType: text("consent_type").notNull(),
+  status: text("status").notNull().default("pending"),
+  method: text("method"),
+  exceptionReason: text("exception_reason"),
+  exceptionNote: text("exception_note"),
+  capturedBy: varchar("captured_by"),
+  capturedByName: text("captured_by_name"),
+  capturedAt: text("captured_at"),
+  notes: text("notes"),
+});
+
+export const insertVisitConsentSchema = createInsertSchema(visitConsents).omit({ id: true });
+export type InsertVisitConsent = z.infer<typeof insertVisitConsentSchema>;
+export type VisitConsent = typeof visitConsents.$inferSelect;
+
+export const CONSENT_TYPES = ["voice_transcription", "nopp"] as const;
+export const CONSENT_STATUSES = ["pending", "granted", "declined", "exception"] as const;
+export const CONSENT_METHODS = ["verbal", "written", "digital", "previously_delivered"] as const;
+export const NOPP_EXCEPTION_REASONS = [
+  "Patient refused to acknowledge",
+  "Patient incapacitated",
+  "Language barrier - interpreter unavailable",
+  "Previously delivered and on file",
+  "Emergency visit - deferred",
+  "Legal guardian unavailable",
+  "Other (see notes)",
+] as const;
+
 export const ROLES = ["np", "supervisor", "care_coordinator", "admin", "compliance"] as const;
 export type Role = typeof ROLES[number];
 
-export const VISIT_STATUSES = ["scheduled", "in_progress", "ready_for_review", "finalized", "synced", "emr_submitted", "export_generated"] as const;
+export const VISIT_STATUSES = ["scheduled", "in_progress", "ready_for_review", "approved", "correction_requested", "finalized", "synced", "emr_submitted", "export_generated"] as const;
 export type VisitStatus = typeof VISIT_STATUSES[number];
 
 export const CHECKLIST_STATUSES = ["not_started", "in_progress", "complete", "unable_to_assess"] as const;

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useRoute, Link, useLocation } from "wouter";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
@@ -13,6 +13,7 @@ import {
   CheckCircle2,
   XCircle,
   AlertTriangle,
+  MinusCircle,
   PenLine,
   ShieldCheck,
   ArrowRight,
@@ -21,6 +22,8 @@ import {
   Check,
   Trash2,
   Lightbulb,
+  Stethoscope,
+  Info,
 } from "lucide-react";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -51,6 +54,29 @@ export default function ReviewFinalize() {
     queryKey: ["/api/visits", visitId, "overrides"],
     enabled: !!visitId,
   });
+
+  const { data: completeness } = useQuery<any>({
+    queryKey: ["/api/visits", visitId, "completeness"],
+    enabled: !!visitId,
+  });
+
+  const [diagValidation, setDiagValidation] = useState<any>(null);
+
+  const validateDiagnosesMutation = useMutation({
+    mutationFn: async () => {
+      const resp = await apiRequest("POST", `/api/visits/${visitId}/diagnoses/validate`, {});
+      return resp.json();
+    },
+    onSuccess: (data) => {
+      setDiagValidation(data);
+    },
+  });
+
+  useEffect(() => {
+    if (visitId && codes.length > 0) {
+      validateDiagnosesMutation.mutate();
+    }
+  }, [visitId, codes.length]);
 
   const generateCodesMutation = useMutation({
     mutationFn: async () => {
@@ -109,14 +135,11 @@ export default function ReviewFinalize() {
 
   const visit = bundle?.visit;
   const member = bundle?.member;
-  const checklist = bundle?.checklist || [];
-  const vitals = bundle?.vitals;
 
-  const identityOk = visit?.identityVerified;
-  const vitalsOk = !!vitals;
-  const allChecklistDone = checklist.every((c: any) => c.status === "complete" || c.status === "unable_to_assess");
-  const canFinalize = identityOk && vitalsOk && allChecklistDone && signature.trim().length > 0;
-  const incompleteItems = checklist.filter((c: any) => c.status !== "complete" && c.status !== "unable_to_assess");
+  const completenessOk = completeness?.complete === true;
+  const canFinalize = completenessOk && signature.trim().length > 0;
+  const completenessItems = completeness?.items || [];
+  const failedRequired = completenessItems.filter((i: any) => i.status === "failed" && i.required);
 
   const activeCodes = codes.filter((c: any) => !c.removedByNp);
   const pendingRecs = recommendations.filter((r: any) => r.status === "pending");
@@ -281,38 +304,215 @@ export default function ReviewFinalize() {
 
       <Card>
         <CardHeader className="pb-3">
-          <div className="flex items-center gap-2">
-            <ShieldCheck className="w-5 h-5" style={{ color: "#2E456B" }} />
-            <h2 className="text-base font-semibold">Finalization Checklist</h2>
+          <div className="flex items-center justify-between gap-3 flex-wrap">
+            <div className="flex items-center gap-2">
+              <ShieldCheck className="w-5 h-5" style={{ color: "#2E456B" }} />
+              <h2 className="text-base font-semibold">Completeness Report</h2>
+            </div>
+            {completeness && (
+              <Badge variant={completenessOk ? "default" : "secondary"} data-testid="text-completeness-progress">
+                {completeness.passedRules} of {completeness.totalRules} items complete
+              </Badge>
+            )}
           </div>
-          <p className="text-sm text-muted-foreground">All items must be complete before signing</p>
+          <p className="text-sm text-muted-foreground">All required items must be complete before signing</p>
         </CardHeader>
-        <CardContent className="space-y-3">
-          <GatingItem label="Identity Verified" ok={identityOk} link={`/visits/${visitId}/intake/identity`} />
-          <GatingItem label="Vitals & Exam Recorded" ok={vitalsOk} link={`/visits/${visitId}/intake/vitals`} />
-
-          <Separator className="my-2" />
-
-          <span className="text-xs font-medium text-muted-foreground">Required Assessments & Measures</span>
-          {checklist.map((item: any) => (
-            <GatingItem
-              key={item.id}
-              label={item.itemName}
-              ok={item.status === "complete" || item.status === "unable_to_assess"}
-              link={item.itemType === "assessment" ? `/visits/${visitId}/intake/assessment/${item.itemId}` : `/visits/${visitId}/intake/measure/${item.itemId}`}
-              status={item.status}
-            />
-          ))}
+        <CardContent className="space-y-4">
+          {(() => {
+            const groups: { key: string; label: string; types: string[] }[] = [
+              { key: "compliance", label: "Compliance", types: ["consent"] },
+              { key: "clinical", label: "Clinical", types: ["vitals", "medication"] },
+              { key: "assessments", label: "Assessments", types: ["assessment"] },
+              { key: "measures", label: "Measures", types: ["measure"] },
+            ];
+            return groups.map((group) => {
+              const groupItems = completenessItems.filter((i: any) => group.types.includes(i.componentType));
+              if (groupItems.length === 0) return null;
+              return (
+                <div key={group.key}>
+                  <span className="text-xs font-medium text-muted-foreground">{group.label}</span>
+                  <div className="space-y-1.5 mt-1.5">
+                    {groupItems.map((item: any) => (
+                      <div
+                        key={item.ruleId}
+                        className="flex items-center justify-between gap-3 p-2 rounded-md border flex-wrap"
+                        data-testid={`item-completeness-${item.ruleId}`}
+                      >
+                        <div className="flex items-center gap-2 min-w-0">
+                          {item.status === "passed" && (
+                            <CheckCircle2 className="w-4 h-4 flex-shrink-0 text-green-600" />
+                          )}
+                          {item.status === "failed" && (
+                            <XCircle className="w-4 h-4 flex-shrink-0 text-destructive" />
+                          )}
+                          {item.status === "exception" && (
+                            <AlertTriangle className="w-4 h-4 flex-shrink-0 text-amber-500" />
+                          )}
+                          {item.status === "not_applicable" && (
+                            <MinusCircle className="w-4 h-4 flex-shrink-0 text-muted-foreground" />
+                          )}
+                          <span className="text-sm truncate">{item.label}</span>
+                          {!item.required && (
+                            <Badge variant="outline" className="text-xs">Optional</Badge>
+                          )}
+                          {item.status === "exception" && (
+                            <Badge variant="secondary" className="text-xs">Exception</Badge>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-2 flex-wrap">
+                          {item.status === "failed" && item.remediation && (
+                            <span className="text-xs text-muted-foreground">{item.remediation}</span>
+                          )}
+                          {item.status === "failed" && item.link && (
+                            <Link href={item.link}>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="text-xs"
+                                data-testid={`link-remediation-${item.componentId || item.componentType}`}
+                              >
+                                Go Fix <ArrowRight className="w-3 h-3 ml-1" />
+                              </Button>
+                            </Link>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                  <Separator className="mt-3" />
+                </div>
+              );
+            });
+          })()}
         </CardContent>
       </Card>
 
-      {!canFinalize && incompleteItems.length > 0 && (
+      <Card>
+        <CardHeader className="pb-3">
+          <div className="flex items-center justify-between gap-3 flex-wrap">
+            <div className="flex items-center gap-2">
+              <Stethoscope className="w-5 h-5" style={{ color: "#277493" }} />
+              <h2 className="text-base font-semibold">Diagnosis Evidence Validation</h2>
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => validateDiagnosesMutation.mutate()}
+              disabled={validateDiagnosesMutation.isPending}
+              data-testid="button-validate-diagnoses"
+            >
+              <RefreshCw className={`w-4 h-4 mr-1 ${validateDiagnosesMutation.isPending ? "animate-spin" : ""}`} />
+              {validateDiagnosesMutation.isPending ? "Validating..." : "Validate Diagnoses"}
+            </Button>
+          </div>
+          <p className="text-sm text-muted-foreground">Checks if each coded diagnosis has sufficient clinical evidence</p>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {diagValidation && (
+            <>
+              <div className="flex items-center gap-3 flex-wrap" data-testid="text-diagnosis-summary">
+                <Badge variant="default" className="text-xs">
+                  {diagValidation.summary.supported} Supported
+                </Badge>
+                {diagValidation.summary.partial > 0 && (
+                  <Badge variant="secondary" className="text-xs">
+                    {diagValidation.summary.partial} Partial
+                  </Badge>
+                )}
+                {diagValidation.summary.unsupported > 0 && (
+                  <Badge variant="destructive" className="text-xs">
+                    {diagValidation.summary.unsupported} Unsupported
+                  </Badge>
+                )}
+                {diagValidation.summary.noRule > 0 && (
+                  <Badge variant="outline" className="text-xs">
+                    {diagValidation.summary.noRule} No Rule
+                  </Badge>
+                )}
+                <span className="text-xs text-muted-foreground">
+                  {diagValidation.summary.total} total diagnoses evaluated
+                </span>
+              </div>
+              <Separator />
+              <div className="space-y-2">
+                {diagValidation.results.map((r: any) => (
+                  <div
+                    key={r.icdCode}
+                    className="p-3 rounded-md border space-y-2"
+                    data-testid={`item-diagnosis-${r.icdCode}`}
+                  >
+                    <div className="flex items-center gap-2 flex-wrap">
+                      {r.status === "supported" && (
+                        <CheckCircle2 className="w-4 h-4 flex-shrink-0 text-green-600" />
+                      )}
+                      {r.status === "partial" && (
+                        <AlertTriangle className="w-4 h-4 flex-shrink-0 text-amber-500" />
+                      )}
+                      {r.status === "unsupported" && (
+                        <XCircle className="w-4 h-4 flex-shrink-0 text-destructive" />
+                      )}
+                      {r.status === "no_rule" && (
+                        <Info className="w-4 h-4 flex-shrink-0 text-muted-foreground" />
+                      )}
+                      <Badge variant="outline" className="text-xs font-mono shrink-0">
+                        {r.icdCode}
+                      </Badge>
+                      <span className="text-sm">{r.icdDescription}</span>
+                      <Badge
+                        variant={
+                          r.status === "supported" ? "default" :
+                          r.status === "partial" ? "secondary" :
+                          r.status === "unsupported" ? "destructive" :
+                          "outline"
+                        }
+                        className="text-xs shrink-0"
+                      >
+                        {r.status === "supported" ? "Supported" :
+                         r.status === "partial" ? "Partial Evidence" :
+                         r.status === "unsupported" ? "Unsupported" :
+                         "No Rule"}
+                      </Badge>
+                    </div>
+                    {r.evidenceItems.length > 0 && (r.status === "partial" || r.status === "unsupported") && (
+                      <div className="ml-6 space-y-1">
+                        {r.evidenceItems.map((ev: any, idx: number) => (
+                          <div key={idx} className="flex items-center gap-2 text-xs">
+                            {ev.met ? (
+                              <CheckCircle2 className="w-3 h-3 text-green-600 flex-shrink-0" />
+                            ) : (
+                              <XCircle className="w-3 h-3 text-destructive flex-shrink-0" />
+                            )}
+                            <span className={ev.met ? "text-muted-foreground" : ""}>{ev.description}</span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </>
+          )}
+          {!diagValidation && !validateDiagnosesMutation.isPending && (
+            <p className="text-sm text-muted-foreground text-center py-4">
+              No ICD-10 codes to validate. Generate codes first.
+            </p>
+          )}
+          {validateDiagnosesMutation.isPending && !diagValidation && (
+            <div className="flex items-center justify-center py-4 gap-2">
+              <RefreshCw className="w-4 h-4 animate-spin text-muted-foreground" />
+              <span className="text-sm text-muted-foreground">Validating diagnosis evidence...</span>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {!completenessOk && failedRequired.length > 0 && (
         <Card className="border-destructive/30">
           <CardContent className="p-4 flex items-start gap-3">
             <AlertTriangle className="w-5 h-5 flex-shrink-0 text-destructive mt-0.5" />
             <div>
               <span className="text-sm font-medium text-destructive" data-testid="text-gating-warning">
-                Cannot finalize - {incompleteItems.length} item{incompleteItems.length !== 1 ? "s" : ""} incomplete
+                Cannot finalize - {failedRequired.length} required item{failedRequired.length !== 1 ? "s" : ""} incomplete
               </span>
               <p className="text-xs text-muted-foreground mt-0.5">
                 Complete all required items or provide structured unable-to-assess reasons before signing.
@@ -354,33 +554,6 @@ export default function ReviewFinalize() {
           </Button>
         </CardContent>
       </Card>
-    </div>
-  );
-}
-
-function GatingItem({ label, ok, link, status }: { label: string; ok: boolean; link: string; status?: string }) {
-  return (
-    <div className="flex items-center justify-between gap-3 p-2 rounded-md border flex-wrap">
-      <div className="flex items-center gap-2 min-w-0">
-        {ok ? (
-          <CheckCircle2 className="w-4 h-4 flex-shrink-0" style={{ color: "#277493" }} />
-        ) : (
-          <XCircle className="w-4 h-4 flex-shrink-0 text-destructive" />
-        )}
-        <span className="text-sm truncate">{label}</span>
-        {status && (
-          <Badge variant="secondary" className="text-xs capitalize">
-            {status.replace(/_/g, " ")}
-          </Badge>
-        )}
-      </div>
-      {!ok && (
-        <Link href={link}>
-          <Button variant="ghost" size="sm" className="text-xs">
-            Go <ArrowRight className="w-3 h-3 ml-1" />
-          </Button>
-        </Link>
-      )}
     </div>
   );
 }

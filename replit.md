@@ -115,6 +115,17 @@ client/src/pages/         - All page components
   - clinicalCriteria JSONB in measure_definitions stores screening types, lookback periods, hedisNote
   - Complete button validation requires screeningType + screeningDate + captureMethod for screening measures
   - Updated seed data with HEDIS-accurate age ranges (BCS: 40-74, COL: 45-75)
+- 2026-02-10: CR-001 Phase 1 Implementation (9 items)
+  - CR-001-01/02: Visit consent management (visit_consents table, NOPP acknowledgement, voice transcription consent gate)
+  - CR-001-03: Configurable identity verification via planPacks flags (identityVerificationRequired, noppRequired)
+  - CR-001-05: Standardized reason codes (reason_codes table, 45 codes across 8 categories, replaces hardcoded lists)
+  - CR-001-09: Assessment/measure pages use DB reason codes, partial save/draft already supported
+  - CR-001-04/06: Completeness engine (completeness_rules table, evaluation API, grouped completeness report on Review & Finalize)
+  - CR-001-08: Diagnosis validation rules (diagnosis_rules table, 60 rules across 10 categories, evidence checking API)
+  - CR-001-07: Enhanced supervisor sign-off (adjudication summary scorecard, structured return reasons, review_sign_offs table, encounter locking)
+  - New tables: visit_consents, reason_codes, completeness_rules, diagnosis_rules, review_sign_offs
+  - New routes: /visits/:id/consents, /reason-codes, /visits/:id/completeness, /diagnosis-rules, /visits/:id/diagnoses/validate, /visits/:id/adjudication-summary, /visits/:id/sign-offs
+  - New page: /visits/:id/intake/consents (visit compliance/consent management)
 - 2026-02-07: Initial POC build - schema, frontend, backend, seed data
 
 ## User Preferences

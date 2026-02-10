@@ -18,7 +18,7 @@ Easy Health employs a modern web architecture:
 -   **Key Features**:
     -   **Finalization Gating**: Ensures all required assessments and measures are complete or adequately justified before visit sign-off.
     -   **Assessment Scoring**: Includes deterministic scoring for tools like PHQ-2, PHQ-9, PRAPARE, and AWV.
-    -   **FHIR Export**: Generates FHIR R4 bundles for interoperability.
+    -   **FHIR R4 API**: Full bidirectional FHIR R4 interface with 12 endpoints covering outbound reads (Patient, Encounter, Observation, Condition, comprehensive Bundle), inbound writes (Patient upsert, Bundle import with Patient+Encounter), visit export, and demo utilities. Comprehensive bundles include 11 distinct resource types across 17 data categories (80+ entries). See `docs/fhir-api-reference.md` for full API documentation, resource mappings, code examples, and test JSON payloads.
     -   **Intake Dashboard**: Task-driven UX with objective tracking, progress notes (MEAT/TAMPER compliant), and clinical decision support (CDS).
     -   **Medication Reconciliation**: Comprehensive module with client-side drug interaction and Beers Criteria checking.
     -   **Patient Clinical Timeline**: Visualizes longitudinal lab results, medication history, and vitals trends.

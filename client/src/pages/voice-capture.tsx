@@ -45,6 +45,7 @@ export default function VoiceCapture() {
   const { data: extractedFields, isLoading: loadingFields } = useQuery<any[]>({ queryKey: [`/api/visits/${visitId}/extracted-fields`] });
   const { data: aiStatus } = useQuery<any>({ queryKey: ["/api/ai-providers/active"] });
 
+  const [activeTab, setActiveTab] = useState("record");
   const voiceConsent = consents?.find((c: any) => c.consentType === "voice_transcription" && c.status === "granted");
   const hasConsent = !!voiceConsent;
 
@@ -103,7 +104,7 @@ export default function VoiceCapture() {
         </Card>
       )}
 
-      <Tabs defaultValue="record">
+      <Tabs value={activeTab} onValueChange={setActiveTab}>
         <TabsList className="flex-wrap">
           <TabsTrigger value="record" data-testid="tab-record">
             <Mic className="w-3 h-3 mr-1" /> Record
@@ -125,6 +126,7 @@ export default function VoiceCapture() {
             user={user}
             recordings={recordings || []}
             isLoading={loadingRecordings}
+            onProcessingComplete={() => setActiveTab("review")}
           />
         </TabsContent>
 
@@ -154,15 +156,49 @@ export default function VoiceCapture() {
   );
 }
 
-function RecordingPanel({ visitId, hasConsent, user, recordings, isLoading }: any) {
+function RecordingPanel({ visitId, hasConsent, user, recordings, isLoading, onProcessingComplete }: any) {
   const { toast } = useToast();
   const [isRecording, setIsRecording] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
   const [elapsed, setElapsed] = useState(0);
+  const [processingStatus, setProcessingStatus] = useState<string | null>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const startTimeRef = useRef<number>(0);
+
+  const autoProcessRecording = useCallback(async (recording: any) => {
+    try {
+      setProcessingStatus("Transcribing...");
+      const txRes = await apiRequest("POST", `/api/visits/${visitId}/transcribe`, {
+        recordingId: recording.id,
+        userId: user?.id,
+        userName: user?.fullName,
+      });
+      const transcript = await txRes.json();
+      queryClient.invalidateQueries({ queryKey: [`/api/visits/${visitId}/transcripts`] });
+      queryClient.invalidateQueries({ queryKey: [`/api/visits/${visitId}/recordings`] });
+
+      if (transcript.status === "completed" && transcript.id) {
+        setProcessingStatus("Extracting fields...");
+        const extRes = await apiRequest("POST", `/api/visits/${visitId}/extract`, {
+          transcriptId: transcript.id,
+          userId: user?.id,
+          userName: user?.fullName,
+        });
+        const extData = await extRes.json();
+        queryClient.invalidateQueries({ queryKey: [`/api/visits/${visitId}/extracted-fields`] });
+        toast({ title: "Processing complete", description: `Transcribed and extracted ${extData?.count || 0} fields` });
+        onProcessingComplete?.();
+      } else {
+        toast({ title: "Transcription complete", description: "No fields to extract" });
+      }
+    } catch (err: any) {
+      toast({ title: "Auto-processing failed", description: err.message, variant: "destructive" });
+    } finally {
+      setProcessingStatus(null);
+    }
+  }, [visitId, user, toast, onProcessingComplete]);
 
   const saveMutation = useMutation({
     mutationFn: async (audioBlob: Blob) => {
@@ -174,18 +210,20 @@ function RecordingPanel({ visitId, hasConsent, user, recordings, isLoading }: an
         };
         reader.readAsDataURL(audioBlob);
       });
-      return apiRequest("POST", `/api/visits/${visitId}/recordings`, {
+      const res = await apiRequest("POST", `/api/visits/${visitId}/recordings`, {
         recordedBy: user?.id,
         recordedByName: user?.fullName,
         mimeType: audioBlob.type,
         durationSec: Math.round(elapsed),
         audioData: base64,
       });
+      return res.json();
     },
-    onSuccess: () => {
+    onSuccess: (recording) => {
       queryClient.invalidateQueries({ queryKey: [`/api/visits/${visitId}/recordings`] });
-      toast({ title: "Recording saved" });
+      toast({ title: "Recording saved, processing..." });
       setElapsed(0);
+      autoProcessRecording(recording);
     },
     onError: (err: any) => {
       toast({ title: "Save failed", description: err.message, variant: "destructive" });
@@ -277,7 +315,7 @@ function RecordingPanel({ visitId, hasConsent, user, recordings, isLoading }: an
               <Button
                 size="lg"
                 onClick={startRecording}
-                disabled={!hasConsent || saveMutation.isPending}
+                disabled={!hasConsent || saveMutation.isPending || !!processingStatus}
                 data-testid="button-start-recording"
               >
                 <Mic className="w-4 h-4 mr-2" /> Start Recording
@@ -303,9 +341,9 @@ function RecordingPanel({ visitId, hasConsent, user, recordings, isLoading }: an
               </>
             )}
           </div>
-          {saveMutation.isPending && (
-            <div className="flex items-center gap-2 text-sm text-muted-foreground">
-              <Loader2 className="w-3 h-3 animate-spin" /> Saving recording...
+          {(saveMutation.isPending || processingStatus) && (
+            <div className="flex items-center gap-2 text-sm text-muted-foreground" data-testid="text-processing-status">
+              <Loader2 className="w-3 h-3 animate-spin" /> {processingStatus || "Saving recording..."}
             </div>
           )}
           {!hasConsent && (
@@ -637,20 +675,27 @@ function ExtractedFieldsPanel({ visitId, fields, transcripts, isLoading, user, a
 
 function ExtractedFieldRow({ field, onAccept, onReject, onEdit, isPending }: any) {
   const [editing, setEditing] = useState(false);
-  const [editValue, setEditValue] = useState(field.proposedValue || "");
+  const [editValue, setEditValue] = useState(field.editedValue || field.proposedValue || "");
 
   const confidenceColor = field.confidence >= 0.8 ? "text-green-600 dark:text-green-400" :
     field.confidence >= 0.5 ? "text-amber-600 dark:text-amber-400" : "text-red-600 dark:text-red-400";
 
+  const statusIcon = field.status === "accepted" || field.status === "edited"
+    ? <CheckCircle2 className="w-4 h-4 text-green-600 dark:text-green-400" />
+    : field.status === "rejected"
+    ? <XCircle className="w-4 h-4 text-destructive" />
+    : null;
+
   return (
     <Card data-testid={`card-field-${field.id}`}>
-      <CardContent className="p-3">
-        <div className="flex items-center justify-between gap-3 flex-wrap">
-          <div className="flex flex-col gap-0.5 min-w-0 flex-1">
+      <CardContent className="p-4">
+        <div className="flex items-start justify-between gap-3">
+          <div className="flex-1 min-w-0 space-y-2">
             <div className="flex items-center gap-2 flex-wrap">
-              <span className="text-xs font-semibold" data-testid={`text-field-label-${field.id}`}>{field.fieldLabel}</span>
+              {statusIcon}
+              <span className="text-sm font-semibold" data-testid={`text-field-label-${field.id}`}>{field.fieldLabel}</span>
               <span className={`text-xs font-mono ${confidenceColor}`}>
-                {Math.round((field.confidence || 0) * 100)}%
+                {Math.round((field.confidence || 0) * 100)}% confidence
               </span>
               <Badge
                 variant={field.status === "accepted" || field.status === "edited" ? "default" : field.status === "rejected" ? "destructive" : "secondary"}
@@ -660,12 +705,14 @@ function ExtractedFieldRow({ field, onAccept, onReject, onEdit, isPending }: any
                 {field.status}
               </Badge>
             </div>
+
             {editing ? (
-              <div className="flex items-center gap-2 mt-1 flex-wrap">
+              <div className="flex items-center gap-2 flex-wrap">
                 <Input
                   value={editValue}
                   onChange={(e) => setEditValue(e.target.value)}
-                  className="text-xs font-mono"
+                  className="font-mono text-sm flex-1"
+                  autoFocus
                   data-testid={`input-field-edit-${field.id}`}
                 />
                 <Button
@@ -674,51 +721,62 @@ function ExtractedFieldRow({ field, onAccept, onReject, onEdit, isPending }: any
                   disabled={isPending}
                   data-testid={`button-save-edit-${field.id}`}
                 >
-                  <Check className="w-3 h-3" />
+                  <Check className="w-3 h-3 mr-1" /> Save
                 </Button>
-                <Button variant="ghost" size="sm" onClick={() => setEditing(false)}>
-                  <X className="w-3 h-3" />
+                <Button variant="ghost" size="sm" onClick={() => { setEditing(false); setEditValue(field.editedValue || field.proposedValue || ""); }}>
+                  Cancel
                 </Button>
               </div>
             ) : (
-              <span className="text-sm font-mono" data-testid={`text-field-value-${field.id}`}>
-                {field.editedValue || field.proposedValue}
-              </span>
+              <div className="flex items-center gap-2">
+                <div className="bg-muted px-3 py-1.5 rounded-md flex-1">
+                  <span className="text-base font-mono font-medium" data-testid={`text-field-value-${field.id}`}>
+                    {field.editedValue || field.proposedValue}
+                  </span>
+                  {field.unit && <span className="text-sm text-muted-foreground ml-1">{field.unit}</span>}
+                </div>
+                {(field.status === "pending" || field.status === "accepted" || field.status === "edited") && (
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => setEditing(true)}
+                    disabled={isPending}
+                    data-testid={`button-edit-field-${field.id}`}
+                  >
+                    <Edit3 className="w-4 h-4" />
+                  </Button>
+                )}
+              </div>
             )}
+
             {field.sourceSnippet && (
-              <span className="text-xs text-muted-foreground mt-0.5 italic">
-                &ldquo;{field.sourceSnippet.substring(0, 120)}{field.sourceSnippet.length > 120 ? "..." : ""}&rdquo;
-              </span>
+              <p className="text-xs text-muted-foreground italic">
+                Source: &ldquo;{field.sourceSnippet.substring(0, 150)}{field.sourceSnippet.length > 150 ? "..." : ""}&rdquo;
+              </p>
             )}
           </div>
+
           {field.status === "pending" && (
-            <div className="flex items-center gap-1">
+            <div className="flex flex-col gap-1">
               <Button
-                variant="ghost"
-                size="icon"
+                variant="outline"
+                size="sm"
                 onClick={onAccept}
                 disabled={isPending}
+                className="text-green-600 dark:text-green-400"
                 data-testid={`button-accept-field-${field.id}`}
               >
-                <CheckCircle2 className="w-4 h-4 text-green-600 dark:text-green-400" />
+                <CheckCircle2 className="w-3 h-3 mr-1" /> Accept
               </Button>
               <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => setEditing(true)}
-                disabled={isPending}
-                data-testid={`button-edit-field-${field.id}`}
-              >
-                <Edit3 className="w-4 h-4" />
-              </Button>
-              <Button
-                variant="ghost"
-                size="icon"
+                variant="outline"
+                size="sm"
                 onClick={onReject}
                 disabled={isPending}
+                className="text-destructive"
                 data-testid={`button-reject-field-${field.id}`}
               >
-                <XCircle className="w-4 h-4 text-destructive" />
+                <XCircle className="w-3 h-3 mr-1" /> Reject
               </Button>
             </div>
           )}

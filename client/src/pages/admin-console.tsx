@@ -657,7 +657,8 @@ function ProviderCard({ provider, onUpdate, isPending }: { provider: any; onUpda
 
   const testMutation = useMutation({
     mutationFn: async () => {
-      return apiRequest("POST", `/api/ai-providers/${provider.id}/test`);
+      const res = await apiRequest("POST", `/api/ai-providers/${provider.id}/test`);
+      return await res.json();
     },
     onSuccess: (data: any) => {
       setTestResult(data);

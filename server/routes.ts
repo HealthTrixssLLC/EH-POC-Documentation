@@ -2799,12 +2799,12 @@ export async function registerRoutes(
           });
         } else if (providerType === "azure_openai") {
           const azureBase = baseUrl.replace(/\/+$/, "");
-          const apiVersion = "2024-02-01";
+          const apiVersion = "2025-03-01-preview";
           response = await fetch(`${azureBase}/openai/deployments/${model}/chat/completions?api-version=${apiVersion}`, {
             method: "POST",
             headers: {
               "Content-Type": "application/json",
-              "api-key": apiKey,
+              "Authorization": `Bearer ${apiKey}`,
             },
             body: JSON.stringify({
               max_tokens: 20,

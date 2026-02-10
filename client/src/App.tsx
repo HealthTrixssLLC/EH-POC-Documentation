@@ -8,6 +8,7 @@ import { ThemeProvider } from "@/lib/theme";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { AppSidebar } from "@/components/app-sidebar";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
+import { IOSInstallPrompt } from "@/components/ios-install-prompt";
 import NotFound from "@/pages/not-found";
 import LoginPage from "@/pages/login";
 import Dashboard from "@/pages/dashboard";
@@ -101,11 +102,11 @@ function AuthenticatedLayout() {
         <AppSidebar />
         <div className="flex flex-col flex-1 min-w-0">
           <DemoWatermark />
-          <header className="flex items-center justify-between gap-3 p-2 border-b bg-background sticky top-0 z-50">
+          <header className="flex items-center justify-between gap-3 p-2 border-b bg-background sticky top-0 z-50 ios-safe-top">
             <SidebarTrigger data-testid="button-sidebar-toggle" />
             <ThemeToggle />
           </header>
-          <main className="flex-1 overflow-auto p-4 md:p-6">
+          <main className="flex-1 overflow-auto p-4 md:p-6 ios-safe-bottom">
             <Router />
           </main>
         </div>
@@ -139,6 +140,7 @@ function App() {
         <ThemeProvider>
           <AuthProvider>
             <AppContent />
+            <IOSInstallPrompt />
             <Toaster />
           </AuthProvider>
         </ThemeProvider>

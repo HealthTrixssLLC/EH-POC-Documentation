@@ -286,3 +286,46 @@
     inset: -1px;
   }
 }
+
+@supports (padding: env(safe-area-inset-top)) {
+  .ios-safe-top {
+    padding-top: env(safe-area-inset-top);
+  }
+  .ios-safe-bottom {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+  .ios-safe-left {
+    padding-left: env(safe-area-inset-left);
+  }
+  .ios-safe-right {
+    padding-right: env(safe-area-inset-right);
+  }
+  .ios-safe-all {
+    padding-top: env(safe-area-inset-top);
+    padding-bottom: env(safe-area-inset-bottom);
+    padding-left: env(safe-area-inset-left);
+    padding-right: env(safe-area-inset-right);
+  }
+}
+
+@media (max-width: 768px) {
+  body {
+    -webkit-text-size-adjust: 100%;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  input, textarea, select, button {
+    font-size: 16px !important;
+  }
+
+  .ios-touch-target {
+    min-height: 44px;
+    min-width: 44px;
+  }
+}
+
+@media (display-mode: standalone) {
+  body {
+    overscroll-behavior-y: none;
+  }
+}

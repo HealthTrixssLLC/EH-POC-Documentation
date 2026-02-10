@@ -29,6 +29,16 @@ import {
   ChevronUp,
   ShieldCheck,
   Volume2,
+  HeartPulse,
+  ClipboardList,
+  Target,
+  Pill,
+  Stethoscope,
+  ListChecks,
+  CircleDot,
+  Brain,
+  Users,
+  type LucideIcon,
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 
@@ -44,6 +54,7 @@ export default function VoiceCapture() {
   const { data: txs, isLoading: loadingTxs } = useQuery<any[]>({ queryKey: [`/api/visits/${visitId}/transcripts`] });
   const { data: extractedFields, isLoading: loadingFields } = useQuery<any[]>({ queryKey: [`/api/visits/${visitId}/extracted-fields`] });
   const { data: aiStatus } = useQuery<any>({ queryKey: ["/api/ai-providers/active"] });
+  const { data: overview } = useQuery<any>({ queryKey: ["/api/visits", visitId, "overview"] });
 
   const [activeTab, setActiveTab] = useState("record");
   const voiceConsent = consents?.find((c: any) => c.consentType === "voice_transcription" && c.status === "granted");
@@ -127,6 +138,7 @@ export default function VoiceCapture() {
             recordings={recordings || []}
             isLoading={loadingRecordings}
             onProcessingComplete={() => setActiveTab("review")}
+            overview={overview}
           />
         </TabsContent>
 
@@ -156,7 +168,238 @@ export default function VoiceCapture() {
   );
 }
 
-function RecordingPanel({ visitId, hasConsent, user, recordings, isLoading, onProcessingComplete }: any) {
+interface DiscussionItem {
+  id: string;
+  label: string;
+  icon: LucideIcon;
+  category: string;
+  prompts: string[];
+  done?: boolean;
+}
+
+function buildDiscussionItems(overview: any): DiscussionItem[] {
+  if (!overview) return [];
+  const items: DiscussionItem[] = [];
+  const checklist = overview.checklist || [];
+  const vitals = overview.vitals;
+  const assessmentItems = checklist.filter((c: any) => c.itemType === "assessment");
+  const measureItems = checklist.filter((c: any) => c.itemType === "measure");
+  const medRecon = overview.medRecon || [];
+
+  items.push({
+    id: "vitals",
+    label: "Vitals & Physical Exam",
+    icon: HeartPulse,
+    category: "vitals",
+    done: !!vitals,
+    prompts: [
+      "Blood pressure (systolic / diastolic)",
+      "Heart rate",
+      "Respiratory rate",
+      "Temperature",
+      "Oxygen saturation (SpO2)",
+      "Weight / Height / BMI",
+      "Pain level (0-10)",
+      "General physical exam findings",
+    ],
+  });
+
+  items.push({
+    id: "medications",
+    label: "Medication Reconciliation",
+    icon: Pill,
+    category: "medication",
+    done: medRecon.length > 0,
+    prompts: [
+      "Review current medications",
+      "New medications started",
+      "Medications discontinued",
+      "Medication adherence concerns",
+      "Over-the-counter supplements",
+      "Side effects reported",
+    ],
+  });
+
+  for (const a of assessmentItems) {
+    const isPhq2 = (a.itemId || "").toLowerCase().includes("phq") && (a.itemId || "").includes("2");
+    const isPhq9 = (a.itemId || "").toLowerCase().includes("phq") && (a.itemId || "").includes("9");
+    const isPrapare = (a.itemId || "").toLowerCase().includes("prapare");
+    const isAwv = (a.itemId || "").toLowerCase().includes("awv");
+
+    let prompts: string[] = [];
+    if (isPhq2) {
+      prompts = [
+        "Little interest or pleasure in doing things (frequency over last 2 weeks)",
+        "Feeling down, depressed, or hopeless (frequency over last 2 weeks)",
+      ];
+    } else if (isPhq9) {
+      prompts = [
+        "Mood and depression screening (9 items)",
+        "Interest in activities, sleep, appetite, energy, concentration",
+        "Thoughts of self-harm (safety screening)",
+      ];
+    } else if (isPrapare) {
+      prompts = [
+        "Housing stability and living situation",
+        "Education level and employment",
+        "Food insecurity and transportation needs",
+        "Social support and isolation",
+      ];
+    } else if (isAwv) {
+      prompts = [
+        "Health risk assessment",
+        "Functional ability and safety",
+        "Fall risk screening",
+        "Advance care planning discussion",
+        "Preventive services review",
+      ];
+    } else {
+      prompts = [`Complete ${a.itemName || a.itemId} assessment`, "Document responses and scoring"];
+    }
+
+    items.push({
+      id: `assessment-${a.itemId}`,
+      label: a.itemName || a.itemId,
+      icon: ClipboardList,
+      category: "assessment",
+      done: a.status === "complete" || a.status === "unable_to_assess",
+      prompts,
+    });
+  }
+
+  for (const m of measureItems) {
+    const mid = (m.itemId || "").toUpperCase();
+    let prompts: string[] = [];
+    if (mid === "BCS") {
+      prompts = ["Breast cancer screening - last mammogram date", "Results and follow-up"];
+    } else if (mid === "COL") {
+      prompts = ["Colorectal cancer screening - last colonoscopy/FIT date", "Results and follow-up"];
+    } else if (mid === "CBP") {
+      prompts = ["Blood pressure control - confirm latest reading", "Medication compliance"];
+    } else if (mid.includes("CDC") || mid.includes("A1C")) {
+      prompts = ["Diabetes care - HbA1c, eye exam, kidney screening", "Foot exam findings"];
+    } else {
+      prompts = [`Document ${m.itemName || m.itemId} measure`, "Evidence source and findings"];
+    }
+
+    items.push({
+      id: `measure-${m.itemId}`,
+      label: m.itemName || m.itemId,
+      icon: Target,
+      category: "hedis",
+      done: m.status === "complete" || m.status === "unable_to_assess",
+      prompts,
+    });
+  }
+
+  items.push({
+    id: "conditions",
+    label: "Conditions & Diagnoses",
+    icon: Stethoscope,
+    category: "condition",
+    prompts: [
+      "Chronic conditions - status updates",
+      "New symptoms or complaints",
+      "Condition management changes",
+    ],
+  });
+
+  items.push({
+    id: "social",
+    label: "Social & Functional Status",
+    icon: Users,
+    category: "social",
+    prompts: [
+      "ADL / IADL functional status",
+      "Caregiver support",
+      "Home safety concerns",
+    ],
+  });
+
+  items.push({
+    id: "plan",
+    label: "Care Plan & Follow-Up",
+    icon: ListChecks,
+    category: "plan",
+    prompts: [
+      "Referrals needed",
+      "Lab orders",
+      "Follow-up visit scheduling",
+      "Patient education provided",
+    ],
+  });
+
+  return items;
+}
+
+function DiscussionPrompts({ overview }: { overview: any }) {
+  const items = buildDiscussionItems(overview);
+  const [collapsed, setCollapsed] = useState(false);
+
+  if (items.length === 0) return null;
+
+  const completedCount = items.filter(i => i.done).length;
+  const totalItems = items.length;
+
+  return (
+    <Card data-testid="card-discussion-prompts">
+      <CardContent className="p-4 space-y-3">
+        <div className="flex items-center justify-between gap-3">
+          <div className="flex items-center gap-2">
+            <ListChecks className="w-4 h-4 text-muted-foreground" />
+            <span className="text-sm font-semibold">Discussion Prompts</span>
+            <Badge variant="secondary" className="text-xs">
+              {completedCount}/{totalItems} captured
+            </Badge>
+          </div>
+          <Button variant="ghost" size="icon" onClick={() => setCollapsed(!collapsed)} data-testid="button-toggle-prompts">
+            {collapsed ? <ChevronDown className="w-3 h-3" /> : <ChevronUp className="w-3 h-3" />}
+          </Button>
+        </div>
+
+        {!collapsed && (
+          <div className="space-y-2">
+            <p className="text-xs text-muted-foreground">
+              Use this checklist as a guide while recording. Mention each item to ensure complete clinical documentation.
+            </p>
+            <div className="grid gap-2">
+              {items.map((item) => {
+                const Icon = item.icon;
+                return (
+                  <div
+                    key={item.id}
+                    className={`rounded-md border p-3 space-y-1.5 ${item.done ? "opacity-60" : ""}`}
+                    data-testid={`prompt-group-${item.id}`}
+                  >
+                    <div className="flex items-center gap-2">
+                      <Icon className="w-3.5 h-3.5 text-muted-foreground flex-shrink-0" />
+                      <span className="text-sm font-medium">{item.label}</span>
+                      {item.done && (
+                        <Badge variant="default" className="text-xs ml-auto">
+                          <CheckCircle2 className="w-2.5 h-2.5 mr-0.5" /> Done
+                        </Badge>
+                      )}
+                    </div>
+                    <ul className="ml-6 space-y-0.5">
+                      {item.prompts.map((prompt, idx) => (
+                        <li key={idx} className="flex items-start gap-1.5">
+                          <CircleDot className="w-2.5 h-2.5 mt-1 text-muted-foreground flex-shrink-0" />
+                          <span className="text-xs text-muted-foreground">{prompt}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+function RecordingPanel({ visitId, hasConsent, user, recordings, isLoading, onProcessingComplete, overview }: any) {
   const { toast } = useToast();
   const [isRecording, setIsRecording] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
@@ -353,6 +596,8 @@ function RecordingPanel({ visitId, hasConsent, user, recordings, isLoading, onPr
           )}
         </CardContent>
       </Card>
+
+      <DiscussionPrompts overview={overview} />
 
       <div>
         <span className="text-sm font-semibold">Previous Recordings</span>
@@ -594,7 +839,18 @@ function ExtractedFieldsPanel({ visitId, fields, transcripts, isLoading, user, a
   const acceptedFields = fields.filter((f: any) => f.status === "accepted");
   const rejectedFields = fields.filter((f: any) => f.status === "rejected");
 
-  const categories = Array.from(new Set(fields.map((f: any) => f.category || "other"))).sort() as string[];
+  const categoryConfig: Record<string, { label: string; icon: LucideIcon; order: number }> = {
+    vitals: { label: "Vitals & Physical Exam", icon: HeartPulse, order: 1 },
+    assessment: { label: "Clinical Assessments", icon: ClipboardList, order: 2 },
+    medication: { label: "Medications", icon: Pill, order: 3 },
+    condition: { label: "Conditions & Diagnoses", icon: Stethoscope, order: 4 },
+    social: { label: "Social & Functional", icon: Users, order: 5 },
+    plan: { label: "Care Plan & Follow-Up", icon: ListChecks, order: 6 },
+    other: { label: "Other Findings", icon: Brain, order: 7 },
+  };
+
+  const categories = (Array.from(new Set(fields.map((f: any) => f.category || "other"))) as string[])
+    .sort((a: string, b: string) => (categoryConfig[a]?.order || 99) - (categoryConfig[b]?.order || 99));
 
   if (isLoading) {
     return (
@@ -642,31 +898,53 @@ function ExtractedFieldsPanel({ visitId, fields, transcripts, isLoading, user, a
 
       {categories.map((cat) => {
         const catFields = fields.filter((f: any) => (f.category || "other") === cat);
+        const config = categoryConfig[cat] || categoryConfig.other;
+        const CatIcon = config.icon;
+        const catPending = catFields.filter((f: any) => f.status === "pending").length;
+        const catAccepted = catFields.filter((f: any) => f.status === "accepted" || f.status === "edited").length;
+
         return (
-          <div key={cat}>
-            <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">{cat}</span>
-            <div className="space-y-1 mt-1">
-              {catFields.map((field: any) => (
-                <ExtractedFieldRow
-                  key={field.id}
-                  field={field}
-                  onAccept={() => updateFieldMutation.mutate({
-                    fieldId: field.id,
-                    updates: { status: "accepted", acceptedBy: user?.id, acceptedByName: user?.fullName },
-                  })}
-                  onReject={() => updateFieldMutation.mutate({
-                    fieldId: field.id,
-                    updates: { status: "rejected" },
-                  })}
-                  onEdit={(editedValue: string) => updateFieldMutation.mutate({
-                    fieldId: field.id,
-                    updates: { status: "edited", editedValue, acceptedBy: user?.id, acceptedByName: user?.fullName },
-                  })}
-                  isPending={updateFieldMutation.isPending}
-                />
-              ))}
-            </div>
-          </div>
+          <Card key={cat} data-testid={`card-category-${cat}`}>
+            <CardContent className="p-4 space-y-3">
+              <div className="flex items-center justify-between gap-3">
+                <div className="flex items-center gap-2">
+                  <CatIcon className="w-4 h-4 text-muted-foreground" />
+                  <span className="text-sm font-semibold">{config.label}</span>
+                  <Badge variant="secondary" className="text-xs">{catFields.length} field{catFields.length !== 1 ? "s" : ""}</Badge>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  {catAccepted > 0 && (
+                    <span className="text-xs text-green-600 dark:text-green-400 font-medium">{catAccepted} accepted</span>
+                  )}
+                  {catPending > 0 && (
+                    <span className="text-xs text-muted-foreground">{catPending} pending</span>
+                  )}
+                </div>
+              </div>
+
+              <div className="space-y-1">
+                {catFields.map((field: any) => (
+                  <ExtractedFieldRow
+                    key={field.id}
+                    field={field}
+                    onAccept={() => updateFieldMutation.mutate({
+                      fieldId: field.id,
+                      updates: { status: "accepted", acceptedBy: user?.id, acceptedByName: user?.fullName },
+                    })}
+                    onReject={() => updateFieldMutation.mutate({
+                      fieldId: field.id,
+                      updates: { status: "rejected" },
+                    })}
+                    onEdit={(editedValue: string) => updateFieldMutation.mutate({
+                      fieldId: field.id,
+                      updates: { status: "edited", editedValue, acceptedBy: user?.id, acceptedByName: user?.fullName },
+                    })}
+                    isPending={updateFieldMutation.isPending}
+                  />
+                ))}
+              </div>
+            </CardContent>
+          </Card>
         );
       })}
     </div>

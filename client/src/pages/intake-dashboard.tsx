@@ -39,6 +39,7 @@ import {
   XCircle,
   Trash2,
   Lock,
+  Mic,
 } from "lucide-react";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -633,6 +634,11 @@ export default function IntakeDashboard() {
             <Link href={`/visits/${visitId}/intake/careplan`}>
               <Button variant="outline" size="sm" data-testid="button-open-careplan">
                 <FileText className="w-4 h-4 mr-1" /> Full Care Plan
+              </Button>
+            </Link>
+            <Link href={`/visits/${visitId}/intake/voice-capture`}>
+              <Button variant="outline" size="sm" data-testid="button-open-voice-capture">
+                <Mic className="w-4 h-4 mr-1" /> Voice Capture
               </Button>
             </Link>
           </div>

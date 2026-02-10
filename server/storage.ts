@@ -41,6 +41,14 @@ import {
   type DiagnosisRule, type InsertDiagnosisRule,
   reviewSignOffs,
   type ReviewSignOff, type InsertReviewSignOff,
+  aiProviderConfig,
+  type AiProviderConfig, type InsertAiProviderConfig,
+  voiceRecordings,
+  type VoiceRecording, type InsertVoiceRecording,
+  transcripts,
+  type Transcript, type InsertTranscript,
+  extractedFields,
+  type ExtractedField, type InsertExtractedField,
 } from "@shared/schema";
 
 export interface IStorage {
@@ -167,6 +175,29 @@ export interface IStorage {
 
   getReviewSignOffs(visitId: string): Promise<ReviewSignOff[]>;
   createReviewSignOff(signOff: InsertReviewSignOff): Promise<ReviewSignOff>;
+
+  getAiProviderConfigs(): Promise<AiProviderConfig[]>;
+  getActiveAiProvider(): Promise<AiProviderConfig | undefined>;
+  getAiProviderConfig(id: string): Promise<AiProviderConfig | undefined>;
+  createAiProviderConfig(config: InsertAiProviderConfig): Promise<AiProviderConfig>;
+  updateAiProviderConfig(id: string, updates: Partial<AiProviderConfig>): Promise<AiProviderConfig | undefined>;
+
+  getRecordingsByVisit(visitId: string): Promise<VoiceRecording[]>;
+  getRecording(id: string): Promise<VoiceRecording | undefined>;
+  createRecording(recording: InsertVoiceRecording): Promise<VoiceRecording>;
+  updateRecording(id: string, updates: Partial<VoiceRecording>): Promise<VoiceRecording | undefined>;
+
+  getTranscriptsByVisit(visitId: string): Promise<Transcript[]>;
+  getTranscript(id: string): Promise<Transcript | undefined>;
+  createTranscript(transcript: InsertTranscript): Promise<Transcript>;
+  updateTranscript(id: string, updates: Partial<Transcript>): Promise<Transcript | undefined>;
+
+  getExtractedFieldsByVisit(visitId: string): Promise<ExtractedField[]>;
+  getExtractedFieldsByTranscript(transcriptId: string): Promise<ExtractedField[]>;
+  getExtractedField(id: string): Promise<ExtractedField | undefined>;
+  createExtractedField(field: InsertExtractedField): Promise<ExtractedField>;
+  updateExtractedField(id: string, updates: Partial<ExtractedField>): Promise<ExtractedField | undefined>;
+  createExtractedFields(fields: InsertExtractedField[]): Promise<ExtractedField[]>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -671,6 +702,96 @@ export class DatabaseStorage implements IStorage {
   async createReviewSignOff(signOff: InsertReviewSignOff) {
     const [created] = await db.insert(reviewSignOffs).values(signOff).returning();
     return created;
+  }
+
+  async getAiProviderConfigs() {
+    return db.select().from(aiProviderConfig);
+  }
+
+  async getActiveAiProvider() {
+    const [config] = await db.select().from(aiProviderConfig).where(eq(aiProviderConfig.active, true));
+    return config;
+  }
+
+  async getAiProviderConfig(id: string) {
+    const [config] = await db.select().from(aiProviderConfig).where(eq(aiProviderConfig.id, id));
+    return config;
+  }
+
+  async createAiProviderConfig(config: InsertAiProviderConfig) {
+    const [created] = await db.insert(aiProviderConfig).values(config).returning();
+    return created;
+  }
+
+  async updateAiProviderConfig(id: string, updates: Partial<AiProviderConfig>) {
+    const [updated] = await db.update(aiProviderConfig).set(updates).where(eq(aiProviderConfig.id, id)).returning();
+    return updated;
+  }
+
+  async getRecordingsByVisit(visitId: string) {
+    return db.select().from(voiceRecordings).where(eq(voiceRecordings.visitId, visitId)).orderBy(desc(voiceRecordings.createdAt));
+  }
+
+  async getRecording(id: string) {
+    const [rec] = await db.select().from(voiceRecordings).where(eq(voiceRecordings.id, id));
+    return rec;
+  }
+
+  async createRecording(recording: InsertVoiceRecording) {
+    const [created] = await db.insert(voiceRecordings).values(recording).returning();
+    return created;
+  }
+
+  async updateRecording(id: string, updates: Partial<VoiceRecording>) {
+    const [updated] = await db.update(voiceRecordings).set(updates).where(eq(voiceRecordings.id, id)).returning();
+    return updated;
+  }
+
+  async getTranscriptsByVisit(visitId: string) {
+    return db.select().from(transcripts).where(eq(transcripts.visitId, visitId)).orderBy(desc(transcripts.createdAt));
+  }
+
+  async getTranscript(id: string) {
+    const [t] = await db.select().from(transcripts).where(eq(transcripts.id, id));
+    return t;
+  }
+
+  async createTranscript(transcript: InsertTranscript) {
+    const [created] = await db.insert(transcripts).values(transcript).returning();
+    return created;
+  }
+
+  async updateTranscript(id: string, updates: Partial<Transcript>) {
+    const [updated] = await db.update(transcripts).set(updates).where(eq(transcripts.id, id)).returning();
+    return updated;
+  }
+
+  async getExtractedFieldsByVisit(visitId: string) {
+    return db.select().from(extractedFields).where(eq(extractedFields.visitId, visitId));
+  }
+
+  async getExtractedFieldsByTranscript(transcriptId: string) {
+    return db.select().from(extractedFields).where(eq(extractedFields.transcriptId, transcriptId));
+  }
+
+  async getExtractedField(id: string) {
+    const [f] = await db.select().from(extractedFields).where(eq(extractedFields.id, id));
+    return f;
+  }
+
+  async createExtractedField(field: InsertExtractedField) {
+    const [created] = await db.insert(extractedFields).values(field).returning();
+    return created;
+  }
+
+  async updateExtractedField(id: string, updates: Partial<ExtractedField>) {
+    const [updated] = await db.update(extractedFields).set(updates).where(eq(extractedFields.id, id)).returning();
+    return updated;
+  }
+
+  async createExtractedFields(fields: InsertExtractedField[]) {
+    if (fields.length === 0) return [];
+    return db.insert(extractedFields).values(fields).returning();
   }
 }
 

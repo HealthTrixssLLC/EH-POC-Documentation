@@ -1199,6 +1199,19 @@ export async function seedDatabase() {
     resourceId: member1.id,
   });
 
+  await storage.createAiProviderConfig({
+    providerType: "openai",
+    displayName: "OpenAI (Default)",
+    apiKeySecretName: "OPENAI_API_KEY",
+    baseUrl: "https://api.openai.com/v1",
+    modelName: "gpt-4o-mini-transcribe",
+    extractionModel: "gpt-4o-mini",
+    active: true,
+    featureFlags: { transcription: true, extraction: true, clinicalSuggestions: false },
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  });
+
   console.log("Database seeded successfully!");
   console.log(`  - 6 users (2 NPs, 1 supervisor, 1 coordinator, 1 admin, 1 compliance)`);
   console.log(`  - 3 members (patients)`);
@@ -1213,4 +1226,5 @@ export async function seedDatabase() {
   console.log(`  - 24 vitals history records (8 per member, 2 years quarterly)`);
   console.log(`  - 100 lab results (condition-appropriate, 2 years quarterly)`);
   console.log(`  - 14 medication history records (active, discontinued, completed)`);
+  console.log(`  - 1 AI provider configuration (OpenAI default)`);
 }

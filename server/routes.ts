@@ -2695,13 +2695,343 @@ export async function registerRoutes(
   });
 
   // =====================================================
+  // AI Provider Configuration endpoints
+  // =====================================================
+
+  app.get("/api/ai-providers", async (_req, res) => {
+    try {
+      const configs = await storage.getAiProviderConfigs();
+      const safe = configs.map(c => ({ ...c, apiKeySecretName: c.apiKeySecretName }));
+      return res.json(safe);
+    } catch (err: any) {
+      return res.status(500).json({ message: err.message });
+    }
+  });
+
+  app.get("/api/ai-providers/active", async (_req, res) => {
+    try {
+      const config = await storage.getActiveAiProvider();
+      if (!config) return res.json({ configured: false, message: "No active AI provider configured" });
+      const hasKey = !!process.env[config.apiKeySecretName];
+      return res.json({ configured: true, hasKey, provider: { ...config, apiKeySecretName: config.apiKeySecretName } });
+    } catch (err: any) {
+      return res.status(500).json({ message: err.message });
+    }
+  });
+
+  app.post("/api/ai-providers", async (req, res) => {
+    try {
+      const config = await storage.createAiProviderConfig({
+        ...req.body,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      });
+      await storage.createAuditEvent({
+        eventType: "ai_config_created",
+        userId: req.body.userId || "system",
+        userName: req.body.userName || "System",
+        userRole: "admin",
+        details: `AI provider '${config.displayName}' configured (${config.providerType})`,
+      });
+      return res.json(config);
+    } catch (err: any) {
+      return res.status(500).json({ message: err.message });
+    }
+  });
+
+  app.patch("/api/ai-providers/:id", async (req, res) => {
+    try {
+      const updated = await storage.updateAiProviderConfig(req.params.id, {
+        ...req.body,
+        updatedAt: new Date().toISOString(),
+      });
+      if (!updated) return res.status(404).json({ message: "Provider config not found" });
+      await storage.createAuditEvent({
+        eventType: "ai_config_updated",
+        userId: req.body.userId || "system",
+        userName: req.body.userName || "System",
+        userRole: "admin",
+        details: `AI provider '${updated.displayName}' updated`,
+      });
+      return res.json(updated);
+    } catch (err: any) {
+      return res.status(500).json({ message: err.message });
+    }
+  });
+
+  // =====================================================
+  // Voice Capture & Transcription endpoints
+  // =====================================================
+
+  app.get("/api/visits/:id/recordings", async (req, res) => {
+    try {
+      const recordings = await storage.getRecordingsByVisit(req.params.id);
+      const safe = recordings.map(r => ({ ...r, audioData: r.audioData ? "[base64_audio]" : null }));
+      return res.json(safe);
+    } catch (err: any) {
+      return res.status(500).json({ message: err.message });
+    }
+  });
+
+  app.post("/api/visits/:id/recordings", async (req, res) => {
+    try {
+      const lockMsg = await checkVisitLock(req.params.id);
+      if (lockMsg) return res.status(403).json({ message: lockMsg });
+      const consents = await storage.getConsentsByVisit(req.params.id);
+      const voiceConsent = consents.find((c: any) => c.consentType === "voice_transcription" && c.status === "granted");
+      if (!voiceConsent) {
+        return res.status(403).json({ message: "Voice transcription consent not granted. Recording is not permitted." });
+      }
+      const recording = await storage.createRecording({
+        visitId: req.params.id,
+        recordedBy: req.body.recordedBy,
+        recordedByName: req.body.recordedByName,
+        mimeType: req.body.mimeType || "audio/webm",
+        durationSec: req.body.durationSec,
+        audioData: req.body.audioData,
+        status: "completed",
+        consentId: voiceConsent.id,
+        createdAt: new Date().toISOString(),
+      });
+      await storage.createAuditEvent({
+        eventType: "voice_recording_created",
+        userId: req.body.recordedBy || "system",
+        userName: req.body.recordedByName || "System",
+        userRole: "np",
+        details: `Voice recording created for visit ${req.params.id} (${req.body.durationSec || 0}s)`,
+        resourceType: "voice_recording",
+        resourceId: recording.id,
+      });
+      return res.json({ ...recording, audioData: "[base64_audio]" });
+    } catch (err: any) {
+      return res.status(500).json({ message: err.message });
+    }
+  });
+
+  app.post("/api/visits/:id/transcribe", async (req, res) => {
+    try {
+      const lockMsg = await checkVisitLock(req.params.id);
+      if (lockMsg) return res.status(403).json({ message: lockMsg });
+      const { recordingId } = req.body;
+      const recording = await storage.getRecording(recordingId);
+      if (!recording) return res.status(404).json({ message: "Recording not found" });
+      if (!recording.audioData) return res.status(400).json({ message: "No audio data in recording" });
+
+      const aiConfig = await storage.getActiveAiProvider();
+      if (!aiConfig) return res.status(400).json({ message: "No active AI provider configured" });
+
+      const apiKey = process.env[aiConfig.apiKeySecretName];
+      if (!apiKey) {
+        return res.status(400).json({
+          message: `AI API key not found. Set the '${aiConfig.apiKeySecretName}' secret in your environment.`,
+          requiresKey: true,
+          secretName: aiConfig.apiKeySecretName,
+        });
+      }
+
+      const transcript = await storage.createTranscript({
+        visitId: req.params.id,
+        recordingId,
+        providerType: aiConfig.providerType,
+        model: aiConfig.modelName,
+        status: "processing",
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      });
+
+      try {
+        const OpenAI = (await import("openai")).default;
+        const openai = new OpenAI({
+          apiKey,
+          baseURL: aiConfig.baseUrl || undefined,
+        });
+
+        const audioBuffer = Buffer.from(recording.audioData, "base64");
+        const audioFile = new File([audioBuffer], "recording.webm", { type: recording.mimeType });
+
+        const result = await openai.audio.transcriptions.create({
+          file: audioFile,
+          model: aiConfig.modelName || "whisper-1",
+          response_format: "json",
+        });
+
+        await storage.updateTranscript(transcript.id, {
+          text: result.text,
+          status: "completed",
+          updatedAt: new Date().toISOString(),
+        });
+
+        await storage.updateRecording(recording.id, { status: "transcribed" });
+
+        await storage.createAuditEvent({
+          eventType: "transcription_completed",
+          userId: req.body.userId || "system",
+          userName: req.body.userName || "System",
+          userRole: "np",
+          details: `Transcription completed for recording ${recordingId} using ${aiConfig.providerType}/${aiConfig.modelName}`,
+          resourceType: "transcript",
+          resourceId: transcript.id,
+        });
+
+        return res.json({ ...transcript, text: result.text, status: "completed" });
+      } catch (aiErr: any) {
+        await storage.updateTranscript(transcript.id, {
+          status: "error",
+          errorMessage: aiErr.message,
+          updatedAt: new Date().toISOString(),
+        });
+        return res.status(502).json({ message: `AI transcription failed: ${aiErr.message}`, transcriptId: transcript.id });
+      }
+    } catch (err: any) {
+      return res.status(500).json({ message: err.message });
+    }
+  });
+
+  app.get("/api/visits/:id/transcripts", async (req, res) => {
+    try {
+      const txs = await storage.getTranscriptsByVisit(req.params.id);
+      return res.json(txs);
+    } catch (err: any) {
+      return res.status(500).json({ message: err.message });
+    }
+  });
+
+  app.post("/api/visits/:id/extract", async (req, res) => {
+    try {
+      const lockMsg = await checkVisitLock(req.params.id);
+      if (lockMsg) return res.status(403).json({ message: lockMsg });
+      const { transcriptId } = req.body;
+      const transcript = await storage.getTranscript(transcriptId);
+      if (!transcript || !transcript.text) return res.status(400).json({ message: "Transcript not found or has no text" });
+
+      const aiConfig = await storage.getActiveAiProvider();
+      if (!aiConfig) return res.status(400).json({ message: "No active AI provider configured" });
+      const apiKey = process.env[aiConfig.apiKeySecretName];
+      if (!apiKey) return res.status(400).json({ message: `AI API key '${aiConfig.apiKeySecretName}' not found` });
+
+      try {
+        const OpenAI = (await import("openai")).default;
+        const openai = new OpenAI({ apiKey, baseURL: aiConfig.baseUrl || undefined });
+
+        const extractionPrompt = `You are a clinical data extraction assistant for in-home NP visits. Extract structured clinical data from the following visit transcript.
+
+Return a JSON array of extracted fields. Each field should have:
+- "fieldKey": a machine-readable key (e.g., "vitals.systolicBp", "vitals.diastolicBp", "vitals.heartRate", "vitals.temperature", "vitals.oxygenSaturation", "vitals.respiratoryRate", "vitals.weight", "vitals.height", "vitals.bmi", "vitals.painLevel", "assessment.phq2Score", "assessment.generalNotes", "medication.name", "condition.name")
+- "fieldLabel": a human-readable label (e.g., "Systolic Blood Pressure")
+- "category": one of "vitals", "assessment", "medication", "condition", "social", "plan"
+- "proposedValue": the extracted value as a string
+- "confidence": confidence score 0.0-1.0
+- "sourceSnippet": the relevant text snippet from the transcript
+
+Only extract data that is clearly stated. Do not infer or guess values. Return ONLY the JSON array, no other text.
+
+Transcript:
+${transcript.text}`;
+
+        const result = await openai.chat.completions.create({
+          model: aiConfig.extractionModel || "gpt-4o-mini",
+          messages: [{ role: "user", content: extractionPrompt }],
+          response_format: { type: "json_object" },
+        });
+
+        let fieldsData: any[] = [];
+        try {
+          const content = result.choices[0]?.message?.content || "{}";
+          const parsed = JSON.parse(content);
+          fieldsData = Array.isArray(parsed) ? parsed : (parsed.fields || parsed.extractedFields || parsed.data || []);
+        } catch {
+          return res.status(502).json({ message: "AI returned invalid JSON for extraction" });
+        }
+
+        const insertFields = fieldsData.map((f: any) => ({
+          visitId: req.params.id,
+          transcriptId,
+          fieldKey: f.fieldKey || "unknown",
+          fieldLabel: f.fieldLabel || f.fieldKey || "Unknown Field",
+          category: f.category || "other",
+          proposedValue: String(f.proposedValue || ""),
+          confidence: f.confidence || 0.5,
+          sourceSnippet: f.sourceSnippet || "",
+          status: "pending" as const,
+        }));
+
+        const created = insertFields.length > 0 ? await storage.createExtractedFields(insertFields) : [];
+
+        await storage.createAuditEvent({
+          eventType: "extraction_completed",
+          userId: req.body.userId || "system",
+          userName: req.body.userName || "System",
+          userRole: "np",
+          details: `Extracted ${created.length} fields from transcript ${transcriptId}`,
+          resourceType: "transcript",
+          resourceId: transcriptId,
+        });
+
+        return res.json({ fields: created, count: created.length });
+      } catch (aiErr: any) {
+        return res.status(502).json({ message: `AI extraction failed: ${aiErr.message}` });
+      }
+    } catch (err: any) {
+      return res.status(500).json({ message: err.message });
+    }
+  });
+
+  app.get("/api/visits/:id/extracted-fields", async (req, res) => {
+    try {
+      const fields = await storage.getExtractedFieldsByVisit(req.params.id);
+      return res.json(fields);
+    } catch (err: any) {
+      return res.status(500).json({ message: err.message });
+    }
+  });
+
+  app.patch("/api/extracted-fields/:id", async (req, res) => {
+    try {
+      const field = await storage.getExtractedField(req.params.id);
+      if (!field) return res.status(404).json({ message: "Field not found" });
+      const lockMsg = await checkVisitLock(field.visitId);
+      if (lockMsg) return res.status(403).json({ message: lockMsg });
+      const updated = await storage.updateExtractedField(req.params.id, {
+        ...req.body,
+        acceptedAt: req.body.status === "accepted" ? new Date().toISOString() : undefined,
+      });
+      return res.json(updated);
+    } catch (err: any) {
+      return res.status(500).json({ message: err.message });
+    }
+  });
+
+  app.post("/api/visits/:id/extracted-fields/bulk-accept", async (req, res) => {
+    try {
+      const lockMsg = await checkVisitLock(req.params.id);
+      if (lockMsg) return res.status(403).json({ message: lockMsg });
+      const { fieldIds, acceptedBy, acceptedByName } = req.body;
+      const results = [];
+      for (const fid of (fieldIds || [])) {
+        const updated = await storage.updateExtractedField(fid, {
+          status: "accepted",
+          acceptedBy,
+          acceptedByName,
+          acceptedAt: new Date().toISOString(),
+        });
+        if (updated) results.push(updated);
+      }
+      return res.json({ accepted: results.length, fields: results });
+    } catch (err: any) {
+      return res.status(500).json({ message: err.message });
+    }
+  });
+
+  // =====================================================
   // Demo Management endpoints
   // =====================================================
 
   app.post("/api/demo/reset", async (_req, res) => {
     try {
       const tableNames = [
-        "review_sign_offs",
+        "extracted_fields", "transcripts", "voice_recordings",
+        "ai_provider_config",
+        "review_sign_offs", "visit_consents",
         "audit_events", "export_artifacts", "review_decisions",
         "validation_overrides", "visit_recommendations", "visit_codes",
         "clinical_notes", "vitals_records", "measure_results",
@@ -2710,6 +3040,7 @@ export async function registerRoutes(
         "objective_exclusions", "plan_targets", "visits", "members",
         "clinical_rules", "plan_packs", "measure_definitions",
         "assessment_definitions", "users",
+        "reason_codes", "completeness_rules", "diagnosis_rules",
       ];
 
       for (const table of tableNames) {

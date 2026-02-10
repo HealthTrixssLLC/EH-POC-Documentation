@@ -672,3 +672,89 @@ export const RECOMMENDATION_DISMISS_REASONS = [
 
 export const CODE_TYPES = ["CPT", "HCPCS", "ICD-10"] as const;
 export type CodeType = typeof CODE_TYPES[number];
+
+export const AI_PROVIDER_TYPES = ["openai", "anthropic", "azure_openai"] as const;
+export type AiProviderType = typeof AI_PROVIDER_TYPES[number];
+
+export const aiProviderConfig = pgTable("ai_provider_config", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  providerType: text("provider_type").notNull().default("openai"),
+  displayName: text("display_name").notNull(),
+  apiKeySecretName: text("api_key_secret_name").notNull(),
+  baseUrl: text("base_url"),
+  modelName: text("model_name").notNull().default("gpt-4o-mini-transcribe"),
+  extractionModel: text("extraction_model").notNull().default("gpt-5-mini"),
+  active: boolean("active").notNull().default(true),
+  featureFlags: jsonb("feature_flags").$type<Record<string, boolean>>(),
+  createdAt: text("created_at"),
+  updatedAt: text("updated_at"),
+});
+
+export const insertAiProviderConfigSchema = createInsertSchema(aiProviderConfig).omit({ id: true });
+export type InsertAiProviderConfig = z.infer<typeof insertAiProviderConfigSchema>;
+export type AiProviderConfig = typeof aiProviderConfig.$inferSelect;
+
+export const RECORDING_STATUSES = ["recording", "completed", "transcribing", "transcribed", "error"] as const;
+export type RecordingStatus = typeof RECORDING_STATUSES[number];
+
+export const voiceRecordings = pgTable("voice_recordings", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  visitId: varchar("visit_id").notNull(),
+  recordedBy: varchar("recorded_by"),
+  recordedByName: text("recorded_by_name"),
+  mimeType: text("mime_type").notNull().default("audio/webm"),
+  durationSec: real("duration_sec"),
+  audioData: text("audio_data"),
+  status: text("status").notNull().default("completed"),
+  consentId: varchar("consent_id"),
+  createdAt: text("created_at"),
+});
+
+export const insertVoiceRecordingSchema = createInsertSchema(voiceRecordings).omit({ id: true });
+export type InsertVoiceRecording = z.infer<typeof insertVoiceRecordingSchema>;
+export type VoiceRecording = typeof voiceRecordings.$inferSelect;
+
+export const TRANSCRIPT_STATUSES = ["pending", "processing", "completed", "error"] as const;
+export type TranscriptStatus = typeof TRANSCRIPT_STATUSES[number];
+
+export const transcripts = pgTable("transcripts", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  visitId: varchar("visit_id").notNull(),
+  recordingId: varchar("recording_id"),
+  providerType: text("provider_type"),
+  model: text("model"),
+  text: text("text"),
+  confidence: real("confidence"),
+  status: text("status").notNull().default("pending"),
+  errorMessage: text("error_message"),
+  createdAt: text("created_at"),
+  updatedAt: text("updated_at"),
+});
+
+export const insertTranscriptSchema = createInsertSchema(transcripts).omit({ id: true });
+export type InsertTranscript = z.infer<typeof insertTranscriptSchema>;
+export type Transcript = typeof transcripts.$inferSelect;
+
+export const EXTRACTION_STATUSES = ["pending", "accepted", "rejected", "edited"] as const;
+export type ExtractionStatus = typeof EXTRACTION_STATUSES[number];
+
+export const extractedFields = pgTable("extracted_fields", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  visitId: varchar("visit_id").notNull(),
+  transcriptId: varchar("transcript_id").notNull(),
+  fieldKey: text("field_key").notNull(),
+  fieldLabel: text("field_label").notNull(),
+  category: text("category"),
+  proposedValue: text("proposed_value"),
+  confidence: real("confidence"),
+  sourceSnippet: text("source_snippet"),
+  status: text("status").notNull().default("pending"),
+  acceptedBy: varchar("accepted_by"),
+  acceptedByName: text("accepted_by_name"),
+  acceptedAt: text("accepted_at"),
+  editedValue: text("edited_value"),
+});
+
+export const insertExtractedFieldSchema = createInsertSchema(extractedFields).omit({ id: true });
+export type InsertExtractedField = z.infer<typeof insertExtractedFieldSchema>;
+export type ExtractedField = typeof extractedFields.$inferSelect;

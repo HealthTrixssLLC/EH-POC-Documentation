@@ -126,6 +126,15 @@ client/src/pages/         - All page components
   - New tables: visit_consents, reason_codes, completeness_rules, diagnosis_rules, review_sign_offs
   - New routes: /visits/:id/consents, /reason-codes, /visits/:id/completeness, /diagnosis-rules, /visits/:id/diagnoses/validate, /visits/:id/adjudication-summary, /visits/:id/sign-offs
   - New page: /visits/:id/intake/consents (visit compliance/consent management)
+- 2026-02-10: CR-001 Phase 2 Implementation (AI & Voice Capture)
+  - CR-001-10: AI provider configuration (ai_provider_config table, CRUD API, Admin Console "AI Providers" tab, seed OpenAI defaults)
+  - CR-001-11: Clinical voice capture workflow (voice_recordings, transcripts, extracted_fields tables)
+  - Voice workflow: Record audio → upload → OpenAI Whisper transcription → GPT-4o structured field extraction → clinician review/accept/reject/edit → bulk accept
+  - Consent gate enforced server-side (voice_transcription consent required before recording)
+  - Visit locking enforced on all voice/transcript/extraction mutations
+  - New routes: /api/ai-providers, /api/visits/:id/recordings, /api/visits/:id/transcribe, /api/visits/:id/extract, /api/visits/:id/extracted-fields, /api/extracted-fields/:id, /api/visits/:id/extracted-fields/bulk-accept
+  - New page: /visits/:id/intake/voice-capture (Record/Transcripts/Review tabs)
+  - Integrated into intake dashboard quick navigation
 - 2026-02-07: Initial POC build - schema, frontend, backend, seed data
 
 ## User Preferences

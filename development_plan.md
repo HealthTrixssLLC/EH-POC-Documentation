@@ -247,7 +247,7 @@ AI provider configuration and clinical voice capture. Depends on Phase 1 consent
 ---
 
 ### CR-001-10: AI/LLM Endpoint Configuration (OpenAI, Anthropic, Azure OpenAI)
-**Priority:** Must | **Status:** Not Started
+**Priority:** Must | **Status:** Implemented
 
 **Business Requirements:**
 - Support selection of AI provider per environment and optionally per client/tenant
@@ -273,7 +273,7 @@ AI provider configuration and clinical voice capture. Depends on Phase 1 consent
 ---
 
 ### CR-001-11: Clinical Voice Capture with Transcript Review and Auto-Population
-**Priority:** Must | **Status:** Not Started
+**Priority:** Must | **Status:** Implemented
 
 **Business Requirements:**
 - Clinician can start/stop recording during visit, with consent and NOPP gates honored
@@ -534,3 +534,5 @@ Demo governance, human audit overlay, and supervisor UX enhancements.
 | 2026-02-10 | 1 | CR-001-04/06: Created completeness_rules table (20 rules, 10 per plan pack), completeness evaluation engine API, replaced Review & Finalize gating with grouped completeness report |
 | 2026-02-10 | 1 | CR-001-08: Created diagnosis_rules table with 60 rules across 10 clinical categories, diagnosis validation API, evidence checking against vitals/assessments/meds/labs, validation UI on finalize page |
 | 2026-02-10 | 1 | CR-001-07: Enhanced supervisor reviews with adjudication summary scorecard, structured return reasons (10 categories), review_sign_offs table, encounter locking (lockedAt/lockedBy), locked visit banner on intake dashboard |
+| 2026-02-10 | 6 | CR-001-10: Added ai_provider_config table, CRUD API (/api/ai-providers), seed default OpenAI config (whisper-1 + gpt-4o), Admin Console "AI Providers" tab with status indicators and secret-based API key management |
+| 2026-02-10 | 7 | CR-001-11: Added voice_recordings, transcripts, extracted_fields tables. Full voice capture workflow: MediaRecorder audio capture → base64 upload → OpenAI Whisper transcription → GPT-4o structured field extraction → clinician review/accept/reject/edit → bulk accept. Consent gate enforced server-side. Voice Capture page with Record/Transcripts/Review tabs integrated into intake dashboard navigation |

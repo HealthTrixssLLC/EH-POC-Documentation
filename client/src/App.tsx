@@ -33,6 +33,7 @@ import MedReconciliation from "@/pages/med-reconciliation";
 import PatientContext from "@/pages/patient-context";
 import TechDocs from "@/pages/tech-docs";
 import VisitConsents from "@/pages/visit-consents";
+import VoiceCapture from "@/pages/voice-capture";
 
 function Router() {
   return (
@@ -50,6 +51,7 @@ function Router() {
       <Route path="/visits/:id/intake/timeline" component={PatientTimeline} />
       <Route path="/visits/:id/intake/consents" component={VisitConsents} />
       <Route path="/visits/:id/intake/patient-context" component={PatientContext} />
+      <Route path="/visits/:id/intake/voice-capture" component={VoiceCapture} />
       <Route path="/visits/:id/finalize" component={ReviewFinalize} />
       <Route path="/visits/:id/detail" component={VisitDetail} />
       <Route path="/reviews" component={SupervisorReviews} />

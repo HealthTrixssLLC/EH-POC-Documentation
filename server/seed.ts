@@ -231,9 +231,9 @@ export async function seedDatabase() {
     ],
     branchingRules: {
       conditionalQuestions: [
-        { questionId: "q5", condition: { answer: "yes" }, prompt: "Food insecurity identified - assess for nutrition assistance programs (SNAP, food bank)" },
-        { questionId: "q4", condition: { answer: "concern" }, prompt: "Housing instability - assess for housing support resources" },
-        { questionId: "q4", condition: { answer: "none" }, prompt: "Homelessness identified - immediate housing referral needed" },
+        { questionId: "q5", condition: { answer: "yes" }, prompt: "Food insecurity identified - assess for nutrition assistance programs (SNAP, food bank)", taskTitle: "Food Resource Referral", taskType: "referral", priority: "high" },
+        { questionId: "q4", condition: { answer: "concern" }, prompt: "Housing instability - assess for housing support resources", taskTitle: "Housing Support Referral", taskType: "referral", priority: "high" },
+        { questionId: "q4", condition: { answer: "none" }, prompt: "Homelessness identified - immediate housing referral needed", taskTitle: "Immediate Housing Referral", taskType: "referral", priority: "urgent" },
       ],
       followUpAssessments: [],
     },
@@ -275,6 +275,31 @@ export async function seedDatabase() {
       { min: 2, max: 4, label: "Moderate risk", severity: "moderate" },
       { min: 5, max: 9, label: "High risk - requires intervention", severity: "severe" },
     ],
+    branchingRules: {
+      conditionalQuestions: [],
+      followUpAssessments: [],
+      conditionScreening: [
+        {
+          conditionKeyword: "Diabetes",
+          screenings: [
+            { title: "Diabetic Foot Exam Referral", description: "Annual diabetic foot examination recommended based on diabetes diagnosis", taskType: "screening", priority: "medium" },
+            { title: "Diabetic Eye Exam Referral", description: "Annual dilated eye examination recommended based on diabetes diagnosis", taskType: "screening", priority: "medium" },
+          ],
+        },
+        {
+          conditionKeyword: "Heart Failure",
+          screenings: [
+            { title: "Lipid Panel Screening", description: "Lipid panel recommended based on cardiac condition", taskType: "screening", priority: "medium" },
+          ],
+        },
+        {
+          conditionKeyword: "Hypertension",
+          screenings: [
+            { title: "Lipid Panel Screening", description: "Lipid panel recommended for cardiovascular risk assessment", taskType: "screening", priority: "medium" },
+          ],
+        },
+      ],
+    },
     active: true,
   });
 

@@ -24,10 +24,17 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
+import {
   ChevronLeft,
+  ChevronDown,
   HeartPulse,
   Save,
   AlertTriangle,
+  Bell,
   Lightbulb,
   ShieldAlert,
   Check,
@@ -36,6 +43,7 @@ import {
 } from "lucide-react";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/lib/auth";
 import { VALIDATION_OVERRIDE_REASONS, RECOMMENDATION_DISMISS_REASONS } from "@shared/schema";
 
 export default function VitalsExam() {
@@ -43,6 +51,7 @@ export default function VitalsExam() {
   const visitId = params?.id;
   const [, setLocation] = useLocation();
   const { toast } = useToast();
+  const { user } = useAuth();
   const [warnings, setWarnings] = useState<any[]>([]);
   const [overrides, setOverrides] = useState<Record<string, boolean>>({});
   const [overrideDialog, setOverrideDialog] = useState<{ open: boolean; warning: any | null }>({ open: false, warning: null });
@@ -57,6 +66,45 @@ export default function VitalsExam() {
   const { data: recommendations = [] } = useQuery<any[]>({
     queryKey: ["/api/visits", visitId, "recommendations"],
     enabled: !!visitId,
+  });
+
+  const { data: alerts = [] } = useQuery<any[]>({
+    queryKey: ["/api/visits", visitId, "alerts"],
+    enabled: !!visitId,
+  });
+
+  const acknowledgeAlertMutation = useMutation({
+    mutationFn: async (alertId: string) => {
+      await apiRequest("POST", `/api/alerts/${alertId}/acknowledge`, {
+        userId: user?.id,
+        userName: user?.fullName,
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/visits", visitId, "alerts"] });
+      toast({ title: "Alert acknowledged" });
+    },
+    onError: (err: any) => {
+      toast({ title: "Failed to acknowledge alert", description: err.message, variant: "destructive" });
+    },
+  });
+
+  const dismissAlertMutation = useMutation({
+    mutationFn: async ({ alertId, reason, actionTaken }: { alertId: string; reason: string; actionTaken?: string }) => {
+      await apiRequest("POST", `/api/alerts/${alertId}/dismiss`, {
+        userId: user?.id,
+        userName: user?.fullName,
+        reason,
+        actionTaken,
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/visits", visitId, "alerts"] });
+      toast({ title: "Alert dismissed" });
+    },
+    onError: (err: any) => {
+      toast({ title: "Failed to dismiss alert", description: err.message, variant: "destructive" });
+    },
   });
 
   const existing = bundle?.vitals;
@@ -130,6 +178,7 @@ export default function VitalsExam() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/visits", visitId, "bundle"] });
       queryClient.invalidateQueries({ queryKey: ["/api/visits", visitId, "recommendations"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/visits", visitId, "alerts"] });
       queryClient.invalidateQueries({ queryKey: ["/api/visits", visitId, "codes"] });
       queryClient.invalidateQueries({ queryKey: ["/api/visits", visitId, "overview"] });
       toast({ title: "Vitals saved successfully" });
@@ -222,6 +271,16 @@ export default function VitalsExam() {
         </Link>
         <h1 className="text-xl font-bold">Vitals & Exam</h1>
       </div>
+
+      {alerts.length > 0 && (
+        <AlertPanel
+          alerts={alerts}
+          onAcknowledge={(id) => acknowledgeAlertMutation.mutate(id)}
+          onDismiss={(id, reason, actionTaken) => dismissAlertMutation.mutate({ alertId: id, reason, actionTaken })}
+          isAcknowledging={acknowledgeAlertMutation.isPending}
+          isDismissing={dismissAlertMutation.isPending}
+        />
+      )}
 
       {pendingRecs.length > 0 && (
         <Card className="border-amber-300 dark:border-amber-600">
@@ -565,6 +624,280 @@ function VitalField({
         <div className="flex items-center gap-1 text-xs text-amber-600 dark:text-amber-400">
           <Check className="w-3 h-3" />
           <span>Overridden</span>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function AlertPanel({
+  alerts,
+  onAcknowledge,
+  onDismiss,
+  isAcknowledging,
+  isDismissing,
+}: {
+  alerts: any[];
+  onAcknowledge: (id: string) => void;
+  onDismiss: (id: string, reason: string, actionTaken?: string) => void;
+  isAcknowledging: boolean;
+  isDismissing: boolean;
+}) {
+  const [resolvedOpen, setResolvedOpen] = useState(false);
+
+  const activeAlerts = alerts.filter((a) => a.status === "active" || a.status === "triggered");
+  const resolvedAlerts = alerts.filter((a) => a.status === "acknowledged" || a.status === "dismissed");
+
+  const severityOrder: Record<string, number> = { critical: 0, warning: 1, info: 2 };
+  const sortedActive = [...activeAlerts].sort((a, b) => (severityOrder[a.severity] ?? 3) - (severityOrder[b.severity] ?? 3));
+
+  const criticalAlerts = sortedActive.filter((a) => a.severity === "critical");
+  const warningAlerts = sortedActive.filter((a) => a.severity === "warning");
+  const infoAlerts = sortedActive.filter((a) => a.severity === "info");
+
+  const getSeverityIcon = (severity: string) => {
+    switch (severity) {
+      case "critical":
+        return <ShieldAlert className="w-5 h-5 text-red-600 dark:text-red-400 flex-shrink-0" />;
+      case "warning":
+        return <AlertTriangle className="w-5 h-5 text-amber-600 dark:text-amber-400 flex-shrink-0" />;
+      default:
+        return <Bell className="w-5 h-5 text-blue-600 dark:text-blue-400 flex-shrink-0" />;
+    }
+  };
+
+  const getSeverityBorderClass = (severity: string) => {
+    switch (severity) {
+      case "critical":
+        return "border-red-400 dark:border-red-600";
+      case "warning":
+        return "border-amber-400 dark:border-amber-600";
+      default:
+        return "border-blue-400 dark:border-blue-600";
+    }
+  };
+
+  if (activeAlerts.length === 0 && resolvedAlerts.length === 0) return null;
+
+  return (
+    <div className="space-y-3" data-testid="alert-panel">
+      {activeAlerts.length > 0 && (
+        <Card className={getSeverityBorderClass(sortedActive[0]?.severity)}>
+          <CardHeader className="pb-3">
+            <div className="flex items-center gap-2">
+              {getSeverityIcon(sortedActive[0]?.severity)}
+              <h2 className="text-base font-semibold" data-testid="text-alerts-title">
+                Clinical Alerts ({activeAlerts.length})
+              </h2>
+              {criticalAlerts.length > 0 && (
+                <Badge variant="destructive" data-testid="badge-critical-count">
+                  {criticalAlerts.length} Critical
+                </Badge>
+              )}
+              {warningAlerts.length > 0 && (
+                <Badge className="bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300 border-amber-300 dark:border-amber-600" data-testid="badge-warning-count">
+                  {warningAlerts.length} Warning
+                </Badge>
+              )}
+              {infoAlerts.length > 0 && (
+                <Badge className="bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-300 border-blue-300 dark:border-blue-600" data-testid="badge-info-count">
+                  {infoAlerts.length} Info
+                </Badge>
+              )}
+            </div>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            {sortedActive.map((alert) => (
+              <AlertItem
+                key={alert.id}
+                alert={alert}
+                onAcknowledge={onAcknowledge}
+                onDismiss={onDismiss}
+                isAcknowledging={isAcknowledging}
+                isDismissing={isDismissing}
+              />
+            ))}
+          </CardContent>
+        </Card>
+      )}
+
+      {resolvedAlerts.length > 0 && (
+        <Collapsible open={resolvedOpen} onOpenChange={setResolvedOpen}>
+          <Card>
+            <CollapsibleTrigger asChild>
+              <CardHeader className="pb-3 cursor-pointer">
+                <div className="flex items-center justify-between gap-2 flex-wrap">
+                  <div className="flex items-center gap-2">
+                    <Check className="w-5 h-5 text-muted-foreground flex-shrink-0" />
+                    <h2 className="text-base font-semibold text-muted-foreground" data-testid="text-resolved-alerts-title">
+                      Resolved Alerts ({resolvedAlerts.length})
+                    </h2>
+                  </div>
+                  <ChevronDown className={`w-4 h-4 text-muted-foreground transition-transform ${resolvedOpen ? "rotate-180" : ""}`} />
+                </div>
+              </CardHeader>
+            </CollapsibleTrigger>
+            <CollapsibleContent>
+              <CardContent className="space-y-3 pt-0">
+                {resolvedAlerts.map((alert) => (
+                  <div
+                    key={alert.id}
+                    className="p-3 rounded-md border bg-muted/30 space-y-1"
+                    data-testid={`resolved-alert-${alert.id}`}
+                  >
+                    <div className="flex items-start gap-2 flex-wrap">
+                      <SeverityBadge severity={alert.severity} />
+                      <div className="min-w-0 flex-1">
+                        <p className="text-sm font-medium text-muted-foreground">{alert.ruleName}</p>
+                        <p className="text-xs text-muted-foreground mt-0.5">{alert.message}</p>
+                      </div>
+                      <Badge variant="outline" className="text-xs" data-testid={`badge-status-${alert.id}`}>
+                        {alert.status === "acknowledged" ? "Acknowledged" : "Dismissed"}
+                      </Badge>
+                    </div>
+                    {alert.status === "acknowledged" && alert.acknowledgedBy && (
+                      <p className="text-xs text-muted-foreground pl-6" data-testid={`text-ack-info-${alert.id}`}>
+                        Acknowledged by {alert.acknowledgedBy}
+                        {alert.acknowledgedAt && ` at ${new Date(alert.acknowledgedAt).toLocaleString()}`}
+                      </p>
+                    )}
+                    {alert.status === "dismissed" && (
+                      <div className="text-xs text-muted-foreground pl-6 space-y-0.5">
+                        {alert.dismissedBy && (
+                          <p data-testid={`text-dismiss-info-${alert.id}`}>
+                            Dismissed by {alert.dismissedBy}
+                            {alert.dismissedAt && ` at ${new Date(alert.dismissedAt).toLocaleString()}`}
+                          </p>
+                        )}
+                        {alert.dismissReason && <p>Reason: {alert.dismissReason}</p>}
+                        {alert.actionTaken && <p>Action: {alert.actionTaken}</p>}
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </CardContent>
+            </CollapsibleContent>
+          </Card>
+        </Collapsible>
+      )}
+    </div>
+  );
+}
+
+function SeverityBadge({ severity }: { severity: string }) {
+  switch (severity) {
+    case "critical":
+      return (
+        <Badge variant="destructive" className="text-xs" data-testid={`badge-severity-${severity}`}>
+          <ShieldAlert className="w-3 h-3 mr-1" /> Critical
+        </Badge>
+      );
+    case "warning":
+      return (
+        <Badge className="text-xs bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300 border-amber-300 dark:border-amber-600" data-testid={`badge-severity-${severity}`}>
+          <AlertTriangle className="w-3 h-3 mr-1" /> Warning
+        </Badge>
+      );
+    default:
+      return (
+        <Badge className="text-xs bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-300 border-blue-300 dark:border-blue-600" data-testid={`badge-severity-${severity}`}>
+          <Bell className="w-3 h-3 mr-1" /> Info
+        </Badge>
+      );
+  }
+}
+
+function AlertItem({
+  alert,
+  onAcknowledge,
+  onDismiss,
+  isAcknowledging,
+  isDismissing,
+}: {
+  alert: any;
+  onAcknowledge: (id: string) => void;
+  onDismiss: (id: string, reason: string, actionTaken?: string) => void;
+  isAcknowledging: boolean;
+  isDismissing: boolean;
+}) {
+  const [showDismiss, setShowDismiss] = useState(false);
+  const [dismissReason, setDismissReason] = useState("");
+  const [actionTaken, setActionTaken] = useState("");
+
+  const bgClass =
+    alert.severity === "critical"
+      ? "bg-red-50/50 dark:bg-red-950/20 border-red-200 dark:border-red-800"
+      : alert.severity === "warning"
+      ? "bg-amber-50/50 dark:bg-amber-950/20 border-amber-200 dark:border-amber-800"
+      : "bg-blue-50/50 dark:bg-blue-950/20 border-blue-200 dark:border-blue-800";
+
+  return (
+    <div className={`p-3 rounded-md border space-y-2 ${bgClass}`} data-testid={`alert-item-${alert.id}`}>
+      <div className="flex items-start justify-between gap-3 flex-wrap">
+        <div className="flex items-start gap-2 min-w-0 flex-1">
+          <SeverityBadge severity={alert.severity} />
+          <div className="min-w-0">
+            <p className="text-sm font-medium" data-testid={`text-alert-rule-${alert.id}`}>{alert.ruleName}</p>
+            <p className="text-xs text-muted-foreground mt-0.5" data-testid={`text-alert-message-${alert.id}`}>{alert.message}</p>
+            {alert.recommendedAction && (
+              <p className="text-xs mt-1" data-testid={`text-alert-action-${alert.id}`}>
+                <span className="font-medium">Recommended:</span> {alert.recommendedAction}
+              </p>
+            )}
+          </div>
+        </div>
+        <div className="flex items-center gap-1">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => onAcknowledge(alert.id)}
+            disabled={isAcknowledging}
+            data-testid={`button-acknowledge-${alert.id}`}
+          >
+            <Check className="w-3 h-3 mr-1" /> Acknowledge
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setShowDismiss(!showDismiss)}
+            data-testid={`button-dismiss-alert-${alert.id}`}
+          >
+            <X className="w-3 h-3 mr-1" /> Dismiss
+          </Button>
+        </div>
+      </div>
+      {showDismiss && (
+        <div className="space-y-2 pl-6">
+          <Input
+            value={dismissReason}
+            onChange={(e) => setDismissReason(e.target.value)}
+            placeholder="Reason for dismissal..."
+            data-testid={`input-dismiss-reason-${alert.id}`}
+          />
+          <Input
+            value={actionTaken}
+            onChange={(e) => setActionTaken(e.target.value)}
+            placeholder="Action taken (optional)..."
+            data-testid={`input-action-taken-${alert.id}`}
+          />
+          <div className="flex gap-2">
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => { setShowDismiss(false); setDismissReason(""); setActionTaken(""); }}
+              data-testid={`button-cancel-dismiss-${alert.id}`}
+            >
+              Cancel
+            </Button>
+            <Button
+              size="sm"
+              disabled={!dismissReason || isDismissing}
+              onClick={() => { onDismiss(alert.id, dismissReason, actionTaken || undefined); setShowDismiss(false); }}
+              data-testid={`button-confirm-dismiss-alert-${alert.id}`}
+            >
+              Confirm Dismiss
+            </Button>
+          </div>
         </div>
       )}
     </div>

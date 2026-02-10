@@ -36,6 +36,7 @@ import {
   Loader2,
   Activity,
   CheckCircle2,
+  Users,
 } from "lucide-react";
 
 const SEVERITY_COLORS: Record<string, string> = {
@@ -65,6 +66,7 @@ export default function AdminConsole() {
           <TabsTrigger value="assessments" data-testid="tab-assessments"><ClipboardList className="w-3 h-3 mr-1" /> Assessments</TabsTrigger>
           <TabsTrigger value="measures" data-testid="tab-measures"><Target className="w-3 h-3 mr-1" /> Measures</TabsTrigger>
           <TabsTrigger value="ai" data-testid="tab-ai-providers"><Bot className="w-3 h-3 mr-1" /> AI Providers</TabsTrigger>
+          <TabsTrigger value="members" data-testid="tab-members"><Users className="w-3 h-3 mr-1" /> Members</TabsTrigger>
           <TabsTrigger value="demo" data-testid="tab-demo-config"><Settings2 className="w-3 h-3 mr-1" /> Demo Mode</TabsTrigger>
           <TabsTrigger value="access-log" data-testid="tab-access-log"><Shield className="w-3 h-3 mr-1" /> Access Log</TabsTrigger>
         </TabsList>
@@ -154,6 +156,10 @@ export default function AdminConsole() {
           <AiProviderConfig />
         </TabsContent>
 
+        <TabsContent value="members" className="mt-4">
+          <MemberPackageAssignment />
+        </TabsContent>
+
         <TabsContent value="demo" className="mt-4">
           <DemoConfigPanel />
         </TabsContent>
@@ -191,9 +197,12 @@ function PlanPackCard({ pack }: { pack: any }) {
         <div className="flex items-center justify-between gap-3 flex-wrap">
           <div className="flex flex-col gap-0.5 min-w-0">
             <span className="text-sm font-semibold" data-testid={`text-pack-name-${pack.id}`}>{pack.planName}</span>
-            <span className="text-xs text-muted-foreground">Plan ID: {pack.planId} | Type: {pack.visitType?.replace(/_/g, " ")} | Version: {pack.version || "1.0"}</span>
+            <span className="text-xs text-muted-foreground">Plan ID: {pack.planId} | Type: {pack.visitType?.replace(/_/g, " ")}</span>
           </div>
           <div className="flex items-center gap-2">
+            <Badge variant="outline" className="text-xs" data-testid={`badge-pack-version-${pack.id}`}>
+              v{pack.version || "1.0"}
+            </Badge>
             <Badge variant={pack.active ? "default" : "secondary"} className="text-xs">
               {pack.active ? "Active" : "Inactive"}
             </Badge>
@@ -286,6 +295,20 @@ function PlanPackCard({ pack }: { pack: any }) {
                 <Badge variant="outline" className="text-xs">
                   ID Verification: {pack.identityVerificationRequired ? "Required" : "Optional"}
                 </Badge>
+              </div>
+
+              <div className="mt-3 pt-3 border-t">
+                <span className="text-xs font-medium text-muted-foreground">Version History</span>
+                <div className="flex items-center gap-2 mt-1">
+                  <div className="flex items-center gap-1">
+                    <Activity className="w-3 h-3 text-muted-foreground" />
+                    <span className="text-xs" data-testid={`text-pack-version-current-${pack.id}`}>Current: v{pack.version || "1.0"}</span>
+                  </div>
+                  <Badge variant="secondary" className="text-xs">
+                    <CheckCircle2 className="w-3 h-3 mr-1" />
+                    {pack.active ? "Active" : "Inactive"}
+                  </Badge>
+                </div>
               </div>
             </div>
           </>
@@ -1056,6 +1079,101 @@ function DemoConfigPanel() {
             <p className="text-xs text-muted-foreground">
               A watermark banner reading "{watermarkText}" will appear at the top of the application. All access to sensitive operations will be logged to the audit trail.
             </p>
+          </CardContent>
+        </Card>
+      )}
+    </div>
+  );
+}
+
+function MemberPackageAssignment() {
+  const { toast } = useToast();
+  const { data: members, isLoading: loadingMembers } = useQuery<any[]>({ queryKey: ["/api/admin/members"] });
+  const { data: planPacks, isLoading: loadingPacks } = useQuery<any[]>({ queryKey: ["/api/admin/plan-packs"] });
+
+  const assignMutation = useMutation({
+    mutationFn: async ({ memberId, planPackId }: { memberId: string; planPackId: string }) => {
+      const pack = planPacks?.find((p: any) => p.planId === planPackId);
+      return apiRequest("PATCH", `/api/admin/members/${memberId}`, {
+        planId: planPackId,
+        planPackId: planPackId,
+        planPackVersion: pack?.version || "1.0",
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/members"] });
+      toast({ title: "Member plan updated" });
+    },
+    onError: (err: any) => {
+      toast({ title: "Update failed", description: err.message, variant: "destructive" });
+    },
+  });
+
+  if (loadingMembers || loadingPacks) return <Skeleton className="h-40 w-full" />;
+
+  return (
+    <div className="space-y-4">
+      <div>
+        <h3 className="text-sm font-semibold" data-testid="text-member-assignment-title">Member-to-Package Assignment</h3>
+        <p className="text-xs text-muted-foreground mt-1">Assign members to plan packages and view their current version</p>
+      </div>
+
+      {members?.length ? (
+        <div className="space-y-2">
+          {members.map((member: any) => {
+            const currentPack = planPacks?.find((p: any) => p.planId === member.planPackId || p.planId === member.planId);
+            return (
+              <Card key={member.id} data-testid={`card-member-${member.id}`}>
+                <CardContent className="p-4">
+                  <div className="flex items-center justify-between gap-3 flex-wrap">
+                    <div className="flex flex-col gap-0.5 min-w-0">
+                      <span className="text-sm font-medium" data-testid={`text-member-name-${member.id}`}>
+                        {member.firstName} {member.lastName}
+                      </span>
+                      <span className="text-xs text-muted-foreground">
+                        ID: {member.memberId} | DOB: {member.dob}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      {member.planPackVersion && (
+                        <Badge variant="outline" className="text-xs" data-testid={`badge-member-version-${member.id}`}>
+                          v{member.planPackVersion}
+                        </Badge>
+                      )}
+                      <Select
+                        value={member.planPackId || member.planId || ""}
+                        onValueChange={(val) => assignMutation.mutate({ memberId: member.id, planPackId: val })}
+                      >
+                        <SelectTrigger className="w-48" data-testid={`select-member-plan-${member.id}`}>
+                          <SelectValue placeholder="Select plan pack" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {planPacks?.map((pack: any) => (
+                            <SelectItem key={pack.planId} value={pack.planId} data-testid={`option-plan-${pack.planId}`}>
+                              {pack.planName} (v{pack.version || "1.0"})
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                  {currentPack && (
+                    <div className="mt-2 flex items-center gap-2 flex-wrap">
+                      <span className="text-xs text-muted-foreground">Current package:</span>
+                      <Badge variant="secondary" className="text-xs">{currentPack.planName}</Badge>
+                      <Badge variant="outline" className="text-xs">v{currentPack.version || "1.0"}</Badge>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            );
+          })}
+        </div>
+      ) : (
+        <Card>
+          <CardContent className="flex flex-col items-center py-12 text-muted-foreground">
+            <Users className="w-8 h-8 mb-2 opacity-40" />
+            <span className="text-sm">No members found</span>
           </CardContent>
         </Card>
       )}

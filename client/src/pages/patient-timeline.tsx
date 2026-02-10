@@ -5,8 +5,9 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ArrowLeft, Activity, FlaskConical, Pill, TrendingUp, TrendingDown, Minus, Building2, Globe } from "lucide-react";
-import { useState, useMemo } from "react";
+import { ArrowLeft, Activity, FlaskConical, Pill, TrendingUp, TrendingDown, Minus, Building2, Globe, ChevronDown, ChevronUp, Filter } from "lucide-react";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { useState, useMemo, useCallback } from "react";
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip,
   ResponsiveContainer, ReferenceLine, Area, ComposedChart, Legend, Scatter,
@@ -202,6 +203,233 @@ function LabChart({ testName, labs }: { testName: string; labs: LabResult[] }) {
   );
 }
 
+function LabDrilldown({ testName, labs }: { testName: string; labs: LabResult[] }) {
+  const [showCount, setShowCount] = useState(10);
+  const sorted = [...labs].sort((a, b) => b.collectedDate.localeCompare(a.collectedDate));
+  const visible = sorted.slice(0, showCount);
+  const hasMore = showCount < sorted.length;
+
+  return (
+    <Card data-testid={`drilldown-lab-${testName.replace(/\s+/g, '-').toLowerCase()}`}>
+      <CardHeader className="flex flex-row items-center justify-between gap-3 pb-2 space-y-0">
+        <CardTitle className="text-sm font-medium">{testName} — All Results ({sorted.length})</CardTitle>
+      </CardHeader>
+      <CardContent>
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Date</TableHead>
+              <TableHead>Value</TableHead>
+              <TableHead>Unit</TableHead>
+              <TableHead>Status</TableHead>
+              <TableHead>Source</TableHead>
+              <TableHead>Actor</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {visible.map((lab, idx) => (
+              <TableRow key={lab.id || idx} data-testid={`row-lab-result-${idx}`}>
+                <TableCell className="text-sm">{formatDateFull(lab.collectedDate)}</TableCell>
+                <TableCell className="text-sm font-medium">{lab.value}</TableCell>
+                <TableCell className="text-sm text-muted-foreground">{lab.unit}</TableCell>
+                <TableCell>
+                  <Badge
+                    variant={lab.status === "normal" ? "secondary" : "destructive"}
+                    className="text-xs"
+                    data-testid={`badge-lab-status-${idx}`}
+                  >
+                    {(lab.status || "normal").toUpperCase()}
+                  </Badge>
+                </TableCell>
+                <TableCell><SourceBadge source={lab.source} /></TableCell>
+                <TableCell className="text-sm text-muted-foreground">{lab.actorName || "—"}</TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+        {hasMore && (
+          <div className="flex justify-center mt-3">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setShowCount(prev => prev + 10)}
+              data-testid={`button-show-more-${testName.replace(/\s+/g, '-').toLowerCase()}`}
+            >
+              Show More ({sorted.length - showCount} remaining)
+            </Button>
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+function MedicationDetailPanel({ med }: { med: MedicationHistory }) {
+  return (
+    <Card data-testid={`panel-med-detail-${med.medicationName.replace(/\s+/g, '-').toLowerCase()}`}>
+      <CardHeader className="pb-2">
+        <CardTitle className="text-sm font-medium flex items-center gap-2">
+          <Pill className="w-4 h-4" />
+          {med.medicationName}
+          <Badge variant={med.status === "active" ? "default" : "secondary"} className="text-xs ml-2">
+            {med.status === "active" ? "Active" : "Discontinued"}
+          </Badge>
+        </CardTitle>
+      </CardHeader>
+      <CardContent>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
+          <div>
+            <span className="text-muted-foreground">Dosage:</span>{" "}
+            <span className="font-medium">{med.dosage || "—"}</span>
+          </div>
+          <div>
+            <span className="text-muted-foreground">Frequency:</span>{" "}
+            <span className="font-medium">{med.frequency || "—"}</span>
+          </div>
+          <div>
+            <span className="text-muted-foreground">Route:</span>{" "}
+            <span className="font-medium">{med.route || "—"}</span>
+          </div>
+          <div>
+            <span className="text-muted-foreground">Prescriber:</span>{" "}
+            <span className="font-medium">{med.prescriber || "—"}</span>
+          </div>
+          <div>
+            <span className="text-muted-foreground">Start Date:</span>{" "}
+            <span className="font-medium">{formatDateFull(med.startDate)}</span>
+          </div>
+          <div>
+            <span className="text-muted-foreground">End Date:</span>{" "}
+            <span className="font-medium">{med.endDate ? formatDateFull(med.endDate) : "Ongoing"}</span>
+          </div>
+          <div>
+            <span className="text-muted-foreground">Source:</span>{" "}
+            <SourceBadge source={med.source} />
+          </div>
+          {med.actorName && (
+            <div data-testid="text-med-actor">
+              <span className="text-muted-foreground">Recorded by:</span>{" "}
+              <span className="font-medium">{med.actorName}</span>
+            </div>
+          )}
+          {med.changeType && (
+            <div data-testid="text-med-change-type">
+              <span className="text-muted-foreground">Change:</span>{" "}
+              <Badge variant="secondary" className="text-xs">{med.changeType}</Badge>
+            </div>
+          )}
+          {med.changeReason && (
+            <div data-testid="text-med-change-reason">
+              <span className="text-muted-foreground">Reason:</span>{" "}
+              <span className="font-medium">{med.changeReason}</span>
+            </div>
+          )}
+          {med.status === "discontinued" && med.reason && (
+            <div className="md:col-span-2" data-testid="text-med-dc-reason">
+              <span className="text-muted-foreground">D/C Reason:</span>{" "}
+              <span className="font-medium">{med.reason}</span>
+            </div>
+          )}
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+function MedicationsTable({ medications, sourceFilter }: { medications: MedicationHistory[]; sourceFilter: string }) {
+  const [sortField, setSortField] = useState<string>("medicationName");
+  const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
+
+  const toggleSort = useCallback((field: string) => {
+    if (sortField === field) {
+      setSortDir(prev => prev === "asc" ? "desc" : "asc");
+    } else {
+      setSortField(field);
+      setSortDir("asc");
+    }
+  }, [sortField]);
+
+  const filtered = useMemo(() => {
+    let items = [...medications];
+    if (sourceFilter !== "all") {
+      items = items.filter(m => m.source === sourceFilter);
+    }
+    items.sort((a, b) => {
+      const aVal = (a as any)[sortField] || "";
+      const bVal = (b as any)[sortField] || "";
+      const cmp = String(aVal).localeCompare(String(bVal));
+      return sortDir === "asc" ? cmp : -cmp;
+    });
+    return items;
+  }, [medications, sourceFilter, sortField, sortDir]);
+
+  const SortIcon = ({ field }: { field: string }) => {
+    if (sortField !== field) return null;
+    return sortDir === "asc"
+      ? <ChevronUp className="w-3 h-3 inline ml-1" />
+      : <ChevronDown className="w-3 h-3 inline ml-1" />;
+  };
+
+  return (
+    <Card data-testid="card-medications-table">
+      <CardHeader className="pb-2">
+        <CardTitle className="text-sm font-medium">All Medications</CardTitle>
+      </CardHeader>
+      <CardContent>
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead className="cursor-pointer" onClick={() => toggleSort("medicationName")} data-testid="sort-med-name">
+                Name <SortIcon field="medicationName" />
+              </TableHead>
+              <TableHead>Dosage</TableHead>
+              <TableHead className="cursor-pointer" onClick={() => toggleSort("status")} data-testid="sort-med-status">
+                Status <SortIcon field="status" />
+              </TableHead>
+              <TableHead className="cursor-pointer" onClick={() => toggleSort("source")} data-testid="sort-med-source">
+                Source <SortIcon field="source" />
+              </TableHead>
+              <TableHead className="cursor-pointer" onClick={() => toggleSort("startDate")} data-testid="sort-med-start">
+                Start <SortIcon field="startDate" />
+              </TableHead>
+              <TableHead>End</TableHead>
+              <TableHead>Change Type</TableHead>
+              <TableHead>Change Reason</TableHead>
+              <TableHead>Actor</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {filtered.map((med, idx) => (
+              <TableRow key={med.id || idx} data-testid={`row-med-${idx}`}>
+                <TableCell className="text-sm font-medium">{med.medicationName}</TableCell>
+                <TableCell className="text-sm">{med.dosage || "—"}</TableCell>
+                <TableCell>
+                  <Badge variant={med.status === "active" ? "default" : "secondary"} className="text-xs">
+                    {med.status === "active" ? "Active" : "D/C"}
+                  </Badge>
+                </TableCell>
+                <TableCell><SourceBadge source={med.source} /></TableCell>
+                <TableCell className="text-sm">{formatDateFull(med.startDate)}</TableCell>
+                <TableCell className="text-sm">{med.endDate ? formatDateFull(med.endDate) : "—"}</TableCell>
+                <TableCell className="text-sm">
+                  {med.changeType ? <Badge variant="secondary" className="text-xs">{med.changeType}</Badge> : "—"}
+                </TableCell>
+                <TableCell className="text-sm text-muted-foreground">{med.changeReason || "—"}</TableCell>
+                <TableCell className="text-sm text-muted-foreground">{med.actorName || "—"}</TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+        {filtered.length === 0 && (
+          <div className="text-center py-6 text-muted-foreground text-sm">
+            No medications found
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
 function VitalsSection({ vitalsHistory, vitalType }: { vitalsHistory: VitalsHistory[]; vitalType: string }) {
   const sorted = [...vitalsHistory].sort((a, b) => a.measureDate.localeCompare(b.measureDate));
 
@@ -304,7 +532,7 @@ function VitalsSection({ vitalsHistory, vitalType }: { vitalsHistory: VitalsHist
   );
 }
 
-function MedicationGantt({ medications, lookbackYears = 2 }: { medications: MedicationHistory[]; lookbackYears?: number }) {
+function MedicationGantt({ medications, lookbackYears = 2, onMedClick }: { medications: MedicationHistory[]; lookbackYears?: number; onMedClick?: (med: MedicationHistory) => void }) {
   const today = new Date();
   const lookbackStart = new Date(today.getFullYear() - lookbackYears, today.getMonth(), today.getDate());
   const totalDays = Math.ceil((today.getTime() - lookbackStart.getTime()) / (1000 * 60 * 60 * 24));
@@ -403,7 +631,12 @@ function MedicationGantt({ medications, lookbackYears = 2 }: { medications: Medi
                       {(med.category || "other").replace(/_/g, " ")}
                     </div>
                   )}
-                  <div className="flex items-center gap-2" style={{ minHeight: 28 }} data-testid={`med-bar-${med.medicationName.replace(/\s+/g, '-').toLowerCase()}`}>
+                  <div
+                    className="flex items-center gap-2 cursor-pointer hover-elevate rounded-sm"
+                    style={{ minHeight: 28 }}
+                    onClick={() => onMedClick?.(med)}
+                    data-testid={`med-bar-${med.medicationName.replace(/\s+/g, '-').toLowerCase()}`}
+                  >
                     <div className="w-36 md:w-48 flex-shrink-0 text-xs truncate flex items-center gap-1">
                       <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: isPractice ? SOURCE_COLORS.practice : SOURCE_COLORS.hie }} />
                       <span className="font-medium truncate">{med.medicationName}</span>
@@ -456,6 +689,9 @@ export default function PatientTimeline() {
   const visitId = params.id;
   const [labCategory, setLabCategory] = useState<string>("all");
   const [vitalType, setVitalType] = useState<string>("bp");
+  const [sourceFilter, setSourceFilter] = useState<string>("all");
+  const [selectedLabTest, setSelectedLabTest] = useState<string | null>(null);
+  const [selectedMed, setSelectedMed] = useState<MedicationHistory | null>(null);
 
   const { data: bundle } = useQuery<any>({ queryKey: ["/api/visits", visitId, "bundle"] });
   const memberId = bundle?.visit?.memberId;
@@ -490,12 +726,36 @@ export default function PatientTimeline() {
     return Array.from(cats).sort();
   }, [labs]);
 
+  const filteredLabs = useMemo(() => {
+    if (sourceFilter === "all") return labs;
+    return labs.filter(l => l.source === sourceFilter);
+  }, [labs, sourceFilter]);
+
+  const filteredVitals = useMemo(() => {
+    if (sourceFilter === "all") return vitals;
+    return vitals.filter(v => v.source === sourceFilter);
+  }, [vitals, sourceFilter]);
+
+  const filteredMeds = useMemo(() => {
+    if (sourceFilter === "all") return meds;
+    return meds.filter(m => m.source === sourceFilter);
+  }, [meds, sourceFilter]);
+
+  const filteredLabsByTest = useMemo(() => {
+    const grouped: Record<string, LabResult[]> = {};
+    filteredLabs.forEach(lab => {
+      if (!grouped[lab.testName]) grouped[lab.testName] = [];
+      grouped[lab.testName].push(lab);
+    });
+    return grouped;
+  }, [filteredLabs]);
+
   const filteredLabTests = useMemo(() => {
-    if (labCategory === "all") return Object.keys(labsByTest).sort();
-    return Object.keys(labsByTest).filter(name =>
-      labsByTest[name].some(l => (l.category || "other") === labCategory)
+    if (labCategory === "all") return Object.keys(filteredLabsByTest).sort();
+    return Object.keys(filteredLabsByTest).filter(name =>
+      filteredLabsByTest[name].some(l => (l.category || "other") === labCategory)
     ).sort();
-  }, [labsByTest, labCategory]);
+  }, [filteredLabsByTest, labCategory]);
 
   const isLoading = labsLoading || medsLoading || vitalsLoading;
 
@@ -515,6 +775,25 @@ export default function PatientTimeline() {
             </p>
           )}
         </div>
+      </div>
+
+      <div className="flex items-center gap-3 flex-wrap">
+        <Filter className="w-4 h-4 text-muted-foreground" />
+        <Select value={sourceFilter} onValueChange={setSourceFilter}>
+          <SelectTrigger className="w-48" data-testid="select-source-filter">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Sources</SelectItem>
+            <SelectItem value="practice">Practice</SelectItem>
+            <SelectItem value="hie">HIE</SelectItem>
+          </SelectContent>
+        </Select>
+        {sourceFilter !== "all" && (
+          <Badge variant="secondary" className="text-xs" data-testid="badge-active-filter">
+            Filtering: {sourceFilter === "practice" ? "Practice" : "HIE"}
+          </Badge>
+        )}
       </div>
 
       {isLoading ? (
@@ -554,14 +833,14 @@ export default function PatientTimeline() {
                 </SelectContent>
               </Select>
               <div className="flex items-center gap-2 ml-auto text-xs text-muted-foreground">
-                <span>{vitals.length} data points</span>
+                <span>{filteredVitals.length} data points</span>
                 <span className="text-muted-foreground/50">|</span>
-                <span>{vitals.filter(v => v.source === "practice").length} practice</span>
+                <span>{filteredVitals.filter(v => v.source === "practice").length} practice</span>
                 <span className="text-muted-foreground/50">|</span>
-                <span>{vitals.filter(v => v.source === "hie").length} HIE</span>
+                <span>{filteredVitals.filter(v => v.source === "hie").length} HIE</span>
               </div>
             </div>
-            <VitalsSection vitalsHistory={vitals} vitalType={vitalType} />
+            <VitalsSection vitalsHistory={filteredVitals} vitalType={vitalType} />
 
             <Card>
               <CardHeader className="pb-2">
@@ -571,7 +850,7 @@ export default function PatientTimeline() {
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                   {["bp", "hr", "o2", "weight"].map(type => {
                     const labels: Record<string, string> = { bp: "Blood Pressure", hr: "Heart Rate", o2: "SpO2", weight: "Weight" };
-                    const latest = vitals.length > 0 ? [...vitals].sort((a, b) => b.measureDate.localeCompare(a.measureDate))[0] : null;
+                    const latest = filteredVitals.length > 0 ? [...filteredVitals].sort((a, b) => b.measureDate.localeCompare(a.measureDate))[0] : null;
                     let value = "";
                     if (latest) {
                       if (type === "bp") value = `${latest.systolic || "-"}/${latest.diastolic || "-"} mmHg`;
@@ -611,19 +890,30 @@ export default function PatientTimeline() {
                 </SelectContent>
               </Select>
               <div className="flex items-center gap-2 ml-auto text-xs text-muted-foreground">
-                <span>{labs.length} results</span>
+                <span>{filteredLabs.length} results</span>
                 <span className="text-muted-foreground/50">|</span>
-                <span>{labs.filter(l => l.source === "practice").length} practice</span>
+                <span>{filteredLabs.filter(l => l.source === "practice").length} practice</span>
                 <span className="text-muted-foreground/50">|</span>
-                <span>{labs.filter(l => l.source === "hie").length} HIE</span>
+                <span>{filteredLabs.filter(l => l.source === "hie").length} HIE</span>
               </div>
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
               {filteredLabTests.map(testName => (
-                <LabChart key={testName} testName={testName} labs={labsByTest[testName]} />
+                <div
+                  key={testName}
+                  className="cursor-pointer"
+                  onClick={() => setSelectedLabTest(prev => prev === testName ? null : testName)}
+                  data-testid={`clickable-lab-${testName.replace(/\s+/g, '-').toLowerCase()}`}
+                >
+                  <LabChart testName={testName} labs={filteredLabsByTest[testName]} />
+                </div>
               ))}
             </div>
+
+            {selectedLabTest && filteredLabsByTest[selectedLabTest] && (
+              <LabDrilldown testName={selectedLabTest} labs={filteredLabsByTest[selectedLabTest]} />
+            )}
 
             {filteredLabTests.length === 0 && (
               <Card>
@@ -635,7 +925,13 @@ export default function PatientTimeline() {
           </TabsContent>
 
           <TabsContent value="medications" className="space-y-4">
-            <MedicationGantt medications={meds} lookbackYears={2} />
+            <MedicationGantt medications={filteredMeds} lookbackYears={2} onMedClick={(med) => setSelectedMed(prev => prev?.id === med.id ? null : med)} />
+
+            {selectedMed && (
+              <MedicationDetailPanel med={selectedMed} />
+            )}
+
+            <MedicationsTable medications={meds} sourceFilter={sourceFilter} />
 
             <Card>
               <CardHeader className="pb-2">
@@ -645,19 +941,19 @@ export default function PatientTimeline() {
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                   <div className="p-3 rounded-md border" data-testid="stat-active-meds">
                     <p className="text-xs text-muted-foreground">Active Medications</p>
-                    <p className="text-lg font-semibold mt-1">{meds.filter(m => m.status === "active").length}</p>
+                    <p className="text-lg font-semibold mt-1">{filteredMeds.filter(m => m.status === "active").length}</p>
                   </div>
                   <div className="p-3 rounded-md border" data-testid="stat-discontinued-meds">
                     <p className="text-xs text-muted-foreground">Discontinued (2yr)</p>
-                    <p className="text-lg font-semibold mt-1">{meds.filter(m => m.status === "discontinued").length}</p>
+                    <p className="text-lg font-semibold mt-1">{filteredMeds.filter(m => m.status === "discontinued").length}</p>
                   </div>
                   <div className="p-3 rounded-md border" data-testid="stat-practice-meds">
                     <p className="text-xs text-muted-foreground">Practice Source</p>
-                    <p className="text-lg font-semibold mt-1">{meds.filter(m => m.source === "practice").length}</p>
+                    <p className="text-lg font-semibold mt-1">{filteredMeds.filter(m => m.source === "practice").length}</p>
                   </div>
                   <div className="p-3 rounded-md border" data-testid="stat-hie-meds">
                     <p className="text-xs text-muted-foreground">HIE Source</p>
-                    <p className="text-lg font-semibold mt-1">{meds.filter(m => m.source === "hie").length}</p>
+                    <p className="text-lg font-semibold mt-1">{filteredMeds.filter(m => m.source === "hie").length}</p>
                   </div>
                 </div>
               </CardContent>

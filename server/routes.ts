@@ -122,7 +122,7 @@ export async function registerRoutes(
   // Visit bundle (pre-visit summary + intake data)
   app.get("/api/visits/:id/bundle", async (req, res) => {
     try {
-      const visit = await storage.getVisit(req.params.id);
+      let visit = await storage.getVisit(req.params.id);
       if (!visit) return res.status(404).json({ message: "Visit not found" });
 
       const member = await storage.getMember(visit.memberId);
@@ -132,7 +132,23 @@ export async function registerRoutes(
 
       const consents = await storage.getConsentsByVisit(visit.id);
       const planPack = visit.planId ? await storage.getPlanPack(visit.planId) : null;
-      return res.json({ visit, member, checklist, targets, vitals, consents, planPack });
+      const alerts = await storage.getAlertsByVisit(visit.id);
+
+      if (planPack && !visit.planPackVersion) {
+        visit = await storage.updateVisit(visit.id, { planPackVersion: planPack.version }) || visit;
+      }
+
+      return res.json({
+        visit,
+        member,
+        checklist,
+        targets,
+        vitals,
+        consents,
+        planPack,
+        alerts,
+        planPackVersion: visit.planPackVersion || planPack?.version || null,
+      });
     } catch (err: any) {
       return res.status(500).json({ message: err.message });
     }
@@ -144,7 +160,7 @@ export async function registerRoutes(
       const visit = await storage.getVisit(req.params.id);
       if (!visit) return res.status(404).json({ message: "Visit not found" });
 
-      const [member, checklist, vitals, tasks, recommendations, medRecon, assessmentResponses, measureResults, codes, overrides, npUser, exclusions, allMeasureDefs, consents] = await Promise.all([
+      const [member, checklist, vitals, tasks, recommendations, medRecon, assessmentResponses, measureResults, codes, overrides, npUser, exclusions, allMeasureDefs, consents, alerts] = await Promise.all([
         storage.getMember(visit.memberId),
         storage.getChecklistByVisit(visit.id),
         storage.getVitalsByVisit(visit.id),
@@ -159,6 +175,7 @@ export async function registerRoutes(
         storage.getExclusionsByVisit(visit.id),
         storage.getAllMeasureDefinitions(),
         storage.getConsentsByVisit(visit.id),
+        storage.getAlertsByVisit(visit.id),
       ]);
 
       const targets = member ? await storage.getPlanTargets(member.id) : [];
@@ -218,6 +235,9 @@ export async function registerRoutes(
         content: string;
         hasFlags: boolean;
         meatTags?: string[];
+        completeness?: "Complete" | "Incomplete" | "Exception";
+        completenessReason?: string;
+        provenance?: "Structured Entry" | "Voice Capture" | "HIE Import" | "Mixed";
       };
       const progressNote: NoteSection[] = [];
 
@@ -238,6 +258,9 @@ export async function registerRoutes(
         category: "header",
         content: `Date of Service: ${visitDate} | Time: ${visitTime} | Visit Type: ${visitTypeLabel}\nPatient: ${patientName} | DOB: ${patientDOB} | Member ID: ${patientMemberId}\nInsurance: ${insurancePlan}\nPlace of Service: 12 - Home | Address: ${patientAddress}\nRendering Provider: ${providerName}, ${providerCredential} | NPI: On file\nIdentity Verified: ${visit.identityVerified ? `Yes - ${visit.identityMethod || "standard method"}` : "Pending"}`,
         hasFlags: !visit.identityVerified,
+        completeness: visit.identityVerified ? "Complete" : "Incomplete",
+        completenessReason: !visit.identityVerified ? "Identity verification pending" : undefined,
+        provenance: "Structured Entry",
       });
 
       // === SUBJECTIVE: History of Present Illness (TAMPER: Time, Assessment) ===
@@ -266,6 +289,9 @@ export async function registerRoutes(
         content: hpiParts.join(" "),
         hasFlags: false,
         meatTags: ["Monitor", "Evaluate"],
+        completeness: (member?.conditions && member.conditions.length > 0) || completedAssessments.length > 0 ? "Complete" : "Incomplete",
+        completenessReason: (!member?.conditions || member.conditions.length === 0) && completedAssessments.length === 0 ? "No conditions or assessments documented" : undefined,
+        provenance: "Structured Entry",
       });
 
       // === OBJECTIVE: Physical Exam & Vital Signs (TAMPER: Exam) ===
@@ -283,15 +309,18 @@ export async function registerRoutes(
         if (vitalsFlags.length > 0) {
           vContent += `\nAbnormal findings: ${vitalsFlags.map(f => f.message).join("; ")}.`;
         }
+        const hasVoiceVitals = vitals && (vitals as any).voiceInferredFields && Object.keys((vitals as any).voiceInferredFields).length > 0;
         progressNote.push({
           section: "Physical Examination / Vital Signs",
           category: "objective",
           content: vContent,
           hasFlags: vitalsFlags.length > 0,
           meatTags: ["Monitor", "Evaluate"],
+          completeness: "Complete",
+          provenance: hasVoiceVitals ? "Voice Capture" : "Structured Entry",
         });
       } else {
-        progressNote.push({ section: "Physical Examination / Vital Signs", category: "objective", content: "Vital signs not yet recorded.", hasFlags: false });
+        progressNote.push({ section: "Physical Examination / Vital Signs", category: "objective", content: "Vital signs not yet recorded.", hasFlags: false, completeness: "Incomplete", completenessReason: "Vital signs not recorded", provenance: "Structured Entry" });
       }
 
       // === OBJECTIVE: Standardized Assessments (TAMPER: Assessment) ===
@@ -310,9 +339,11 @@ export async function registerRoutes(
           content: assessmentLines.join("\n"),
           hasFlags: assessmentFlags.length > 0,
           meatTags: ["Monitor", "Evaluate", "Assess"],
+          completeness: "Complete",
+          provenance: "Structured Entry",
         });
       } else {
-        progressNote.push({ section: "Standardized Assessments", category: "objective", content: "Assessments not yet completed.", hasFlags: false });
+        progressNote.push({ section: "Standardized Assessments", category: "objective", content: "Assessments not yet completed.", hasFlags: false, completeness: "Incomplete", completenessReason: "No assessments completed", provenance: "Structured Entry" });
       }
 
       // === OBJECTIVE: Medication Reconciliation (TAMPER: Medical Decision-Making) ===
@@ -331,15 +362,18 @@ export async function registerRoutes(
         if (medChanges.length > 0) {
           medContent += "\nChanges: " + medChanges.map(m => `${m.medicationName} (${m.status}${m.dosage ? ` ${m.dosage}` : ""})`).join("; ") + ".";
         }
+        const medHasHieSource = medRecon.some(m => m.source === "external");
         progressNote.push({
           section: "Medication Reconciliation",
           category: "objective",
           content: medContent,
           hasFlags: beersCount > 0 || interactionCount > 0,
           meatTags: ["Monitor", "Evaluate", "Treat"],
+          completeness: "Complete",
+          provenance: medHasHieSource ? "HIE Import" : "Structured Entry",
         });
       } else {
-        progressNote.push({ section: "Medication Reconciliation", category: "objective", content: "Medication reconciliation not yet completed.", hasFlags: false });
+        progressNote.push({ section: "Medication Reconciliation", category: "objective", content: "Medication reconciliation not yet completed.", hasFlags: false, completeness: "Incomplete", completenessReason: "No medications reconciled", provenance: "Structured Entry" });
       }
 
       // === ASSESSMENT & PLAN: Diagnoses with MEAT documentation (RADV critical) ===
@@ -419,6 +453,9 @@ export async function registerRoutes(
           content: apLines.join("\n\n"),
           hasFlags: hasMeatGap,
           meatTags: ["Monitor", "Evaluate", "Assess", "Treat"],
+          completeness: hasMeatGap ? "Incomplete" : "Complete",
+          completenessReason: hasMeatGap ? "MEAT documentation gaps detected" : undefined,
+          provenance: "Structured Entry",
         });
       } else {
         progressNote.push({
@@ -426,6 +463,9 @@ export async function registerRoutes(
           category: "assessment",
           content: "No diagnoses coded. Complete clinical intake and auto-coding to generate MEAT-compliant documentation for each diagnosis. [RADV: All submitted diagnosis codes require documented MEAT evidence]",
           hasFlags: true,
+          completeness: "Incomplete",
+          completenessReason: "No diagnoses coded",
+          provenance: "Structured Entry",
         });
       }
 
@@ -463,12 +503,17 @@ export async function registerRoutes(
       if (pendingMeasures.length > 0) {
         measuresContent += `\nPending: ${pendingMeasures.map((m: any) => m.itemId).join(", ")}`;
       }
+      const allMeasuresDone = completedMeasureCount >= checklistMeasures.length && checklistMeasures.length > 0;
+      const hasExceptionMeasures = utaMeasures.length > 0;
       progressNote.push({
         section: "Quality Measures (HEDIS/NCQA)",
         category: "quality",
         content: measuresContent,
         hasFlags: completedMeasureCount < checklistMeasures.length,
         meatTags: ["Monitor", "Evaluate"],
+        completeness: allMeasuresDone ? (hasExceptionMeasures ? "Exception" : "Complete") : (checklistMeasures.length === 0 ? "Incomplete" : "Incomplete"),
+        completenessReason: !allMeasuresDone ? `${pendingMeasures.length} measure(s) pending` : (hasExceptionMeasures ? `${utaMeasures.length} measure(s) marked unable to assess` : undefined),
+        provenance: "Structured Entry",
       });
 
       // === PLAN: Care Coordination & Follow-Up (TAMPER: Plan, Re-evaluation) ===
@@ -490,6 +535,8 @@ export async function registerRoutes(
           content: coordParts.join("\n"),
           hasFlags: tasks.some(t => t.priority === "urgent" || t.priority === "high"),
           meatTags: ["Treat"],
+          completeness: "Complete",
+          provenance: "Structured Entry",
         });
       }
 
@@ -508,6 +555,9 @@ export async function registerRoutes(
           content: cdsContent.trim(),
           hasFlags: pendingRecs.length > 0,
           meatTags: ["Evaluate", "Assess"],
+          completeness: pendingRecs.length > 0 ? "Incomplete" : "Complete",
+          completenessReason: pendingRecs.length > 0 ? `${pendingRecs.length} recommendation(s) pending review` : undefined,
+          provenance: "Structured Entry",
         });
       }
 
@@ -521,6 +571,9 @@ export async function registerRoutes(
           category: "plan",
           content: codeParts.join("\n"),
           hasFlags: activeCodes.some(c => !c.verified),
+          completeness: activeCodes.some(c => !c.verified) ? "Incomplete" : "Complete",
+          completenessReason: activeCodes.some(c => !c.verified) ? "Unverified codes present" : undefined,
+          provenance: "Structured Entry",
         });
       }
 
@@ -533,6 +586,9 @@ export async function registerRoutes(
         category: "attestation",
         content: attestationContent,
         hasFlags: !visit.signedAt,
+        completeness: visit.signedAt ? "Complete" : "Incomplete",
+        completenessReason: !visit.signedAt ? "Pending provider signature" : undefined,
+        provenance: "Structured Entry",
       });
 
       return res.json({
@@ -555,7 +611,127 @@ export async function registerRoutes(
         exclusions,
         consents,
         planPack,
+        alerts,
       });
+    } catch (err: any) {
+      return res.status(500).json({ message: err.message });
+    }
+  });
+
+  // Progress note text export (downloadable text file)
+  app.get("/api/visits/:id/progress-note/export", async (req, res) => {
+    try {
+      const visitId = req.params.id;
+      const visit = await storage.getVisit(visitId);
+      if (!visit) return res.status(404).json({ message: "Visit not found" });
+
+      const port = (httpServer.address() as any)?.port || 5000;
+      const host = req.headers.host || `localhost:${port}`;
+      const protocol = req.protocol || "http";
+      const overviewResponse = await fetch(`${protocol}://${host}/api/visits/${visitId}/overview`, {
+        headers: { cookie: req.headers.cookie || "" },
+      });
+      if (!overviewResponse.ok) {
+        return res.status(500).json({ message: "Failed to generate progress note" });
+      }
+      const overviewData = await overviewResponse.json() as any;
+      const progressNote = overviewData.progressNote || [];
+
+      const categoryLabels: Record<string, string> = {
+        header: "ENCOUNTER",
+        subjective: "SUBJECTIVE",
+        objective: "OBJECTIVE",
+        assessment: "ASSESSMENT & PLAN",
+        plan: "PLAN",
+        quality: "QUALITY MEASURES",
+        attestation: "ATTESTATION",
+      };
+      const categoryOrder = ["header", "subjective", "objective", "assessment", "plan", "quality", "attestation"];
+      const groupedNote = categoryOrder.map(cat => ({
+        category: cat,
+        label: categoryLabels[cat],
+        sections: progressNote.filter((s: any) => s.category === cat),
+      })).filter((g: any) => g.sections.length > 0);
+
+      const fullNoteText = groupedNote.map((g: any) => {
+        const header = `=== ${g.label} ===`;
+        const body = g.sections.map((s: any) => {
+          let text = `${s.section}:\n${s.content}`;
+          if (s.completeness) {
+            text += `\n[${s.completeness}${s.completenessReason ? ` - ${s.completenessReason}` : ""}]`;
+          }
+          if (s.provenance) {
+            text += `\nSource: ${s.provenance}`;
+          }
+          if (s.meatTags && s.meatTags.length > 0) {
+            text += `\n[MEAT: ${s.meatTags.join(", ")}]`;
+          }
+          return text;
+        }).join("\n\n");
+        return `${header}\n${body}`;
+      }).join("\n\n");
+
+      res.setHeader("Content-Type", "text/plain; charset=utf-8");
+      res.setHeader("Content-Disposition", `attachment; filename="progress-note-${visitId}.txt"`);
+      return res.send(fullNoteText);
+    } catch (err: any) {
+      return res.status(500).json({ message: err.message });
+    }
+  });
+
+  // Progress note structured JSON export
+  app.get("/api/visits/:id/progress-note/structured", async (req, res) => {
+    try {
+      const visitId = req.params.id;
+      const visit = await storage.getVisit(visitId);
+      if (!visit) return res.status(404).json({ message: "Visit not found" });
+
+      const port = (httpServer.address() as any)?.port || 5000;
+      const host = req.headers.host || `localhost:${port}`;
+      const protocol = req.protocol || "http";
+      const overviewResponse = await fetch(`${protocol}://${host}/api/visits/${visitId}/overview`, {
+        headers: { cookie: req.headers.cookie || "" },
+      });
+      if (!overviewResponse.ok) {
+        return res.status(500).json({ message: "Failed to generate progress note" });
+      }
+      const overviewData = await overviewResponse.json() as any;
+      const progressNote = overviewData.progressNote || [];
+
+      const categoryLabels: Record<string, string> = {
+        header: "ENCOUNTER",
+        subjective: "SUBJECTIVE",
+        objective: "OBJECTIVE",
+        assessment: "ASSESSMENT & PLAN",
+        plan: "PLAN",
+        quality: "QUALITY MEASURES",
+        attestation: "ATTESTATION",
+      };
+
+      const structured = {
+        visitId,
+        generatedAt: new Date().toISOString(),
+        sections: progressNote.map((s: any) => ({
+          section: s.section,
+          category: s.category,
+          categoryLabel: categoryLabels[s.category] || s.category,
+          content: s.content,
+          completeness: s.completeness || null,
+          completenessReason: s.completenessReason || null,
+          provenance: s.provenance || null,
+          hasFlags: s.hasFlags,
+          meatTags: s.meatTags || [],
+        })),
+        summary: {
+          totalSections: progressNote.length,
+          completeSections: progressNote.filter((s: any) => s.completeness === "Complete").length,
+          incompleteSections: progressNote.filter((s: any) => s.completeness === "Incomplete").length,
+          exceptionSections: progressNote.filter((s: any) => s.completeness === "Exception").length,
+          flaggedSections: progressNote.filter((s: any) => s.hasFlags).length,
+        },
+      };
+
+      return res.json(structured);
     } catch (err: any) {
       return res.status(500).json({ message: err.message });
     }
@@ -1009,7 +1185,107 @@ export async function registerRoutes(
         }
       }
 
-      return res.json(result);
+      let branchingTriggered: any[] = [];
+
+      if (status === "complete") {
+        try {
+          const assessmentDef = await storage.getAssessmentDefinition(instrumentId);
+          const branchingRules = assessmentDef?.branchingRules as any;
+          const visit = await storage.getVisit(req.params.id);
+
+          if (branchingRules && visit) {
+            if (branchingRules.conditionalQuestions && Array.isArray(branchingRules.conditionalQuestions)) {
+              for (const cq of branchingRules.conditionalQuestions) {
+                const answer = responses[cq.questionId];
+                if (answer && cq.condition) {
+                  const matches = cq.condition.answer
+                    ? (Array.isArray(cq.condition.answer)
+                        ? cq.condition.answer.includes(answer)
+                        : answer === cq.condition.answer)
+                    : false;
+                  if (matches) {
+                    const taskTitle = cq.taskTitle || cq.prompt;
+                    const taskType = cq.taskType || "referral";
+                    await storage.createTask({
+                      visitId: req.params.id,
+                      memberId: visit.memberId,
+                      taskType,
+                      title: taskTitle,
+                      description: cq.prompt,
+                      priority: cq.priority || "high",
+                      status: "pending",
+                    });
+                    branchingTriggered.push({
+                      type: "conditional_task",
+                      questionId: cq.questionId,
+                      task: taskTitle,
+                    });
+                  }
+                }
+              }
+            }
+
+            if (branchingRules.followUpAssessments && Array.isArray(branchingRules.followUpAssessments)) {
+              for (const fu of branchingRules.followUpAssessments) {
+                if (fu.condition && computedScore != null) {
+                  const triggered = evaluateCondition(
+                    computedScore,
+                    fu.condition.scoreThreshold,
+                    fu.condition.operator
+                  );
+                  if (triggered && fu.instrumentId !== "PHQ-9") {
+                    await storage.createRecommendation({
+                      visitId: req.params.id,
+                      ruleId: `branching-${instrumentId}-${fu.instrumentId}`,
+                      ruleName: `${instrumentId} Branching`,
+                      recommendation: fu.label || `Complete ${fu.instrumentId} assessment`,
+                      status: "pending",
+                      triggeredAt: new Date().toISOString(),
+                    });
+                    branchingTriggered.push({
+                      type: "follow_up_assessment",
+                      instrumentId: fu.instrumentId,
+                      label: fu.label,
+                    });
+                  }
+                }
+              }
+            }
+
+            if (branchingRules.conditionScreening && Array.isArray(branchingRules.conditionScreening)) {
+              const member = await storage.getMember(visit.memberId);
+              const memberConditions = member?.conditions || [];
+              for (const cs of branchingRules.conditionScreening) {
+                const hasCondition = memberConditions.some(
+                  (c: string) => c.toLowerCase().includes(cs.conditionKeyword.toLowerCase())
+                );
+                if (hasCondition) {
+                  for (const screening of cs.screenings) {
+                    await storage.createTask({
+                      visitId: req.params.id,
+                      memberId: visit.memberId,
+                      taskType: screening.taskType || "screening",
+                      title: screening.title,
+                      description: screening.description,
+                      priority: screening.priority || "medium",
+                      status: "pending",
+                    });
+                    branchingTriggered.push({
+                      type: "condition_screening",
+                      condition: cs.conditionKeyword,
+                      screening: screening.title,
+                    });
+                  }
+                }
+              }
+            }
+          }
+        } catch (branchErr) {
+          console.error("Branching logic evaluation failed:", branchErr);
+        }
+      }
+
+      return res.json({ ...result, branchingTriggered });
     } catch (err: any) {
       return res.status(500).json({ message: err.message });
     }
@@ -1837,15 +2113,26 @@ export async function registerRoutes(
         }
 
         if (matches) {
+          const now = new Date().toISOString();
           const rec = await storage.createRecommendation({
             visitId: req.params.id,
             ruleId: rule.ruleId,
             ruleName: rule.name,
             recommendation: rule.recommendedAction,
             status: "pending",
-            triggeredAt: new Date().toISOString(),
+            triggeredAt: now,
           });
-          triggered.push({ ...rec, priority: rule.priority, category: rule.category });
+          await storage.createVisitAlert({
+            visitId: req.params.id,
+            ruleId: rule.ruleId,
+            ruleName: rule.name,
+            severity: rule.severity || "warning",
+            message: rule.recommendedAction,
+            recommendedAction: rule.documentationPrompt || rule.recommendedAction,
+            status: "active",
+            triggeredAt: now,
+          });
+          triggered.push({ ...rec, priority: rule.priority, category: rule.category, severity: rule.severity });
         }
       }
 
@@ -2129,6 +2416,30 @@ export async function registerRoutes(
     try {
       const defs = await storage.getAllMeasureDefinitions();
       return res.json(defs);
+    } catch (err: any) {
+      return res.status(500).json({ message: err.message });
+    }
+  });
+
+  app.get("/api/admin/members", async (_req, res) => {
+    try {
+      const members = await storage.getAllMembers();
+      return res.json(members);
+    } catch (err: any) {
+      return res.status(500).json({ message: err.message });
+    }
+  });
+
+  app.patch("/api/admin/members/:id", async (req, res) => {
+    try {
+      const { planId, planPackId, planPackVersion } = req.body;
+      const updates: any = {};
+      if (planId !== undefined) updates.planId = planId;
+      if (planPackId !== undefined) updates.planPackId = planPackId;
+      if (planPackVersion !== undefined) updates.planPackVersion = planPackVersion;
+      const updated = await storage.updateMember(req.params.id, updates);
+      if (!updated) return res.status(404).json({ message: "Member not found" });
+      return res.json(updated);
     } catch (err: any) {
       return res.status(500).json({ message: err.message });
     }

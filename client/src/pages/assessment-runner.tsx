@@ -91,7 +91,7 @@ export default function AssessmentRunner() {
 
   const saveMutation = useMutation({
     mutationFn: async (opts: { status: string }) => {
-      await apiRequest("POST", `/api/visits/${visitId}/assessments`, {
+      const res = await apiRequest("POST", `/api/visits/${visitId}/assessments`, {
         instrumentId: assessmentId,
         instrumentVersion: definition?.version || "1.0",
         responses,
@@ -99,6 +99,7 @@ export default function AssessmentRunner() {
         interpretation: interpretation?.label || null,
         status: opts.status,
       });
+      const data = await res.json();
 
       if (opts.status === "complete") {
         await apiRequest("POST", `/api/visits/${visitId}/evaluate-rules`, {
@@ -107,13 +108,18 @@ export default function AssessmentRunner() {
         });
         await apiRequest("POST", `/api/visits/${visitId}/generate-codes`, {});
       }
+      return data;
     },
-    onSuccess: (_, vars) => {
+    onSuccess: (data, vars) => {
       queryClient.invalidateQueries({ queryKey: ["/api/visits", visitId] });
       queryClient.invalidateQueries({ queryKey: ["/api/visits", visitId, "recommendations"] });
       queryClient.invalidateQueries({ queryKey: ["/api/visits", visitId, "codes"] });
       queryClient.invalidateQueries({ queryKey: ["/api/visits", visitId, "overview"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/visits", visitId, "tasks"] });
       toast({ title: vars.status === "complete" ? "Assessment completed" : "Draft saved" });
+      if (vars.status === "complete" && data?.branchingTriggered?.length > 0) {
+        toast({ title: "Follow-up Recommended", description: "Follow-up assessments or referrals have been recommended based on assessment results." });
+      }
       if (vars.status === "complete") setLocation(`/visits/${visitId}/intake`);
     },
     onError: (err: any) => {

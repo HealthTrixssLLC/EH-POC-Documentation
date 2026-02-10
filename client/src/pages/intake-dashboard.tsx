@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useRoute, Link, useLocation } from "wouter";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
@@ -40,6 +40,12 @@ import {
   Trash2,
   Lock,
   Mic,
+  Download,
+  History,
+  Pen,
+  ChevronDown,
+  ChevronUp,
+  FileCheck,
 } from "lucide-react";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -88,6 +94,7 @@ export default function IntakeDashboard() {
   const [exclusionReason, setExclusionReason] = useState("");
   const [exclusionNotes, setExclusionNotes] = useState("");
   const [noteCopied, setNoteCopied] = useState(false);
+  const [editHistoryOpen, setEditHistoryOpen] = useState(false);
   const [newTask, setNewTask] = useState({
     taskType: "follow_up",
     title: "",
@@ -168,6 +175,16 @@ export default function IntakeDashboard() {
   const { data: visitAlerts = [] } = useQuery<VisitAlert[]>({
     queryKey: ["/api/visits", visitId, "alerts"],
     enabled: !!visitId,
+  });
+
+  const { data: noteEdits = [] } = useQuery<any[]>({
+    queryKey: ["/api/visits", visitId, "note-edits"],
+    enabled: !!visitId && editHistoryOpen,
+  });
+
+  const { data: noteSignatures = [] } = useQuery<any[]>({
+    queryKey: ["/api/visits", visitId, "note-signatures"],
+    enabled: !!visitId && editHistoryOpen,
   });
 
   const acknowledgeAlertMutation = useMutation({
@@ -330,6 +347,19 @@ export default function IntakeDashboard() {
     setNoteCopied(true);
     setTimeout(() => setNoteCopied(false), 2000);
   };
+
+  const downloadNote = () => {
+    if (!visitId) return;
+    window.open(`/api/visits/${visitId}/progress-note/export`, "_blank");
+  };
+
+  const noteCompletionSummary = useMemo(() => {
+    const total = progressNote.length;
+    const complete = progressNote.filter((s: any) => s.completeness === "Complete").length;
+    const incomplete = progressNote.filter((s: any) => s.completeness === "Incomplete").length;
+    const exception = progressNote.filter((s: any) => s.completeness === "Exception").length;
+    return { total, complete, incomplete, exception };
+  }, [progressNote]);
 
   const statusColors = {
     completed: { bg: "#27749315", border: "#277493", text: "#277493", icon: CheckCircle2 },
@@ -688,11 +718,22 @@ export default function IntakeDashboard() {
                   <Clipboard className="w-4 h-4" style={{ color: "#277493" }} />
                   <h2 className="text-sm font-semibold">Progress Note</h2>
                   <Badge variant="secondary" className="text-[10px]">MEAT/TAMPER</Badge>
+                  {noteCompletionSummary.total > 0 && (
+                    <Badge variant="secondary" className="text-[10px]" data-testid="badge-note-completion">
+                      {noteCompletionSummary.complete}/{noteCompletionSummary.total}
+                    </Badge>
+                  )}
                 </div>
-                <Button variant="ghost" size="sm" onClick={copyNote} data-testid="button-copy-note">
-                  {noteCopied ? <Check className="w-4 h-4 mr-1" /> : <Copy className="w-4 h-4 mr-1" />}
-                  {noteCopied ? "Copied" : "Copy"}
-                </Button>
+                <div className="flex items-center gap-1 flex-wrap">
+                  <Button variant="ghost" size="sm" onClick={downloadNote} data-testid="button-download-note">
+                    <Download className="w-4 h-4 mr-1" />
+                    Download
+                  </Button>
+                  <Button variant="ghost" size="sm" onClick={copyNote} data-testid="button-copy-note">
+                    {noteCopied ? <Check className="w-4 h-4 mr-1" /> : <Copy className="w-4 h-4 mr-1" />}
+                    {noteCopied ? "Copied" : "Copy"}
+                  </Button>
+                </div>
               </div>
               <p className="text-[11px] text-muted-foreground">RADV & NCQA compliant documentation</p>
             </CardHeader>
@@ -708,6 +749,21 @@ export default function IntakeDashboard() {
                       <div key={si} className="space-y-0.5" data-testid={`note-section-${group.category}-${si}`}>
                         <div className="flex items-center gap-2 flex-wrap">
                           <span className="text-xs font-semibold">{section.section}</span>
+                          {section.completeness && (
+                            <Badge
+                              variant={section.completeness === "Complete" ? "default" : section.completeness === "Exception" ? "secondary" : "destructive"}
+                              className="text-[9px] px-1.5 py-0"
+                              data-testid={`badge-completeness-${group.category}-${si}`}
+                            >
+                              {section.completeness === "Complete" ? (
+                                <><CheckCircle2 className="w-2.5 h-2.5 mr-0.5" />{section.completeness}</>
+                              ) : section.completeness === "Incomplete" ? (
+                                <><AlertCircle className="w-2.5 h-2.5 mr-0.5" />{section.completeness}{section.completenessReason ? ` - ${section.completenessReason}` : ""}</>
+                              ) : (
+                                <><Ban className="w-2.5 h-2.5 mr-0.5" />{section.completeness}{section.completenessReason ? ` - ${section.completenessReason}` : ""}</>
+                              )}
+                            </Badge>
+                          )}
                           {section.hasFlags && <AlertTriangle className="w-3 h-3 flex-shrink-0" style={{ color: "#FEA002" }} />}
                           {section.meatTags && section.meatTags.length > 0 && (
                             <div className="flex items-center gap-0.5 flex-wrap">
@@ -721,6 +777,11 @@ export default function IntakeDashboard() {
                           )}
                         </div>
                         <p className={`text-xs whitespace-pre-line ${section.hasFlags ? "font-medium" : "text-muted-foreground"}`}>{section.content}</p>
+                        {section.provenance && (
+                          <span className="text-[10px] text-muted-foreground italic" data-testid={`text-provenance-${group.category}-${si}`}>
+                            Source: {section.provenance}
+                          </span>
+                        )}
                       </div>
                     ))}
                   </div>
@@ -729,6 +790,88 @@ export default function IntakeDashboard() {
                 <p className="text-sm text-muted-foreground">Complete visit tasks to build the progress note.</p>
               )}
             </CardContent>
+          </Card>
+
+          {/* Edit History & Note Signatures */}
+          <Card>
+            <CardHeader className="pb-2">
+              <button
+                className="flex items-center justify-between gap-2 w-full text-left"
+                onClick={() => setEditHistoryOpen(!editHistoryOpen)}
+                data-testid="button-toggle-edit-history"
+              >
+                <div className="flex items-center gap-2">
+                  <History className="w-4 h-4" style={{ color: "#277493" }} />
+                  <h2 className="text-sm font-semibold">Edit History & Signatures</h2>
+                  {(noteEdits.length > 0 || noteSignatures.length > 0) && (
+                    <Badge variant="secondary" className="text-[10px]" data-testid="badge-edit-count">
+                      {noteEdits.length + noteSignatures.length}
+                    </Badge>
+                  )}
+                </div>
+                {editHistoryOpen ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+              </button>
+            </CardHeader>
+            {editHistoryOpen && (
+              <CardContent className="space-y-4 pt-0">
+                {noteEdits.length > 0 ? (
+                  <div className="space-y-2">
+                    <span className="text-[10px] font-bold uppercase tracking-widest" style={{ color: "#2E456B" }}>Edit History</span>
+                    {noteEdits.map((edit: any, i: number) => (
+                      <div key={edit.id || i} className="border border-border rounded-md p-2 space-y-1" data-testid={`edit-history-item-${i}`}>
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <Pen className="w-3 h-3 text-muted-foreground" />
+                          <span className="text-xs font-medium">{edit.section}</span>
+                          <span className="text-[10px] text-muted-foreground">by {edit.editedByName || "Unknown"}</span>
+                          <span className="text-[10px] text-muted-foreground">{edit.editedAt ? new Date(edit.editedAt).toLocaleString() : ""}</span>
+                        </div>
+                        {edit.editReason && (
+                          <p className="text-[11px] text-muted-foreground">Reason: {edit.editReason}</p>
+                        )}
+                        {edit.previousContent && edit.newContent && (
+                          <div className="space-y-1 mt-1">
+                            <div className="text-[10px] rounded p-1.5" style={{ backgroundColor: "rgba(220, 38, 38, 0.06)" }}>
+                              <span className="font-medium text-red-600 dark:text-red-400">Previous: </span>
+                              <span className="text-muted-foreground whitespace-pre-line">{edit.previousContent}</span>
+                            </div>
+                            <div className="text-[10px] rounded p-1.5" style={{ backgroundColor: "rgba(34, 197, 94, 0.06)" }}>
+                              <span className="font-medium text-green-600 dark:text-green-400">Updated: </span>
+                              <span className="text-muted-foreground whitespace-pre-line">{edit.newContent}</span>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-xs text-muted-foreground" data-testid="text-no-edits">No edit history available.</p>
+                )}
+
+                <Separator />
+
+                {noteSignatures.length > 0 ? (
+                  <div className="space-y-2">
+                    <span className="text-[10px] font-bold uppercase tracking-widest" style={{ color: "#2E456B" }}>Note Signatures</span>
+                    {noteSignatures.map((sig: any, i: number) => (
+                      <div key={sig.id || i} className="border border-border rounded-md p-2 space-y-1" data-testid={`note-signature-item-${i}`}>
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <FileCheck className="w-3 h-3 text-muted-foreground" />
+                          <Badge variant="secondary" className="text-[9px]">{sig.signatureType || "Signature"}</Badge>
+                          <span className="text-xs font-medium">{sig.signedByName || "Unknown"}</span>
+                          {sig.role && <span className="text-[10px] text-muted-foreground">({sig.role})</span>}
+                          <span className="text-[10px] text-muted-foreground">{sig.signedAt ? new Date(sig.signedAt).toLocaleString() : ""}</span>
+                        </div>
+                        {sig.attestationText && (
+                          <p className="text-[11px] text-muted-foreground italic">{sig.attestationText}</p>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-xs text-muted-foreground" data-testid="text-no-signatures">No signatures recorded.</p>
+                )}
+              </CardContent>
+            )}
           </Card>
         </div>
 

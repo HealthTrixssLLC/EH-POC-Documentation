@@ -8,8 +8,10 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
+import { Collapsible, CollapsibleTrigger, CollapsibleContent } from "@/components/ui/collapsible";
 import {
   ChevronLeft,
+  ChevronDown,
   CheckCircle2,
   XCircle,
   AlertTriangle,
@@ -254,14 +256,72 @@ export default function ReviewFinalize() {
             </p>
           ) : (
             <>
+              {(() => {
+                const flaggedCodes = activeCodes.filter((c: any) => {
+                  const ev = codeEvidence.find((e: any) => e.id === c.id);
+                  return ev?.evidenceStatus === "missing_evidence" || ev?.evidenceStatus === "partially_supported";
+                });
+                if (flaggedCodes.length === 0) return null;
+                const remediationMap: Record<string, string> = {
+                  vitals: `/visits/${visitId}/vitals`,
+                  assessments: `/visits/${visitId}/intake`,
+                  intake: `/visits/${visitId}/intake`,
+                };
+                const remediationSections = new Set<string>();
+                flaggedCodes.forEach((c: any) => {
+                  const ev = codeEvidence.find((e: any) => e.id === c.id);
+                  ev?.evidenceMap?.missing?.forEach((m: string) => {
+                    const lower = m.toLowerCase();
+                    if (lower.includes("vital")) remediationSections.add("vitals");
+                    if (lower.includes("assessment") || lower.includes("phq") || lower.includes("screening")) remediationSections.add("assessments");
+                  });
+                });
+                return (
+                  <div className="p-3 rounded-md border border-amber-300 dark:border-amber-600 space-y-2" data-testid="banner-missing-evidence">
+                    <div className="flex items-center gap-2">
+                      <AlertTriangle className="w-4 h-4 flex-shrink-0" style={{ color: "#FEA002" }} />
+                      <span className="text-sm font-medium" data-testid="text-missing-evidence-count">
+                        {flaggedCodes.length} code{flaggedCodes.length !== 1 ? "s" : ""} {flaggedCodes.length !== 1 ? "have" : "has"} missing or partial evidence
+                      </span>
+                    </div>
+                    <div className="ml-6 space-y-1">
+                      {flaggedCodes.map((c: any) => {
+                        const ev = codeEvidence.find((e: any) => e.id === c.id);
+                        return (
+                          <div key={c.id} className="flex items-center gap-2 text-xs" data-testid={`flagged-code-${c.code}`}>
+                            {ev?.evidenceStatus === "missing_evidence" ? (
+                              <XCircle className="w-3 h-3 flex-shrink-0 text-destructive" />
+                            ) : (
+                              <AlertTriangle className="w-3 h-3 flex-shrink-0" style={{ color: "#FEA002" }} />
+                            )}
+                            <Badge variant="outline" className="text-[10px] font-mono shrink-0">{c.code}</Badge>
+                            <span className="text-muted-foreground truncate">{c.description}</span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                    {remediationSections.size > 0 && (
+                      <div className="ml-6 flex items-center gap-2 flex-wrap">
+                        {Array.from(remediationSections).map((section) => (
+                          <Link key={section} href={remediationMap[section] || `/visits/${visitId}/intake`}>
+                            <Button variant="outline" size="sm" className="text-xs" data-testid={`link-remediate-${section}`}>
+                              Go to {section.charAt(0).toUpperCase() + section.slice(1)} <ArrowRight className="w-3 h-3 ml-1" />
+                            </Button>
+                          </Link>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                );
+              })()}
               {cptCodes.length > 0 && (
-                <CodeSection title="CPT Codes" codes={cptCodes} onVerify={verifyCodeMutation.mutate} onRemove={removeCodeMutation.mutate} evidenceMap={codeEvidence} />
+                <CodeSection title="CPT Codes" codes={cptCodes} onVerify={verifyCodeMutation.mutate} onRemove={removeCodeMutation.mutate} evidenceMap={codeEvidence} visitId={visitId} />
               )}
               {hcpcsCodes.length > 0 && (
-                <CodeSection title="HCPCS Codes" codes={hcpcsCodes} onVerify={verifyCodeMutation.mutate} onRemove={removeCodeMutation.mutate} evidenceMap={codeEvidence} />
+                <CodeSection title="HCPCS Codes" codes={hcpcsCodes} onVerify={verifyCodeMutation.mutate} onRemove={removeCodeMutation.mutate} evidenceMap={codeEvidence} visitId={visitId} />
               )}
               {icdCodes.length > 0 && (
-                <CodeSection title="ICD-10 Codes" codes={icdCodes} onVerify={verifyCodeMutation.mutate} onRemove={removeCodeMutation.mutate} evidenceMap={codeEvidence} />
+                <CodeSection title="ICD-10 Codes" codes={icdCodes} onVerify={verifyCodeMutation.mutate} onRemove={removeCodeMutation.mutate} evidenceMap={codeEvidence} visitId={visitId} />
               )}
             </>
           )}
@@ -630,14 +690,34 @@ function CodeSection({
   onVerify,
   onRemove,
   evidenceMap = [],
+  visitId,
 }: {
   title: string;
   codes: any[];
   onVerify: (data: { id: string; verified: boolean }) => void;
   onRemove: (id: string) => void;
   evidenceMap?: any[];
+  visitId?: string;
 }) {
-  const [expandedCode, setExpandedCode] = useState<string | null>(null);
+  const [openCodes, setOpenCodes] = useState<Set<string>>(new Set());
+
+  const toggleCode = (id: string) => {
+    setOpenCodes((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const getRemediationLinks = (missing: string[]) => {
+    const links: { label: string; href: string }[] = [];
+    const hasVitals = missing.some((m) => m.toLowerCase().includes("vital") || m.toLowerCase().includes("bmi") || m.toLowerCase().includes("blood pressure"));
+    const hasAssessments = missing.some((m) => m.toLowerCase().includes("assessment") || m.toLowerCase().includes("phq") || m.toLowerCase().includes("screening") || m.toLowerCase().includes("falls"));
+    if (hasVitals) links.push({ label: "Go to Vitals", href: `/visits/${visitId}/vitals` });
+    if (hasAssessments) links.push({ label: "Go to Assessments", href: `/visits/${visitId}/intake` });
+    return links;
+  };
 
   return (
     <div>
@@ -646,77 +726,148 @@ function CodeSection({
         {codes.map((code: any) => {
           const evidence = evidenceMap.find((e: any) => e.id === code.id);
           const evidenceStatus = evidence?.evidenceStatus;
-          const statusColor = evidenceStatus === "fully_supported" ? "#277493" : evidenceStatus === "partially_supported" ? "#FEA002" : evidenceStatus === "missing_evidence" ? "#E74C3C" : undefined;
-          const isExpanded = expandedCode === code.id;
+          const isOpen = openCodes.has(code.id);
 
           return (
-            <div key={code.id} className="rounded-md border" data-testid={`code-${code.codeType}-${code.code}`}>
-              <div className="flex items-center justify-between gap-3 p-2 flex-wrap">
-                <div className="flex items-center gap-2 min-w-0">
-                  <Badge variant={code.verified ? "default" : "secondary"} className="text-xs font-mono shrink-0">
-                    {code.code}
-                  </Badge>
-                  <span className="text-sm truncate">{code.description}</span>
-                  {code.source && (
-                    <Badge variant="outline" className="text-xs capitalize shrink-0">
-                      {code.source}
+            <Collapsible
+              key={code.id}
+              open={isOpen}
+              onOpenChange={() => toggleCode(code.id)}
+            >
+              <div className="rounded-md border" data-testid={`code-${code.codeType}-${code.code}`}>
+                <div className="flex items-center justify-between gap-3 p-2 flex-wrap">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <Badge variant={code.verified ? "default" : "secondary"} className="text-xs font-mono shrink-0">
+                      {code.code}
                     </Badge>
-                  )}
-                  {evidenceStatus && (
-                    <Badge
-                      variant="outline"
-                      className="text-[10px] shrink-0 cursor-pointer"
-                      style={{ borderColor: statusColor, color: statusColor }}
-                      onClick={() => setExpandedCode(isExpanded ? null : code.id)}
-                      data-testid={`badge-evidence-${code.code}`}
+                    <span className="text-sm truncate">{code.description}</span>
+                    {code.source && (
+                      <Badge variant="outline" className="text-xs capitalize shrink-0">
+                        {code.source}
+                      </Badge>
+                    )}
+                    {evidenceStatus === "fully_supported" && (
+                      <CollapsibleTrigger asChild>
+                        <Badge
+                          variant="outline"
+                          className="text-[10px] shrink-0 cursor-pointer gap-1"
+                          style={{ borderColor: "#16a34a", color: "#16a34a" }}
+                          data-testid={`badge-evidence-${code.code}`}
+                        >
+                          <CheckCircle2 className="w-3 h-3" />
+                          Fully Supported
+                        </Badge>
+                      </CollapsibleTrigger>
+                    )}
+                    {evidenceStatus === "partially_supported" && (
+                      <CollapsibleTrigger asChild>
+                        <Badge
+                          variant="outline"
+                          className="text-[10px] shrink-0 cursor-pointer gap-1"
+                          style={{ borderColor: "#FEA002", color: "#FEA002" }}
+                          data-testid={`badge-evidence-${code.code}`}
+                        >
+                          <AlertTriangle className="w-3 h-3" />
+                          Partially Supported
+                        </Badge>
+                      </CollapsibleTrigger>
+                    )}
+                    {evidenceStatus === "missing_evidence" && (
+                      <CollapsibleTrigger asChild>
+                        <Badge
+                          variant="outline"
+                          className="text-[10px] shrink-0 cursor-pointer gap-1"
+                          style={{ borderColor: "#E74C3C", color: "#E74C3C" }}
+                          data-testid={`badge-evidence-${code.code}`}
+                        >
+                          <XCircle className="w-3 h-3" />
+                          Missing Evidence
+                        </Badge>
+                      </CollapsibleTrigger>
+                    )}
+                    {code.triggerComponents && code.triggerComponents.length > 0 && (
+                      code.triggerComponents.map((trigger: string, idx: number) => (
+                        <Badge
+                          key={idx}
+                          variant="secondary"
+                          className="text-[10px] shrink-0"
+                          data-testid={`badge-trigger-${code.code}-${idx}`}
+                        >
+                          {trigger}
+                        </Badge>
+                      ))
+                    )}
+                  </div>
+                  <div className="flex items-center gap-1">
+                    {evidenceStatus && (
+                      <CollapsibleTrigger asChild>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          data-testid={`button-expand-${code.code}`}
+                        >
+                          <ChevronDown className={`w-4 h-4 text-muted-foreground transition-transform ${isOpen ? "rotate-180" : ""}`} />
+                        </Button>
+                      </CollapsibleTrigger>
+                    )}
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => onVerify({ id: code.id, verified: !code.verified })}
+                      data-testid={`button-verify-${code.code}`}
                     >
-                      {evidenceStatus === "fully_supported" ? "Supported" : evidenceStatus === "partially_supported" ? "Partial" : "Missing"}
-                    </Badge>
-                  )}
+                      <Check className={`w-4 h-4 ${code.verified ? "text-green-600" : "text-muted-foreground"}`} />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => onRemove(code.id)}
+                      data-testid={`button-remove-${code.code}`}
+                    >
+                      <Trash2 className="w-4 h-4 text-muted-foreground" />
+                    </Button>
+                  </div>
                 </div>
-                <div className="flex items-center gap-1">
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => onVerify({ id: code.id, verified: !code.verified })}
-                    data-testid={`button-verify-${code.code}`}
-                  >
-                    <Check className={`w-4 h-4 ${code.verified ? "text-green-600" : "text-muted-foreground"}`} />
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => onRemove(code.id)}
-                    data-testid={`button-remove-${code.code}`}
-                  >
-                    <Trash2 className="w-4 h-4 text-muted-foreground" />
-                  </Button>
-                </div>
-              </div>
-              {isExpanded && evidence?.evidenceMap && (
-                <div className="px-3 pb-3 space-y-1.5 border-t">
-                  <span className="text-[11px] font-medium text-muted-foreground mt-2 block">Evidence Requirements</span>
-                  {evidence.evidenceMap.requirements?.map((req: string, i: number) => {
-                    const satisfied = evidence.evidenceMap.satisfiedBy?.includes(req);
-                    return (
-                      <div key={i} className="flex items-center gap-2 text-xs" data-testid={`evidence-req-${i}`}>
-                        {satisfied ? (
-                          <CheckCircle2 className="w-3 h-3 flex-shrink-0 text-green-600" />
-                        ) : (
-                          <XCircle className="w-3 h-3 flex-shrink-0 text-destructive" />
-                        )}
-                        <span className={satisfied ? "text-muted-foreground" : ""}>{req}</span>
-                      </div>
-                    );
-                  })}
-                  {evidence.evidenceMap.missing?.length > 0 && (
-                    <div className="text-[11px] text-destructive mt-1">
-                      {evidence.evidenceMap.missing.length} requirement{evidence.evidenceMap.missing.length !== 1 ? "s" : ""} not yet satisfied
+                <CollapsibleContent>
+                  {evidence?.evidenceMap && (
+                    <div className="px-3 pb-3 space-y-2 border-t" data-testid={`evidence-detail-${code.code}`}>
+                      <span className="text-[11px] font-medium text-muted-foreground mt-2 block">Evidence Requirements</span>
+                      {evidence.evidenceMap.requirements?.map((req: string, i: number) => {
+                        const satisfied = evidence.evidenceMap.satisfiedBy?.includes(req);
+                        return (
+                          <div key={i} className="flex items-center gap-2 text-xs" data-testid={`evidence-req-${code.code}-${i}`}>
+                            {satisfied ? (
+                              <CheckCircle2 className="w-3 h-3 flex-shrink-0 text-green-600" />
+                            ) : (
+                              <XCircle className="w-3 h-3 flex-shrink-0 text-destructive" />
+                            )}
+                            <span className={satisfied ? "text-muted-foreground" : ""}>{req}</span>
+                          </div>
+                        );
+                      })}
+                      {evidence.evidenceMap.missing?.length > 0 && (
+                        <div className="space-y-2 mt-1">
+                          <div className="text-[11px] text-destructive">
+                            {evidence.evidenceMap.missing.length} requirement{evidence.evidenceMap.missing.length !== 1 ? "s" : ""} not yet satisfied
+                          </div>
+                          {visitId && (
+                            <div className="flex items-center gap-2 flex-wrap">
+                              {getRemediationLinks(evidence.evidenceMap.missing).map((link) => (
+                                <Link key={link.label} href={link.href}>
+                                  <Button variant="outline" size="sm" className="text-xs" data-testid={`link-remediate-${code.code}-${link.label.toLowerCase().replace(/\s+/g, "-")}`}>
+                                    {link.label} <ArrowRight className="w-3 h-3 ml-1" />
+                                  </Button>
+                                </Link>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      )}
                     </div>
                   )}
-                </div>
-              )}
-            </div>
+                </CollapsibleContent>
+              </div>
+            </Collapsible>
           );
         })}
       </div>

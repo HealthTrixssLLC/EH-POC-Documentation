@@ -403,6 +403,21 @@ export default function IntakeDashboard() {
           </div>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
+          <Link href={`/visits/${visitId}/intake/timeline`}>
+            <Button variant="outline" size="sm" data-testid="button-open-timeline">
+              <Activity className="w-4 h-4 mr-1" /> Clinical Timeline
+            </Button>
+          </Link>
+          <Link href={`/visits/${visitId}/intake/careplan`}>
+            <Button variant="outline" size="sm" data-testid="button-open-careplan">
+              <FileText className="w-4 h-4 mr-1" /> Full Care Plan
+            </Button>
+          </Link>
+          <Link href={`/visits/${visitId}/intake/voice-capture`}>
+            <Button variant="outline" size="sm" data-testid="button-open-voice-capture">
+              <Mic className="w-4 h-4 mr-1" /> Voice Capture
+            </Button>
+          </Link>
           <Link href={`/visits/${visitId}/intake/patient-context`}>
             <Button variant="outline" size="sm" data-testid="button-patient-context">
               <User className="w-4 h-4 mr-1" /> Patient Context
@@ -690,25 +705,6 @@ export default function IntakeDashboard() {
               )}
             </CardContent>
           </Card>
-
-          {/* Quick navigation */}
-          <div className="flex items-center gap-2 flex-wrap">
-            <Link href={`/visits/${visitId}/intake/timeline`}>
-              <Button variant="outline" size="sm" data-testid="button-open-timeline">
-                <Activity className="w-4 h-4 mr-1" /> Clinical Timeline
-              </Button>
-            </Link>
-            <Link href={`/visits/${visitId}/intake/careplan`}>
-              <Button variant="outline" size="sm" data-testid="button-open-careplan">
-                <FileText className="w-4 h-4 mr-1" /> Full Care Plan
-              </Button>
-            </Link>
-            <Link href={`/visits/${visitId}/intake/voice-capture`}>
-              <Button variant="outline" size="sm" data-testid="button-open-voice-capture">
-                <Mic className="w-4 h-4 mr-1" /> Voice Capture
-              </Button>
-            </Link>
-          </div>
 
           <Separator />
 

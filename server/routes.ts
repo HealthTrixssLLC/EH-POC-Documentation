@@ -3089,6 +3089,70 @@ ${transcript.text}`;
     }
   });
 
+  const vitalsFieldKeyMap: Record<string, string> = {
+    "vitals.systolicBp": "systolic",
+    "vitals.systolic": "systolic",
+    "vitals.diastolicBp": "diastolic",
+    "vitals.diastolic": "diastolic",
+    "vitals.heartRate": "heartRate",
+    "vitals.heart_rate": "heartRate",
+    "vitals.temperature": "temperature",
+    "vitals.oxygenSaturation": "oxygenSaturation",
+    "vitals.oxygen_saturation": "oxygenSaturation",
+    "vitals.respiratoryRate": "respiratoryRate",
+    "vitals.respiratory_rate": "respiratoryRate",
+    "vitals.weight": "weight",
+    "vitals.height": "height",
+    "vitals.bmi": "bmi",
+    "vitals.painLevel": "painLevel",
+    "vitals.pain_level": "painLevel",
+  };
+
+  const integerVitalsFields = new Set(["systolic", "diastolic", "heartRate", "respiratoryRate", "oxygenSaturation", "painLevel"]);
+  const floatVitalsFields = new Set(["temperature", "weight", "height", "bmi"]);
+
+  async function applyAcceptedFieldToVisit(field: any) {
+    if (!field || !field.visitId) return;
+    const value = field.editedValue || field.proposedValue;
+    if (!value) return;
+
+    if (field.category === "vitals" && field.fieldKey) {
+      const vitalCol = vitalsFieldKeyMap[field.fieldKey];
+      if (!vitalCol) return;
+
+      const existing = await storage.getVitalsByVisit(field.visitId);
+      const parsedValue = integerVitalsFields.has(vitalCol) ? parseInt(value) : floatVitalsFields.has(vitalCol) ? parseFloat(value) : value;
+      if (isNaN(parsedValue as number)) return;
+
+      const currentInferred = (existing?.voiceInferredFields as Record<string, any>) || {};
+      const updatedInferred = {
+        ...currentInferred,
+        [vitalCol]: {
+          fieldKey: field.fieldKey,
+          value: parsedValue,
+          confidence: field.confidence,
+          acceptedAt: new Date().toISOString(),
+          sourceSnippet: field.sourceSnippet?.substring(0, 200),
+        },
+      };
+
+      const vitalsUpdate: any = {
+        [vitalCol]: parsedValue,
+        voiceInferredFields: updatedInferred,
+      };
+
+      if (existing) {
+        await storage.updateVitals(existing.id, vitalsUpdate);
+      } else {
+        await storage.createVitals({
+          visitId: field.visitId,
+          ...vitalsUpdate,
+          recordedAt: new Date().toISOString(),
+        });
+      }
+    }
+  }
+
   app.patch("/api/extracted-fields/:id", async (req, res) => {
     try {
       const field = await storage.getExtractedField(req.params.id);
@@ -3097,8 +3161,17 @@ ${transcript.text}`;
       if (lockMsg) return res.status(403).json({ message: lockMsg });
       const updated = await storage.updateExtractedField(req.params.id, {
         ...req.body,
-        acceptedAt: req.body.status === "accepted" ? new Date().toISOString() : undefined,
+        acceptedAt: (req.body.status === "accepted" || req.body.status === "edited") ? new Date().toISOString() : undefined,
       });
+
+      if (updated && (updated.status === "accepted" || updated.status === "edited")) {
+        try {
+          await applyAcceptedFieldToVisit(updated);
+        } catch (applyErr) {
+          console.error("Failed to auto-apply field:", applyErr);
+        }
+      }
+
       return res.json(updated);
     } catch (err: any) {
       return res.status(500).json({ message: err.message });
@@ -3118,7 +3191,14 @@ ${transcript.text}`;
           acceptedByName,
           acceptedAt: new Date().toISOString(),
         });
-        if (updated) results.push(updated);
+        if (updated) {
+          results.push(updated);
+          try {
+            await applyAcceptedFieldToVisit(updated);
+          } catch (applyErr) {
+            console.error("Failed to auto-apply field:", applyErr);
+          }
+        }
       }
       return res.json({ accepted: results.length, fields: results });
     } catch (err: any) {

@@ -199,6 +199,7 @@ export const vitalsRecords = pgTable("vitals_records", {
   notes: text("notes"),
   recordedBy: varchar("recorded_by"),
   recordedAt: text("recorded_at"),
+  voiceInferredFields: jsonb("voice_inferred_fields"),
 });
 
 export const insertVitalsRecordSchema = createInsertSchema(vitalsRecords).omit({ id: true });

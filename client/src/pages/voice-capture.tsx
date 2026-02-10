@@ -812,6 +812,8 @@ function ExtractedFieldsPanel({ visitId, fields, transcripts, isLoading, user, a
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [`/api/visits/${visitId}/extracted-fields`] });
+      queryClient.invalidateQueries({ queryKey: ["/api/visits", visitId, "bundle"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/visits", visitId, "overview"] });
     },
     onError: (err: any) => {
       toast({ title: "Update failed", description: err.message, variant: "destructive" });
@@ -828,7 +830,9 @@ function ExtractedFieldsPanel({ visitId, fields, transcripts, isLoading, user, a
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [`/api/visits/${visitId}/extracted-fields`] });
-      toast({ title: "Fields accepted" });
+      queryClient.invalidateQueries({ queryKey: ["/api/visits", visitId, "bundle"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/visits", visitId, "overview"] });
+      toast({ title: "Fields accepted and applied to forms" });
     },
     onError: (err: any) => {
       toast({ title: "Bulk accept failed", description: err.message, variant: "destructive" });

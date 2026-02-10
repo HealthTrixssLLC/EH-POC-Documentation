@@ -32,6 +32,7 @@ import {
   ShieldAlert,
   Check,
   X,
+  Mic,
 } from "lucide-react";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -59,6 +60,7 @@ export default function VitalsExam() {
   });
 
   const existing = bundle?.vitals;
+  const voiceInferred: Record<string, any> = (existing?.voiceInferredFields as Record<string, any>) || {};
 
   const [form, setForm] = useState({
     systolic: "",
@@ -262,6 +264,7 @@ export default function VitalsExam() {
               overridden={!!overrides["systolic"]}
               onOverride={(w) => setOverrideDialog({ open: true, warning: w })}
               testId="input-systolic"
+              voiceInferred={voiceInferred["systolic"]}
             />
             <VitalField
               label="Diastolic BP (mmHg)"
@@ -273,6 +276,7 @@ export default function VitalsExam() {
               overridden={!!overrides["diastolic"]}
               onOverride={(w) => setOverrideDialog({ open: true, warning: w })}
               testId="input-diastolic"
+              voiceInferred={voiceInferred["diastolic"]}
             />
             <VitalField
               label="Heart Rate (bpm)"
@@ -284,6 +288,7 @@ export default function VitalsExam() {
               overridden={!!overrides["heartRate"]}
               onOverride={(w) => setOverrideDialog({ open: true, warning: w })}
               testId="input-heart-rate"
+              voiceInferred={voiceInferred["heartRate"]}
             />
             <VitalField
               label="Respiratory Rate (/min)"
@@ -295,6 +300,7 @@ export default function VitalsExam() {
               overridden={!!overrides["respiratoryRate"]}
               onOverride={(w) => setOverrideDialog({ open: true, warning: w })}
               testId="input-respiratory-rate"
+              voiceInferred={voiceInferred["respiratoryRate"]}
             />
             <VitalField
               label="Temperature (F)"
@@ -307,6 +313,7 @@ export default function VitalsExam() {
               onOverride={(w) => setOverrideDialog({ open: true, warning: w })}
               testId="input-temperature"
               step="0.1"
+              voiceInferred={voiceInferred["temperature"]}
             />
             <VitalField
               label="O2 Saturation (%)"
@@ -318,6 +325,7 @@ export default function VitalsExam() {
               overridden={!!overrides["oxygenSaturation"]}
               onOverride={(w) => setOverrideDialog({ open: true, warning: w })}
               testId="input-o2-sat"
+              voiceInferred={voiceInferred["oxygenSaturation"]}
             />
             <VitalField
               label="Weight (kg)"
@@ -330,6 +338,7 @@ export default function VitalsExam() {
               onOverride={(w) => setOverrideDialog({ open: true, warning: w })}
               testId="input-weight"
               step="0.1"
+              voiceInferred={voiceInferred["weight"]}
             />
             <VitalField
               label="Height (cm)"
@@ -342,6 +351,7 @@ export default function VitalsExam() {
               onOverride={(w) => setOverrideDialog({ open: true, warning: w })}
               testId="input-height"
               step="0.1"
+              voiceInferred={voiceInferred["height"]}
             />
             <VitalField
               label="Pain Level (0-10)"
@@ -355,6 +365,7 @@ export default function VitalsExam() {
               testId="input-pain"
               min="0"
               max="10"
+              voiceInferred={voiceInferred["painLevel"]}
             />
           </div>
         </CardContent>
@@ -474,7 +485,7 @@ export default function VitalsExam() {
 }
 
 function VitalField({
-  label, field, value, onChange, placeholder, warning, overridden, onOverride, testId, step, min, max,
+  label, field, value, onChange, placeholder, warning, overridden, onOverride, testId, step, min, max, voiceInferred,
 }: {
   label: string;
   field: string;
@@ -488,10 +499,24 @@ function VitalField({
   step?: string;
   min?: string;
   max?: string;
+  voiceInferred?: any;
 }) {
+  const isVoice = !!voiceInferred;
+
   return (
     <div className="space-y-2">
-      <Label>{label}</Label>
+      <div className="flex items-center gap-1.5">
+        <Label>{label}</Label>
+        {isVoice && (
+          <Badge
+            variant="outline"
+            className="text-[10px] border-violet-400 text-violet-600 dark:text-violet-400 dark:border-violet-500"
+            data-testid={`badge-voice-${field}`}
+          >
+            <Mic className="w-2.5 h-2.5 mr-0.5" /> Voice
+          </Badge>
+        )}
+      </div>
       <Input
         type="number"
         value={value}
@@ -500,9 +525,25 @@ function VitalField({
         step={step}
         min={min}
         max={max}
-        className={warning ? "border-destructive" : overridden ? "border-amber-400" : ""}
+        className={
+          warning
+            ? "border-destructive"
+            : overridden
+            ? "border-amber-400"
+            : isVoice
+            ? "border-violet-400 dark:border-violet-500 bg-violet-50 dark:bg-violet-950/30 ring-1 ring-violet-200 dark:ring-violet-800"
+            : ""
+        }
         data-testid={testId}
       />
+      {isVoice && !warning && (
+        <div className="flex items-center gap-1.5 text-xs text-violet-600 dark:text-violet-400" data-testid={`text-voice-source-${field}`}>
+          <Mic className="w-3 h-3 flex-shrink-0" />
+          <span>
+            Auto-filled from voice ({Math.round((voiceInferred.confidence || 0) * 100)}% confidence)
+          </span>
+        </div>
+      )}
       {warning && (
         <div className="flex items-start gap-2 p-2 rounded-md bg-destructive/10 border border-destructive/20">
           <AlertTriangle className="w-3.5 h-3.5 flex-shrink-0 text-destructive mt-0.5" />

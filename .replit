@@ -38,3 +38,8 @@ author = "agent"
 task = "shell.exec"
 args = "npm run dev"
 waitForPort = 5000
+
+[userenv]
+
+[userenv.shared]
+OPENAI_API_KEY = "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"

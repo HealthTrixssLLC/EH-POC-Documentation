@@ -788,6 +788,7 @@ export async function seedDatabase() {
   const today = new Date().toISOString().split("T")[0];
   const tomorrow = new Date(Date.now() + 86400000).toISOString().split("T")[0];
   const nextWeek = new Date(Date.now() + 7 * 86400000).toISOString().split("T")[0];
+  const nextWeekPlusOne = new Date(Date.now() + 8 * 86400000).toISOString().split("T")[0];
 
   const visit1 = await storage.createVisit({
     memberId: member1.id,
@@ -1278,19 +1279,557 @@ export async function seedDatabase() {
     updatedAt: new Date().toISOString(),
   });
 
+  // ==================== NEW MEMBERS 4-8 ====================
+
+  // Member 4 - James Chen
+  const member4 = await storage.createMember({
+    memberId: "MEM-004",
+    firstName: "James",
+    lastName: "Chen",
+    dob: "1940-06-12",
+    gender: "Male",
+    phone: "(555) 567-8901",
+    email: "james.chen@email.com",
+    address: "321 Veterans Blvd",
+    city: "Springfield",
+    state: "IL",
+    zip: "62704",
+    insurancePlan: "MA-PLAN-001",
+    planPackId: "MA-PLAN-001",
+    planPackVersion: "1.0",
+    pcp: "Dr. Angela Brooks",
+    conditions: ["Atrial Fibrillation", "Type 2 Diabetes", "Chronic Kidney Disease Stage 3", "Benign Prostatic Hyperplasia"],
+    medications: ["Eliquis 5mg BID", "Metformin 1000mg BID", "Losartan 50mg daily", "Tamsulosin 0.4mg daily", "Atorvastatin 40mg daily"],
+    allergies: ["Iodine contrast dye", "Codeine"],
+    riskFlags: ["Fall risk", "Anticoagulant therapy"],
+  });
+
+  // Member 5 - Beatrice Robinson
+  const member5 = await storage.createMember({
+    memberId: "MEM-005",
+    firstName: "Beatrice",
+    lastName: "Robinson",
+    dob: "1948-04-28",
+    gender: "Female",
+    phone: "(555) 678-9012",
+    email: "bea.robinson@email.com",
+    address: "567 Sunrise Court",
+    city: "Springfield",
+    state: "IL",
+    zip: "62705",
+    insurancePlan: "MA-PLAN-001",
+    planPackId: "MA-PLAN-001",
+    planPackVersion: "1.0",
+    pcp: "Dr. Thomas Wright",
+    conditions: ["COPD", "Osteoporosis", "Gastroesophageal Reflux", "Mild Cognitive Impairment"],
+    medications: ["Tiotropium 18mcg inhaler daily", "Alendronate 70mg weekly", "Omeprazole 20mg daily", "Calcium/Vitamin D supplement", "Albuterol PRN"],
+    allergies: ["Latex"],
+    riskFlags: ["Cognitive decline", "Fall risk", "Oxygen PRN"],
+  });
+
+  // Member 6 - Robert Williams
+  const member6 = await storage.createMember({
+    memberId: "MEM-006",
+    firstName: "Robert",
+    lastName: "Williams",
+    dob: "1955-09-03",
+    gender: "Male",
+    phone: "(555) 789-0123",
+    email: "robert.w@email.com",
+    address: "890 Industrial Park Way",
+    city: "Springfield",
+    state: "IL",
+    zip: "62706",
+    insurancePlan: "ACA-PLAN-001",
+    planPackId: "ACA-PLAN-001",
+    planPackVersion: "1.0",
+    pcp: "Dr. Karen Miller",
+    conditions: ["Morbid Obesity", "Obstructive Sleep Apnea", "Major Depressive Disorder", "Low Back Pain", "Prediabetes"],
+    medications: ["Sertraline 100mg daily", "Gabapentin 300mg TID", "Naproxen 500mg BID PRN", "Melatonin 5mg nightly"],
+    allergies: ["Amoxicillin", "NSAIDs (topical only)"],
+    riskFlags: ["BMI > 40", "Depression", "Chronic pain"],
+  });
+
+  // Member 7 - Gloria Sanchez
+  const member7 = await storage.createMember({
+    memberId: "MEM-007",
+    firstName: "Gloria",
+    lastName: "Sanchez",
+    dob: "1943-12-19",
+    gender: "Female",
+    phone: "(555) 890-1234",
+    email: "gloria.s@email.com",
+    address: "234 Mission Drive",
+    city: "Springfield",
+    state: "IL",
+    zip: "62707",
+    insurancePlan: "MA-PLAN-001",
+    planPackId: "MA-PLAN-001",
+    planPackVersion: "1.0",
+    pcp: "Dr. Eduardo Reyes",
+    conditions: ["Congestive Heart Failure", "Type 2 Diabetes with Neuropathy", "Hypothyroidism", "Peripheral Vascular Disease"],
+    medications: ["Furosemide 40mg daily", "Carvedilol 25mg BID", "Insulin Glargine 20 units nightly", "Levothyroxine 100mcg daily", "Gabapentin 300mg TID", "Aspirin 81mg daily"],
+    allergies: ["ACE inhibitors (cough)", "Metformin (GI intolerance)"],
+    riskFlags: ["Heart failure monitoring", "Insulin-dependent", "Fall risk", "Polypharmacy"],
+  });
+
+  // Member 8 - William Foster
+  const member8 = await storage.createMember({
+    memberId: "MEM-008",
+    firstName: "William",
+    lastName: "Foster",
+    dob: "1936-01-30",
+    gender: "Male",
+    phone: "(555) 901-2345",
+    email: "bill.foster@email.com",
+    address: "456 Heritage Lane",
+    city: "Springfield",
+    state: "IL",
+    zip: "62708",
+    insurancePlan: "MA-PLAN-001",
+    planPackId: "MA-PLAN-001",
+    planPackVersion: "1.0",
+    pcp: "Dr. Susan Park",
+    conditions: ["Parkinson's Disease", "Alzheimer's Disease (mild)", "Hypertension", "History of Falls", "Urinary Incontinence"],
+    medications: ["Carbidopa/Levodopa 25/100mg TID", "Donepezil 10mg daily", "Amlodipine 5mg daily", "Oxybutynin 5mg BID"],
+    allergies: ["Haloperidol", "Tramadol"],
+    riskFlags: ["High fall risk", "Cognitive impairment", "Caregiver dependent", "Polypharmacy"],
+  });
+
+  // Visits for Members 4-8
+  const visit4 = await storage.createVisit({
+    memberId: member4.id,
+    npUserId: np1.id,
+    status: "scheduled",
+    scheduledDate: today,
+    scheduledTime: "01:00 PM",
+    visitType: "annual_wellness",
+    planId: "MA-PLAN-001",
+    travelNotes: "Ranch-style home, wheelchair ramp at front",
+    safetyNotes: "On blood thinners - observe for bruising",
+  });
+
+  const visit5 = await storage.createVisit({
+    memberId: member5.id,
+    npUserId: np2.id,
+    status: "scheduled",
+    scheduledDate: tomorrow,
+    scheduledTime: "09:30 AM",
+    visitType: "annual_wellness",
+    planId: "MA-PLAN-001",
+    travelNotes: "Two-story townhome, lives on first floor only",
+    safetyNotes: "Mild confusion at times - daughter is primary caregiver, may be present",
+  });
+
+  const visit6 = await storage.createVisit({
+    memberId: member6.id,
+    npUserId: np1.id,
+    status: "scheduled",
+    scheduledDate: tomorrow,
+    scheduledTime: "02:00 PM",
+    visitType: "annual_wellness",
+    planId: "ACA-PLAN-001",
+    travelNotes: "Mobile home, narrow hallway",
+    safetyNotes: "CPAP user, may need bariatric-rated chair",
+  });
+
+  const visit7 = await storage.createVisit({
+    memberId: member7.id,
+    npUserId: np2.id,
+    status: "scheduled",
+    scheduledDate: nextWeek,
+    scheduledTime: "10:00 AM",
+    visitType: "annual_wellness",
+    planId: "MA-PLAN-001",
+    travelNotes: "Small cottage, lives with adult son, Spanish spoken at home",
+    safetyNotes: "Limited English proficiency - son translates, insulin in kitchen refrigerator",
+  });
+
+  const visit8 = await storage.createVisit({
+    memberId: member8.id,
+    npUserId: np1.id,
+    status: "scheduled",
+    scheduledDate: nextWeekPlusOne,
+    scheduledTime: "11:00 AM",
+    visitType: "annual_wellness",
+    planId: "MA-PLAN-001",
+    travelNotes: "Victorian home with front steps - use side entrance ramp",
+    safetyNotes: "Wife is caregiver, patient has tremor and gait instability",
+  });
+
+  // Visit 4 checklist (MA plan)
+  if (maPlanPack) {
+    for (const assessmentId of (maPlanPack.requiredAssessments || [])) {
+      const def = await storage.getAssessmentDefinition(assessmentId);
+      await storage.createChecklistItem({
+        visitId: visit4.id,
+        itemType: "assessment",
+        itemId: assessmentId,
+        itemName: def?.name || assessmentId,
+        status: "not_started",
+      });
+    }
+    for (const measureId of (maPlanPack.requiredMeasures || [])) {
+      const def = await storage.getMeasureDefinition(measureId);
+      await storage.createChecklistItem({
+        visitId: visit4.id,
+        itemType: "measure",
+        itemId: measureId,
+        itemName: def?.name || measureId,
+        status: "not_started",
+      });
+    }
+  }
+
+  // Visit 5 checklist (MA plan)
+  if (maPlanPack) {
+    for (const assessmentId of (maPlanPack.requiredAssessments || [])) {
+      const def = await storage.getAssessmentDefinition(assessmentId);
+      await storage.createChecklistItem({
+        visitId: visit5.id,
+        itemType: "assessment",
+        itemId: assessmentId,
+        itemName: def?.name || assessmentId,
+        status: "not_started",
+      });
+    }
+    for (const measureId of (maPlanPack.requiredMeasures || [])) {
+      const def = await storage.getMeasureDefinition(measureId);
+      await storage.createChecklistItem({
+        visitId: visit5.id,
+        itemType: "measure",
+        itemId: measureId,
+        itemName: def?.name || measureId,
+        status: "not_started",
+      });
+    }
+  }
+
+  // Visit 6 checklist (ACA plan)
+  if (acaPlanPack) {
+    for (const assessmentId of (acaPlanPack.requiredAssessments || [])) {
+      const def = await storage.getAssessmentDefinition(assessmentId);
+      await storage.createChecklistItem({
+        visitId: visit6.id,
+        itemType: "assessment",
+        itemId: assessmentId,
+        itemName: def?.name || assessmentId,
+        status: "not_started",
+      });
+    }
+    for (const measureId of (acaPlanPack.requiredMeasures || [])) {
+      const def = await storage.getMeasureDefinition(measureId);
+      await storage.createChecklistItem({
+        visitId: visit6.id,
+        itemType: "measure",
+        itemId: measureId,
+        itemName: def?.name || measureId,
+        status: "not_started",
+      });
+    }
+  }
+
+  // Visit 7 checklist (MA plan)
+  if (maPlanPack) {
+    for (const assessmentId of (maPlanPack.requiredAssessments || [])) {
+      const def = await storage.getAssessmentDefinition(assessmentId);
+      await storage.createChecklistItem({
+        visitId: visit7.id,
+        itemType: "assessment",
+        itemId: assessmentId,
+        itemName: def?.name || assessmentId,
+        status: "not_started",
+      });
+    }
+    for (const measureId of (maPlanPack.requiredMeasures || [])) {
+      const def = await storage.getMeasureDefinition(measureId);
+      await storage.createChecklistItem({
+        visitId: visit7.id,
+        itemType: "measure",
+        itemId: measureId,
+        itemName: def?.name || measureId,
+        status: "not_started",
+      });
+    }
+  }
+
+  // Visit 8 checklist (MA plan)
+  if (maPlanPack) {
+    for (const assessmentId of (maPlanPack.requiredAssessments || [])) {
+      const def = await storage.getAssessmentDefinition(assessmentId);
+      await storage.createChecklistItem({
+        visitId: visit8.id,
+        itemType: "assessment",
+        itemId: assessmentId,
+        itemName: def?.name || assessmentId,
+        status: "not_started",
+      });
+    }
+    for (const measureId of (maPlanPack.requiredMeasures || [])) {
+      const def = await storage.getMeasureDefinition(measureId);
+      await storage.createChecklistItem({
+        visitId: visit8.id,
+        itemType: "measure",
+        itemId: measureId,
+        itemName: def?.name || measureId,
+        status: "not_started",
+      });
+    }
+  }
+
+  // Plan Targets for Members 4-8
+  await storage.createPlanTarget({ memberId: member4.id, targetType: "care_gap", description: "INR monitoring overdue - last checked 3 months ago", priority: "high", source: "claims" });
+  await storage.createPlanTarget({ memberId: member4.id, targetType: "suspecting", description: "CKD progression monitoring - eGFR declining trend", priority: "high", source: "clinical" });
+  await storage.createPlanTarget({ memberId: member5.id, targetType: "care_gap", description: "Bone density scan overdue", priority: "high", source: "claims" });
+  await storage.createPlanTarget({ memberId: member5.id, targetType: "suspecting", description: "Cognitive decline - needs formal screening", priority: "medium", source: "clinical" });
+  await storage.createPlanTarget({ memberId: member6.id, targetType: "care_gap", description: "Depression follow-up PHQ-9 overdue", priority: "high", source: "claims" });
+  await storage.createPlanTarget({ memberId: member6.id, targetType: "suspecting", description: "Prediabetes progression - HbA1c trending up", priority: "medium", source: "clinical" });
+  await storage.createPlanTarget({ memberId: member7.id, targetType: "care_gap", description: "HbA1c not tested in 4 months", priority: "high", source: "claims" });
+  await storage.createPlanTarget({ memberId: member7.id, targetType: "care_gap", description: "Thyroid function monitoring overdue", priority: "medium", source: "claims" });
+  await storage.createPlanTarget({ memberId: member8.id, targetType: "care_gap", description: "Fall risk assessment overdue", priority: "high", source: "clinical" });
+  await storage.createPlanTarget({ memberId: member8.id, targetType: "suspecting", description: "Parkinson's progression - needs neurology follow-up", priority: "high", source: "clinical" });
+
+  // Care Plan Tasks for Members 4-8
+  await storage.createTask({
+    visitId: visit4.id,
+    memberId: member4.id,
+    taskType: "lab_order",
+    title: "Order INR and renal function panel",
+    description: "Check INR for anticoagulation monitoring and creatinine/eGFR for CKD Stage 3 follow-up",
+    priority: "high",
+    status: "pending",
+    dueDate: nextWeek,
+  });
+  await storage.createTask({
+    visitId: visit4.id,
+    memberId: member4.id,
+    taskType: "referral",
+    title: "Nephrology referral for CKD management",
+    description: "Refer to nephrology for declining eGFR and CKD Stage 3 management",
+    priority: "medium",
+    status: "pending",
+    dueDate: nextWeek,
+  });
+
+  await storage.createTask({
+    visitId: visit5.id,
+    memberId: member5.id,
+    taskType: "referral",
+    title: "Refer for DEXA bone density scan",
+    description: "Osteoporosis monitoring - bone density scan overdue",
+    priority: "high",
+    status: "pending",
+    dueDate: nextWeek,
+  });
+  await storage.createTask({
+    visitId: visit5.id,
+    memberId: member5.id,
+    taskType: "follow_up",
+    title: "Cognitive assessment follow-up",
+    description: "Schedule formal cognitive screening due to reported mild cognitive impairment",
+    priority: "medium",
+    status: "pending",
+    dueDate: nextWeek,
+  });
+
+  await storage.createTask({
+    visitId: visit6.id,
+    memberId: member6.id,
+    taskType: "lab_order",
+    title: "Order HbA1c and lipid panel",
+    description: "Monitor prediabetes progression and lipid levels given morbid obesity",
+    priority: "high",
+    status: "pending",
+    dueDate: nextWeek,
+  });
+
+  await storage.createTask({
+    visitId: visit7.id,
+    memberId: member7.id,
+    taskType: "lab_order",
+    title: "Order HbA1c, BNP, and TSH",
+    description: "Diabetes, heart failure, and thyroid monitoring labs",
+    priority: "high",
+    status: "pending",
+    dueDate: nextWeek,
+  });
+  await storage.createTask({
+    visitId: visit7.id,
+    memberId: member7.id,
+    taskType: "referral",
+    title: "Podiatry referral for diabetic foot exam",
+    description: "Annual diabetic foot examination for neuropathy assessment",
+    priority: "medium",
+    status: "pending",
+    dueDate: nextWeek,
+  });
+
+  await storage.createTask({
+    visitId: visit8.id,
+    memberId: member8.id,
+    taskType: "referral",
+    title: "Neurology follow-up for Parkinson's",
+    description: "Refer to neurology for Parkinson's disease progression evaluation and medication adjustment",
+    priority: "high",
+    status: "pending",
+    dueDate: nextWeek,
+  });
+  await storage.createTask({
+    visitId: visit8.id,
+    memberId: member8.id,
+    taskType: "follow_up",
+    title: "Home safety evaluation",
+    description: "Coordinate OT home safety evaluation given high fall risk and gait instability",
+    priority: "high",
+    status: "pending",
+    dueDate: nextWeek,
+  });
+
+  // Medication History for Members 4-8
+  // James Chen medications
+  await storage.createMedicationHistory({ memberId: member4.id, medicationName: "Eliquis", genericName: "Apixaban", dosage: "5mg", frequency: "Twice daily", route: "oral", prescriber: "Dr. Angela Brooks", startDate: "2022-08-15", endDate: null, status: "active", source: "practice", category: "cardiovascular", reason: "Atrial fibrillation anticoagulation" });
+  await storage.createMedicationHistory({ memberId: member4.id, medicationName: "Metformin", genericName: "Metformin HCl", dosage: "1000mg", frequency: "Twice daily", route: "oral", prescriber: "Dr. Angela Brooks", startDate: "2021-03-10", endDate: null, status: "active", source: "practice", category: "diabetes", reason: "Type 2 Diabetes management" });
+  await storage.createMedicationHistory({ memberId: member4.id, medicationName: "Losartan", genericName: "Losartan Potassium", dosage: "50mg", frequency: "Once daily", route: "oral", prescriber: "Dr. Angela Brooks", startDate: "2023-01-20", endDate: null, status: "active", source: "hie", category: "cardiovascular", reason: "Hypertension and renal protection for CKD" });
+  await storage.createMedicationHistory({ memberId: member4.id, medicationName: "Tamsulosin", genericName: "Tamsulosin HCl", dosage: "0.4mg", frequency: "Once daily", route: "oral", prescriber: "Dr. Angela Brooks", startDate: "2024-02-05", endDate: null, status: "active", source: "practice", category: "other", reason: "Benign prostatic hyperplasia symptom relief" });
+  await storage.createMedicationHistory({ memberId: member4.id, medicationName: "Atorvastatin", genericName: "Atorvastatin Calcium", dosage: "40mg", frequency: "Once daily", route: "oral", prescriber: "Dr. Angela Brooks", startDate: "2021-03-10", endDate: null, status: "active", source: "practice", category: "cardiovascular", reason: "Cholesterol management and cardiovascular risk reduction" });
+
+  // Beatrice Robinson medications
+  await storage.createMedicationHistory({ memberId: member5.id, medicationName: "Tiotropium Inhaler", genericName: "Tiotropium Bromide", dosage: "18mcg", frequency: "Once daily", route: "inhalation", prescriber: "Dr. Thomas Wright", startDate: "2022-05-15", endDate: null, status: "active", source: "practice", category: "respiratory", reason: "COPD maintenance therapy" });
+  await storage.createMedicationHistory({ memberId: member5.id, medicationName: "Alendronate", genericName: "Alendronate Sodium", dosage: "70mg", frequency: "Once weekly", route: "oral", prescriber: "Dr. Thomas Wright", startDate: "2023-04-10", endDate: null, status: "active", source: "practice", category: "other", reason: "Osteoporosis treatment" });
+  await storage.createMedicationHistory({ memberId: member5.id, medicationName: "Omeprazole", genericName: "Omeprazole", dosage: "20mg", frequency: "Once daily", route: "oral", prescriber: "Dr. Thomas Wright", startDate: "2023-09-01", endDate: null, status: "active", source: "hie", category: "other", reason: "Gastroesophageal reflux management" });
+  await storage.createMedicationHistory({ memberId: member5.id, medicationName: "Calcium/Vitamin D", genericName: "Calcium Carbonate/Cholecalciferol", dosage: "600mg/400IU", frequency: "Twice daily", route: "oral", prescriber: "Dr. Thomas Wright", startDate: "2023-04-10", endDate: null, status: "active", source: "practice", category: "other", reason: "Osteoporosis supplementation" });
+  await storage.createMedicationHistory({ memberId: member5.id, medicationName: "Prednisone", genericName: "Prednisone", dosage: "10mg", frequency: "Once daily taper", route: "oral", prescriber: "Dr. Thomas Wright", startDate: "2025-06-01", endDate: "2025-06-14", status: "discontinued", source: "practice", category: "respiratory", reason: "COPD exacerbation - short course completed" });
+
+  // Robert Williams medications
+  await storage.createMedicationHistory({ memberId: member6.id, medicationName: "Sertraline", genericName: "Sertraline HCl", dosage: "100mg", frequency: "Once daily", route: "oral", prescriber: "Dr. Karen Miller", startDate: "2023-02-15", endDate: null, status: "active", source: "practice", category: "mental_health", reason: "Major depressive disorder management" });
+  await storage.createMedicationHistory({ memberId: member6.id, medicationName: "Gabapentin", genericName: "Gabapentin", dosage: "300mg", frequency: "Three times daily", route: "oral", prescriber: "Dr. Karen Miller", startDate: "2024-01-10", endDate: null, status: "active", source: "practice", category: "pain", reason: "Chronic low back pain - neuropathic component" });
+  await storage.createMedicationHistory({ memberId: member6.id, medicationName: "Naproxen", genericName: "Naproxen Sodium", dosage: "500mg", frequency: "Twice daily as needed", route: "oral", prescriber: "Dr. Karen Miller", startDate: "2024-01-10", endDate: null, status: "active", source: "hie", category: "pain", reason: "Low back pain - anti-inflammatory" });
+  await storage.createMedicationHistory({ memberId: member6.id, medicationName: "Phentermine", genericName: "Phentermine HCl", dosage: "37.5mg", frequency: "Once daily", route: "oral", prescriber: "Dr. Karen Miller", startDate: "2024-06-01", endDate: "2024-12-01", status: "discontinued", source: "practice", category: "other", reason: "Weight management - discontinued due to elevated heart rate" });
+
+  // Gloria Sanchez medications
+  await storage.createMedicationHistory({ memberId: member7.id, medicationName: "Furosemide", genericName: "Furosemide", dosage: "40mg", frequency: "Once daily", route: "oral", prescriber: "Dr. Eduardo Reyes", startDate: "2021-09-15", endDate: null, status: "active", source: "practice", category: "cardiovascular", reason: "CHF fluid management" });
+  await storage.createMedicationHistory({ memberId: member7.id, medicationName: "Carvedilol", genericName: "Carvedilol", dosage: "25mg", frequency: "Twice daily", route: "oral", prescriber: "Dr. Eduardo Reyes", startDate: "2021-09-15", endDate: null, status: "active", source: "practice", category: "cardiovascular", reason: "Heart failure and rate control" });
+  await storage.createMedicationHistory({ memberId: member7.id, medicationName: "Insulin Glargine", genericName: "Insulin Glargine", dosage: "20 units", frequency: "Once nightly", route: "subcutaneous", prescriber: "Dr. Eduardo Reyes", startDate: "2023-03-01", endDate: null, status: "active", source: "practice", category: "diabetes", reason: "Type 2 Diabetes - insulin-dependent, metformin intolerant" });
+  await storage.createMedicationHistory({ memberId: member7.id, medicationName: "Levothyroxine", genericName: "Levothyroxine Sodium", dosage: "100mcg", frequency: "Once daily", route: "oral", prescriber: "Dr. Eduardo Reyes", startDate: "2020-06-20", endDate: null, status: "active", source: "hie", category: "thyroid", reason: "Hypothyroidism management" });
+  await storage.createMedicationHistory({ memberId: member7.id, medicationName: "Gabapentin", genericName: "Gabapentin", dosage: "300mg", frequency: "Three times daily", route: "oral", prescriber: "Dr. Eduardo Reyes", startDate: "2024-01-15", endDate: null, status: "active", source: "practice", category: "pain", reason: "Diabetic peripheral neuropathy pain" });
+
+  // William Foster medications
+  await storage.createMedicationHistory({ memberId: member8.id, medicationName: "Carbidopa/Levodopa", genericName: "Carbidopa/Levodopa", dosage: "25/100mg", frequency: "Three times daily", route: "oral", prescriber: "Dr. Susan Park", startDate: "2020-11-10", endDate: null, status: "active", source: "practice", category: "other", reason: "Parkinson's disease motor symptom management" });
+  await storage.createMedicationHistory({ memberId: member8.id, medicationName: "Donepezil", genericName: "Donepezil HCl", dosage: "10mg", frequency: "Once daily", route: "oral", prescriber: "Dr. Susan Park", startDate: "2023-06-15", endDate: null, status: "active", source: "practice", category: "other", reason: "Mild Alzheimer's disease cognitive support" });
+  await storage.createMedicationHistory({ memberId: member8.id, medicationName: "Amlodipine", genericName: "Amlodipine Besylate", dosage: "5mg", frequency: "Once daily", route: "oral", prescriber: "Dr. Susan Park", startDate: "2022-01-20", endDate: null, status: "active", source: "hie", category: "cardiovascular", reason: "Hypertension management" });
+  await storage.createMedicationHistory({ memberId: member8.id, medicationName: "Oxybutynin", genericName: "Oxybutynin Chloride", dosage: "5mg", frequency: "Twice daily", route: "oral", prescriber: "Dr. Susan Park", startDate: "2024-03-01", endDate: null, status: "active", source: "practice", category: "other", reason: "Urinary incontinence management" });
+  await storage.createMedicationHistory({ memberId: member8.id, medicationName: "Ropinirole", genericName: "Ropinirole HCl", dosage: "1mg", frequency: "Three times daily", route: "oral", prescriber: "Dr. Susan Park", startDate: "2021-05-01", endDate: "2023-06-01", status: "discontinued", source: "practice", category: "other", reason: "Parkinson's dopamine agonist - discontinued due to impulse control side effects" });
+
+  // Vitals History for Members 4-8 (4 quarterly readings each, last year)
+  // James Chen - AFib (irregular HR 78-95), CKD (slightly elevated BP), diabetes
+  await storage.createVitalsHistory({ memberId: member4.id, measureDate: "2025-02-15", systolic: 142, diastolic: 88, heartRate: 82, oxygenSaturation: 97, weight: 168.0, bmi: 24.8, temperature: 98.4, respiratoryRate: 16, source: "practice" });
+  await storage.createVitalsHistory({ memberId: member4.id, measureDate: "2025-05-20", systolic: 148, diastolic: 92, heartRate: 95, oxygenSaturation: 96, weight: 170.0, bmi: 25.1, temperature: 98.6, respiratoryRate: 17, source: "hie" });
+  await storage.createVitalsHistory({ memberId: member4.id, measureDate: "2025-08-18", systolic: 145, diastolic: 90, heartRate: 78, oxygenSaturation: 97, weight: 167.5, bmi: 24.7, temperature: 98.3, respiratoryRate: 16, source: "practice" });
+  await storage.createVitalsHistory({ memberId: member4.id, measureDate: "2025-11-12", systolic: 140, diastolic: 86, heartRate: 88, oxygenSaturation: 97, weight: 169.0, bmi: 24.9, temperature: 98.5, respiratoryRate: 16, source: "practice" });
+
+  // Beatrice Robinson - COPD (lower O2 94-96, higher RR 18-20), osteoporosis (low weight ~118-122 lbs)
+  await storage.createVitalsHistory({ memberId: member5.id, measureDate: "2025-02-10", systolic: 128, diastolic: 78, heartRate: 76, oxygenSaturation: 95, weight: 120.0, bmi: 21.2, temperature: 98.4, respiratoryRate: 19, source: "practice" });
+  await storage.createVitalsHistory({ memberId: member5.id, measureDate: "2025-05-15", systolic: 132, diastolic: 80, heartRate: 78, oxygenSaturation: 94, weight: 118.0, bmi: 20.8, temperature: 98.6, respiratoryRate: 20, source: "hie" });
+  await storage.createVitalsHistory({ memberId: member5.id, measureDate: "2025-08-20", systolic: 126, diastolic: 76, heartRate: 74, oxygenSaturation: 96, weight: 122.0, bmi: 21.5, temperature: 98.3, respiratoryRate: 18, source: "practice" });
+  await storage.createVitalsHistory({ memberId: member5.id, measureDate: "2025-11-18", systolic: 130, diastolic: 79, heartRate: 77, oxygenSaturation: 95, weight: 119.5, bmi: 21.1, temperature: 98.5, respiratoryRate: 19, source: "practice" });
+
+  // Robert Williams - Morbid obesity (weight 310-320 lbs, BMI 42-44, elevated BP)
+  await storage.createVitalsHistory({ memberId: member6.id, measureDate: "2025-02-12", systolic: 148, diastolic: 94, heartRate: 84, oxygenSaturation: 95, weight: 315.0, bmi: 43.0, temperature: 98.4, respiratoryRate: 18, source: "practice" });
+  await storage.createVitalsHistory({ memberId: member6.id, measureDate: "2025-05-18", systolic: 152, diastolic: 96, heartRate: 88, oxygenSaturation: 94, weight: 318.0, bmi: 43.4, temperature: 98.6, respiratoryRate: 19, source: "hie" });
+  await storage.createVitalsHistory({ memberId: member6.id, measureDate: "2025-08-22", systolic: 145, diastolic: 92, heartRate: 82, oxygenSaturation: 95, weight: 312.0, bmi: 42.6, temperature: 98.3, respiratoryRate: 18, source: "practice" });
+  await storage.createVitalsHistory({ memberId: member6.id, measureDate: "2025-11-15", systolic: 150, diastolic: 95, heartRate: 86, oxygenSaturation: 94, weight: 320.0, bmi: 43.7, temperature: 98.5, respiratoryRate: 19, source: "practice" });
+
+  // Gloria Sanchez - CHF (elevated HR 82-96, moderate BP, weight fluctuations 165-178 lbs indicating fluid)
+  await storage.createVitalsHistory({ memberId: member7.id, measureDate: "2025-02-14", systolic: 138, diastolic: 84, heartRate: 88, oxygenSaturation: 95, weight: 170.0, bmi: 29.2, temperature: 98.4, respiratoryRate: 18, source: "practice" });
+  await storage.createVitalsHistory({ memberId: member7.id, measureDate: "2025-05-20", systolic: 142, diastolic: 88, heartRate: 96, oxygenSaturation: 94, weight: 178.0, bmi: 30.6, temperature: 98.6, respiratoryRate: 20, source: "hie" });
+  await storage.createVitalsHistory({ memberId: member7.id, measureDate: "2025-08-18", systolic: 135, diastolic: 82, heartRate: 84, oxygenSaturation: 96, weight: 165.0, bmi: 28.4, temperature: 98.3, respiratoryRate: 17, source: "practice" });
+  await storage.createVitalsHistory({ memberId: member7.id, measureDate: "2025-11-22", systolic: 140, diastolic: 86, heartRate: 92, oxygenSaturation: 95, weight: 174.0, bmi: 29.9, temperature: 98.5, respiratoryRate: 19, source: "practice" });
+
+  // William Foster - Parkinson's (lower BP due to meds, variable HR, weight 155-162 lbs)
+  await storage.createVitalsHistory({ memberId: member8.id, measureDate: "2025-02-10", systolic: 118, diastolic: 72, heartRate: 68, oxygenSaturation: 97, weight: 160.0, bmi: 23.6, temperature: 98.4, respiratoryRate: 16, source: "practice" });
+  await storage.createVitalsHistory({ memberId: member8.id, measureDate: "2025-05-15", systolic: 112, diastolic: 68, heartRate: 74, oxygenSaturation: 97, weight: 157.0, bmi: 23.2, temperature: 98.6, respiratoryRate: 15, source: "hie" });
+  await storage.createVitalsHistory({ memberId: member8.id, measureDate: "2025-08-20", systolic: 122, diastolic: 74, heartRate: 66, oxygenSaturation: 98, weight: 155.0, bmi: 22.9, temperature: 98.3, respiratoryRate: 16, source: "practice" });
+  await storage.createVitalsHistory({ memberId: member8.id, measureDate: "2025-11-18", systolic: 116, diastolic: 70, heartRate: 72, oxygenSaturation: 97, weight: 162.0, bmi: 23.9, temperature: 98.5, respiratoryRate: 16, source: "practice" });
+
+  // Lab Results for Members 4-8
+  // James Chen labs - Creatinine (elevated 1.4-1.6), eGFR (low 42-48), HbA1c (7.5-8.2), INR (2.1-2.8), BUN
+  await storage.createLabResult({ memberId: member4.id, testName: "Creatinine", testCode: "2160-0", value: 1.6, unit: "mg/dL", referenceMin: 0.7, referenceMax: 1.3, status: "high", source: "practice", collectedDate: "2025-02-15", resultDate: "2025-02-17", orderingProvider: "Dr. Angela Brooks", category: "renal" });
+  await storage.createLabResult({ memberId: member4.id, testName: "eGFR", testCode: "33914-3", value: 42, unit: "mL/min/1.73m2", referenceMin: 60, referenceMax: 120, status: "low", source: "practice", collectedDate: "2025-02-15", resultDate: "2025-02-17", orderingProvider: "Dr. Angela Brooks", category: "renal" });
+  await storage.createLabResult({ memberId: member4.id, testName: "Hemoglobin A1c", testCode: "4548-4", value: 8.2, unit: "%", referenceMin: 4.0, referenceMax: 5.6, status: "high", source: "practice", collectedDate: "2025-02-15", resultDate: "2025-02-17", orderingProvider: "Dr. Angela Brooks", category: "diabetes" });
+  await storage.createLabResult({ memberId: member4.id, testName: "INR", testCode: "6301-6", value: 2.4, unit: "", referenceMin: 2.0, referenceMax: 3.0, status: "normal", source: "practice", collectedDate: "2025-02-15", resultDate: "2025-02-17", orderingProvider: "Dr. Angela Brooks", category: "hematology" });
+  await storage.createLabResult({ memberId: member4.id, testName: "BUN", testCode: "3094-0", value: 28, unit: "mg/dL", referenceMin: 7, referenceMax: 20, status: "high", source: "practice", collectedDate: "2025-02-15", resultDate: "2025-02-17", orderingProvider: "Dr. Angela Brooks", category: "metabolic" });
+  await storage.createLabResult({ memberId: member4.id, testName: "Creatinine", testCode: "2160-0", value: 1.5, unit: "mg/dL", referenceMin: 0.7, referenceMax: 1.3, status: "high", source: "hie", collectedDate: "2025-05-20", resultDate: "2025-05-22", orderingProvider: "Dr. Angela Brooks", category: "renal" });
+  await storage.createLabResult({ memberId: member4.id, testName: "eGFR", testCode: "33914-3", value: 44, unit: "mL/min/1.73m2", referenceMin: 60, referenceMax: 120, status: "low", source: "hie", collectedDate: "2025-05-20", resultDate: "2025-05-22", orderingProvider: "Dr. Angela Brooks", category: "renal" });
+  await storage.createLabResult({ memberId: member4.id, testName: "Hemoglobin A1c", testCode: "4548-4", value: 7.8, unit: "%", referenceMin: 4.0, referenceMax: 5.6, status: "high", source: "hie", collectedDate: "2025-05-20", resultDate: "2025-05-22", orderingProvider: "Dr. Angela Brooks", category: "diabetes" });
+  await storage.createLabResult({ memberId: member4.id, testName: "INR", testCode: "6301-6", value: 2.8, unit: "", referenceMin: 2.0, referenceMax: 3.0, status: "normal", source: "practice", collectedDate: "2025-08-18", resultDate: "2025-08-20", orderingProvider: "Dr. Angela Brooks", category: "hematology" });
+  await storage.createLabResult({ memberId: member4.id, testName: "Hemoglobin A1c", testCode: "4548-4", value: 7.5, unit: "%", referenceMin: 4.0, referenceMax: 5.6, status: "high", source: "practice", collectedDate: "2025-11-12", resultDate: "2025-11-14", orderingProvider: "Dr. Angela Brooks", category: "diabetes" });
+  await storage.createLabResult({ memberId: member4.id, testName: "Creatinine", testCode: "2160-0", value: 1.4, unit: "mg/dL", referenceMin: 0.7, referenceMax: 1.3, status: "high", source: "practice", collectedDate: "2025-11-12", resultDate: "2025-11-14", orderingProvider: "Dr. Angela Brooks", category: "renal" });
+  await storage.createLabResult({ memberId: member4.id, testName: "eGFR", testCode: "33914-3", value: 48, unit: "mL/min/1.73m2", referenceMin: 60, referenceMax: 120, status: "low", source: "practice", collectedDate: "2025-11-12", resultDate: "2025-11-14", orderingProvider: "Dr. Angela Brooks", category: "renal" });
+  await storage.createLabResult({ memberId: member4.id, testName: "INR", testCode: "6301-6", value: 2.1, unit: "", referenceMin: 2.0, referenceMax: 3.0, status: "normal", source: "practice", collectedDate: "2025-11-12", resultDate: "2025-11-14", orderingProvider: "Dr. Angela Brooks", category: "hematology" });
+
+  // Beatrice Robinson labs - CBC, Vitamin D (low 18-22), Calcium, TSH, Basic metabolic
+  await storage.createLabResult({ memberId: member5.id, testName: "Hemoglobin", testCode: "718-7", value: 12.4, unit: "g/dL", referenceMin: 12.0, referenceMax: 16.0, status: "normal", source: "practice", collectedDate: "2025-02-10", resultDate: "2025-02-12", orderingProvider: "Dr. Thomas Wright", category: "hematology" });
+  await storage.createLabResult({ memberId: member5.id, testName: "WBC", testCode: "6690-2", value: 7.2, unit: "K/uL", referenceMin: 4.5, referenceMax: 11.0, status: "normal", source: "practice", collectedDate: "2025-02-10", resultDate: "2025-02-12", orderingProvider: "Dr. Thomas Wright", category: "hematology" });
+  await storage.createLabResult({ memberId: member5.id, testName: "Vitamin D, 25-Hydroxy", testCode: "1989-3", value: 18, unit: "ng/mL", referenceMin: 30, referenceMax: 100, status: "low", source: "practice", collectedDate: "2025-02-10", resultDate: "2025-02-12", orderingProvider: "Dr. Thomas Wright", category: "metabolic" });
+  await storage.createLabResult({ memberId: member5.id, testName: "Calcium", testCode: "17861-6", value: 9.2, unit: "mg/dL", referenceMin: 8.5, referenceMax: 10.5, status: "normal", source: "practice", collectedDate: "2025-02-10", resultDate: "2025-02-12", orderingProvider: "Dr. Thomas Wright", category: "metabolic" });
+  await storage.createLabResult({ memberId: member5.id, testName: "TSH", testCode: "3016-3", value: 2.4, unit: "mIU/L", referenceMin: 0.4, referenceMax: 4.0, status: "normal", source: "practice", collectedDate: "2025-02-10", resultDate: "2025-02-12", orderingProvider: "Dr. Thomas Wright", category: "thyroid" });
+  await storage.createLabResult({ memberId: member5.id, testName: "Vitamin D, 25-Hydroxy", testCode: "1989-3", value: 20, unit: "ng/mL", referenceMin: 30, referenceMax: 100, status: "low", source: "hie", collectedDate: "2025-05-15", resultDate: "2025-05-17", orderingProvider: "Dr. Thomas Wright", category: "metabolic" });
+  await storage.createLabResult({ memberId: member5.id, testName: "Calcium", testCode: "17861-6", value: 9.4, unit: "mg/dL", referenceMin: 8.5, referenceMax: 10.5, status: "normal", source: "hie", collectedDate: "2025-05-15", resultDate: "2025-05-17", orderingProvider: "Dr. Thomas Wright", category: "metabolic" });
+  await storage.createLabResult({ memberId: member5.id, testName: "Creatinine", testCode: "2160-0", value: 0.9, unit: "mg/dL", referenceMin: 0.6, referenceMax: 1.1, status: "normal", source: "hie", collectedDate: "2025-05-15", resultDate: "2025-05-17", orderingProvider: "Dr. Thomas Wright", category: "metabolic" });
+  await storage.createLabResult({ memberId: member5.id, testName: "Vitamin D, 25-Hydroxy", testCode: "1989-3", value: 22, unit: "ng/mL", referenceMin: 30, referenceMax: 100, status: "low", source: "practice", collectedDate: "2025-08-20", resultDate: "2025-08-22", orderingProvider: "Dr. Thomas Wright", category: "metabolic" });
+  await storage.createLabResult({ memberId: member5.id, testName: "Hemoglobin", testCode: "718-7", value: 12.6, unit: "g/dL", referenceMin: 12.0, referenceMax: 16.0, status: "normal", source: "practice", collectedDate: "2025-11-18", resultDate: "2025-11-20", orderingProvider: "Dr. Thomas Wright", category: "hematology" });
+
+  // Robert Williams labs - HbA1c (5.8-6.2 prediabetes), Lipid panel (high triglycerides), Liver function, glucose
+  await storage.createLabResult({ memberId: member6.id, testName: "Hemoglobin A1c", testCode: "4548-4", value: 6.0, unit: "%", referenceMin: 4.0, referenceMax: 5.6, status: "high", source: "practice", collectedDate: "2025-02-12", resultDate: "2025-02-14", orderingProvider: "Dr. Karen Miller", category: "diabetes" });
+  await storage.createLabResult({ memberId: member6.id, testName: "Fasting Glucose", testCode: "1558-6", value: 112, unit: "mg/dL", referenceMin: 70, referenceMax: 100, status: "high", source: "practice", collectedDate: "2025-02-12", resultDate: "2025-02-14", orderingProvider: "Dr. Karen Miller", category: "diabetes" });
+  await storage.createLabResult({ memberId: member6.id, testName: "Triglycerides", testCode: "2571-8", value: 248, unit: "mg/dL", referenceMin: 0, referenceMax: 150, status: "high", source: "practice", collectedDate: "2025-02-12", resultDate: "2025-02-14", orderingProvider: "Dr. Karen Miller", category: "lipid" });
+  await storage.createLabResult({ memberId: member6.id, testName: "Total Cholesterol", testCode: "2093-3", value: 232, unit: "mg/dL", referenceMin: 0, referenceMax: 200, status: "high", source: "practice", collectedDate: "2025-02-12", resultDate: "2025-02-14", orderingProvider: "Dr. Karen Miller", category: "lipid" });
+  await storage.createLabResult({ memberId: member6.id, testName: "ALT", testCode: "1742-6", value: 42, unit: "U/L", referenceMin: 7, referenceMax: 35, status: "high", source: "practice", collectedDate: "2025-02-12", resultDate: "2025-02-14", orderingProvider: "Dr. Karen Miller", category: "metabolic" });
+  await storage.createLabResult({ memberId: member6.id, testName: "AST", testCode: "1920-8", value: 38, unit: "U/L", referenceMin: 10, referenceMax: 40, status: "normal", source: "practice", collectedDate: "2025-02-12", resultDate: "2025-02-14", orderingProvider: "Dr. Karen Miller", category: "metabolic" });
+  await storage.createLabResult({ memberId: member6.id, testName: "Hemoglobin A1c", testCode: "4548-4", value: 6.2, unit: "%", referenceMin: 4.0, referenceMax: 5.6, status: "high", source: "hie", collectedDate: "2025-05-18", resultDate: "2025-05-20", orderingProvider: "Dr. Karen Miller", category: "diabetes" });
+  await storage.createLabResult({ memberId: member6.id, testName: "Triglycerides", testCode: "2571-8", value: 262, unit: "mg/dL", referenceMin: 0, referenceMax: 150, status: "high", source: "hie", collectedDate: "2025-05-18", resultDate: "2025-05-20", orderingProvider: "Dr. Karen Miller", category: "lipid" });
+  await storage.createLabResult({ memberId: member6.id, testName: "Hemoglobin A1c", testCode: "4548-4", value: 5.8, unit: "%", referenceMin: 4.0, referenceMax: 5.6, status: "high", source: "practice", collectedDate: "2025-08-22", resultDate: "2025-08-24", orderingProvider: "Dr. Karen Miller", category: "diabetes" });
+  await storage.createLabResult({ memberId: member6.id, testName: "Fasting Glucose", testCode: "1558-6", value: 108, unit: "mg/dL", referenceMin: 70, referenceMax: 100, status: "high", source: "practice", collectedDate: "2025-11-15", resultDate: "2025-11-17", orderingProvider: "Dr. Karen Miller", category: "diabetes" });
+
+  // Gloria Sanchez labs - BNP (high 380-520), HbA1c (8.0-9.2), TSH, Creatinine, eGFR, Potassium
+  await storage.createLabResult({ memberId: member7.id, testName: "BNP", testCode: "42637-9", value: 520, unit: "pg/mL", referenceMin: 0, referenceMax: 100, status: "high", source: "practice", collectedDate: "2025-02-14", resultDate: "2025-02-16", orderingProvider: "Dr. Eduardo Reyes", category: "cardiac" });
+  await storage.createLabResult({ memberId: member7.id, testName: "Hemoglobin A1c", testCode: "4548-4", value: 9.2, unit: "%", referenceMin: 4.0, referenceMax: 5.6, status: "high", source: "practice", collectedDate: "2025-02-14", resultDate: "2025-02-16", orderingProvider: "Dr. Eduardo Reyes", category: "diabetes" });
+  await storage.createLabResult({ memberId: member7.id, testName: "TSH", testCode: "3016-3", value: 3.8, unit: "mIU/L", referenceMin: 0.4, referenceMax: 4.0, status: "normal", source: "practice", collectedDate: "2025-02-14", resultDate: "2025-02-16", orderingProvider: "Dr. Eduardo Reyes", category: "thyroid" });
+  await storage.createLabResult({ memberId: member7.id, testName: "Creatinine", testCode: "2160-0", value: 1.2, unit: "mg/dL", referenceMin: 0.6, referenceMax: 1.2, status: "normal", source: "practice", collectedDate: "2025-02-14", resultDate: "2025-02-16", orderingProvider: "Dr. Eduardo Reyes", category: "renal" });
+  await storage.createLabResult({ memberId: member7.id, testName: "eGFR", testCode: "33914-3", value: 58, unit: "mL/min/1.73m2", referenceMin: 60, referenceMax: 120, status: "low", source: "practice", collectedDate: "2025-02-14", resultDate: "2025-02-16", orderingProvider: "Dr. Eduardo Reyes", category: "renal" });
+  await storage.createLabResult({ memberId: member7.id, testName: "Potassium", testCode: "2823-3", value: 5.1, unit: "mEq/L", referenceMin: 3.5, referenceMax: 5.0, status: "high", source: "practice", collectedDate: "2025-02-14", resultDate: "2025-02-16", orderingProvider: "Dr. Eduardo Reyes", category: "metabolic" });
+  await storage.createLabResult({ memberId: member7.id, testName: "BNP", testCode: "42637-9", value: 480, unit: "pg/mL", referenceMin: 0, referenceMax: 100, status: "high", source: "hie", collectedDate: "2025-05-20", resultDate: "2025-05-22", orderingProvider: "Dr. Eduardo Reyes", category: "cardiac" });
+  await storage.createLabResult({ memberId: member7.id, testName: "Hemoglobin A1c", testCode: "4548-4", value: 8.5, unit: "%", referenceMin: 4.0, referenceMax: 5.6, status: "high", source: "hie", collectedDate: "2025-05-20", resultDate: "2025-05-22", orderingProvider: "Dr. Eduardo Reyes", category: "diabetes" });
+  await storage.createLabResult({ memberId: member7.id, testName: "BNP", testCode: "42637-9", value: 420, unit: "pg/mL", referenceMin: 0, referenceMax: 100, status: "high", source: "practice", collectedDate: "2025-08-18", resultDate: "2025-08-20", orderingProvider: "Dr. Eduardo Reyes", category: "cardiac" });
+  await storage.createLabResult({ memberId: member7.id, testName: "Hemoglobin A1c", testCode: "4548-4", value: 8.0, unit: "%", referenceMin: 4.0, referenceMax: 5.6, status: "high", source: "practice", collectedDate: "2025-11-22", resultDate: "2025-11-24", orderingProvider: "Dr. Eduardo Reyes", category: "diabetes" });
+  await storage.createLabResult({ memberId: member7.id, testName: "BNP", testCode: "42637-9", value: 380, unit: "pg/mL", referenceMin: 0, referenceMax: 100, status: "high", source: "practice", collectedDate: "2025-11-22", resultDate: "2025-11-24", orderingProvider: "Dr. Eduardo Reyes", category: "cardiac" });
+  await storage.createLabResult({ memberId: member7.id, testName: "Potassium", testCode: "2823-3", value: 4.8, unit: "mEq/L", referenceMin: 3.5, referenceMax: 5.0, status: "normal", source: "practice", collectedDate: "2025-11-22", resultDate: "2025-11-24", orderingProvider: "Dr. Eduardo Reyes", category: "metabolic" });
+
+  // William Foster labs - CBC, Basic metabolic, B12, Folate, Urinalysis
+  await storage.createLabResult({ memberId: member8.id, testName: "Hemoglobin", testCode: "718-7", value: 13.8, unit: "g/dL", referenceMin: 13.5, referenceMax: 17.5, status: "normal", source: "practice", collectedDate: "2025-02-10", resultDate: "2025-02-12", orderingProvider: "Dr. Susan Park", category: "hematology" });
+  await storage.createLabResult({ memberId: member8.id, testName: "WBC", testCode: "6690-2", value: 6.9, unit: "K/uL", referenceMin: 4.5, referenceMax: 11.0, status: "normal", source: "practice", collectedDate: "2025-02-10", resultDate: "2025-02-12", orderingProvider: "Dr. Susan Park", category: "hematology" });
+  await storage.createLabResult({ memberId: member8.id, testName: "Vitamin B12", testCode: "2132-9", value: 320, unit: "pg/mL", referenceMin: 200, referenceMax: 900, status: "normal", source: "practice", collectedDate: "2025-02-10", resultDate: "2025-02-12", orderingProvider: "Dr. Susan Park", category: "metabolic" });
+  await storage.createLabResult({ memberId: member8.id, testName: "Folate", testCode: "2284-8", value: 8.5, unit: "ng/mL", referenceMin: 3.0, referenceMax: 17.0, status: "normal", source: "practice", collectedDate: "2025-02-10", resultDate: "2025-02-12", orderingProvider: "Dr. Susan Park", category: "metabolic" });
+  await storage.createLabResult({ memberId: member8.id, testName: "Creatinine", testCode: "2160-0", value: 1.0, unit: "mg/dL", referenceMin: 0.7, referenceMax: 1.3, status: "normal", source: "practice", collectedDate: "2025-02-10", resultDate: "2025-02-12", orderingProvider: "Dr. Susan Park", category: "metabolic" });
+  await storage.createLabResult({ memberId: member8.id, testName: "Sodium", testCode: "2951-2", value: 140, unit: "mEq/L", referenceMin: 136, referenceMax: 145, status: "normal", source: "practice", collectedDate: "2025-02-10", resultDate: "2025-02-12", orderingProvider: "Dr. Susan Park", category: "metabolic" });
+  await storage.createLabResult({ memberId: member8.id, testName: "Vitamin B12", testCode: "2132-9", value: 310, unit: "pg/mL", referenceMin: 200, referenceMax: 900, status: "normal", source: "hie", collectedDate: "2025-05-15", resultDate: "2025-05-17", orderingProvider: "Dr. Susan Park", category: "metabolic" });
+  await storage.createLabResult({ memberId: member8.id, testName: "Hemoglobin", testCode: "718-7", value: 14.0, unit: "g/dL", referenceMin: 13.5, referenceMax: 17.5, status: "normal", source: "practice", collectedDate: "2025-08-20", resultDate: "2025-08-22", orderingProvider: "Dr. Susan Park", category: "hematology" });
+  await storage.createLabResult({ memberId: member8.id, testName: "Potassium", testCode: "2823-3", value: 4.3, unit: "mEq/L", referenceMin: 3.5, referenceMax: 5.0, status: "normal", source: "practice", collectedDate: "2025-08-20", resultDate: "2025-08-22", orderingProvider: "Dr. Susan Park", category: "metabolic" });
+  await storage.createLabResult({ memberId: member8.id, testName: "Creatinine", testCode: "2160-0", value: 1.1, unit: "mg/dL", referenceMin: 0.7, referenceMax: 1.3, status: "normal", source: "practice", collectedDate: "2025-11-18", resultDate: "2025-11-20", orderingProvider: "Dr. Susan Park", category: "metabolic" });
+
   console.log("Database seeded successfully!");
   console.log(`  - 6 users (2 NPs, 1 supervisor, 1 coordinator, 1 admin, 1 compliance)`);
-  console.log(`  - 3 members (patients)`);
-  console.log(`  - 3 visits with required checklists`);
+  console.log(`  - 8 members (patients)`);
+  console.log(`  - 8 visits with required checklists`);
   console.log(`  - 4 assessment definitions (PHQ-2, PHQ-9, PRAPARE, AWV)`);
   console.log(`  - 5 measure definitions (BCS, COL, CDC-A1C, CBP, FMC)`);
   console.log(`  - 2 plan packs (MA Standard, ACA Comprehensive)`);
-  console.log(`  - 6 plan targets`);
-  console.log(`  - 2 sample care plan tasks`);
+  console.log(`  - 16 plan targets`);
+  console.log(`  - 11 sample care plan tasks`);
   console.log(`  - 8 clinical decision rules`);
   console.log(`  - 60 diagnosis validation rules`);
-  console.log(`  - 24 vitals history records (8 per member, 2 years quarterly)`);
-  console.log(`  - 100 lab results (condition-appropriate, 2 years quarterly)`);
-  console.log(`  - 14 medication history records (active, discontinued, completed)`);
+  console.log(`  - 44 vitals history records`);
+  console.log(`  - 155+ lab results (condition-appropriate)`);
+  console.log(`  - 37 medication history records`);
   console.log(`  - 1 AI provider configuration (OpenAI default)`);
 }

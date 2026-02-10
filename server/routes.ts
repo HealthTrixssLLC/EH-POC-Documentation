@@ -3345,6 +3345,30 @@ export async function registerRoutes(
       }
     }
 
+    const colonoscopyMatch = text.match(/(?:colonoscopy|colon\s*screening|colorectal\s*screen(?:ing)?)\s*(?:was\s+)?(?:done|performed|completed|had\s+a)?\s*(?:on\s+|in\s+|at\s+)?(.+?)(?:\.|,|$)/i);
+    if (colonoscopyMatch) {
+      fields.push({
+        fieldKey: "screening.colonoscopy", fieldLabel: "Colonoscopy Screening", category: "screening",
+        proposedValue: colonoscopyMatch[0].trim(), confidence: 0.85, sourceSnippet: colonoscopyMatch[0].trim(),
+      });
+    } else {
+      const colonSimple = text.match(/(?:last\s+)?colonoscopy\b[^.]*(?:\.|$)/i);
+      if (colonSimple) {
+        fields.push({
+          fieldKey: "screening.colonoscopy", fieldLabel: "Colonoscopy Screening", category: "screening",
+          proposedValue: colonSimple[0].trim(), confidence: 0.8, sourceSnippet: colonSimple[0].trim(),
+        });
+      }
+    }
+
+    const mammogramMatch = text.match(/(?:mammogram|mammography|breast\s*(?:cancer\s*)?screen(?:ing)?)\s*(?:was\s+)?(?:done|performed|completed|had\s+a)?\s*(?:on\s+|in\s+|at\s+)?(.+?)(?:\.|,|$)/i);
+    if (mammogramMatch) {
+      fields.push({
+        fieldKey: "screening.mammogram", fieldLabel: "Mammogram Screening", category: "screening",
+        proposedValue: mammogramMatch[0].trim(), confidence: 0.85, sourceSnippet: mammogramMatch[0].trim(),
+      });
+    }
+
     return fields;
   }
 
@@ -3368,9 +3392,10 @@ export async function registerRoutes(
         const extractionPrompt = `You are a clinical data extraction assistant for in-home NP visits. Extract structured clinical data from the following visit transcript.
 
 Return a JSON array of extracted fields. Each field should have:
-- "fieldKey": a machine-readable key (e.g., "vitals.systolicBp", "vitals.diastolicBp", "vitals.heartRate", "vitals.temperature", "vitals.oxygenSaturation", "vitals.respiratoryRate", "vitals.weight", "vitals.height", "vitals.bmi", "vitals.painLevel", "assessment.phq2Score", "assessment.generalNotes", "medication.name", "condition.name")
-- "fieldLabel": a human-readable label (e.g., "Systolic Blood Pressure")
-- "category": one of "vitals", "assessment", "medication", "condition", "social", "plan"
+- "fieldKey": a machine-readable key (e.g., "vitals.systolicBp", "vitals.diastolicBp", "vitals.heartRate", "vitals.temperature", "vitals.oxygenSaturation", "vitals.respiratoryRate", "vitals.weight", "vitals.height", "vitals.bmi", "vitals.painLevel", "assessment.phq2Score", "assessment.generalNotes", "medication.name", "condition.name", "screening.colonoscopy", "screening.mammogram", "screening.col", "screening.bcs")
+- "fieldLabel": a human-readable label (e.g., "Systolic Blood Pressure", "Colonoscopy Screening")
+- "category": one of "vitals", "assessment", "medication", "condition", "screening", "social", "plan"
+- For screening fields (colonoscopy, mammogram, etc.), include the type of screening, date if mentioned, and any results/findings in the proposedValue
 - "proposedValue": the extracted value as a string
 - "confidence": confidence score 0.0-1.0
 - "sourceSnippet": the relevant text snippet from the transcript
@@ -3662,6 +3687,33 @@ ${transcript.text}`;
       const visit = await storage.getVisit(field.visitId);
       if (!visit) return;
 
+      if (field.fieldKey === "assessment.phq2Score") {
+        const existingPhq2 = await storage.getAssessmentResponsesByVisit(field.visitId);
+        const phq2Done = existingPhq2.some((r: any) => r.instrumentId === "PHQ-2");
+        if (!phq2Done) {
+          const scoreVal = parseInt(value);
+          if (!isNaN(scoreVal)) {
+            const q1 = Math.min(scoreVal, 3);
+            const q2 = Math.max(0, scoreVal - q1);
+            const totalScore = q1 + q2;
+            const interpretation = totalScore >= 3 ? "Positive screen - PHQ-9 recommended" : "Negative screen";
+            await storage.createAssessmentResponse({
+              visitId: field.visitId,
+              instrumentId: "PHQ-2",
+              instrumentVersion: "1.0",
+              responses: { q1: String(q1), q2: String(q2), _voiceSource: true, _sourceSnippet: field.sourceSnippet?.substring(0, 300) || "" },
+              computedScore: totalScore,
+              interpretation,
+              performerId: field.acceptedBy || visit.npUserId,
+              sourceContext: "voice_capture",
+              completedAt: new Date().toISOString(),
+              status: "complete",
+            });
+            await handleAssessmentCompletion(field.visitId, "PHQ-2", totalScore);
+          }
+        }
+      }
+
       if (field.fieldKey === "assessment.generalNotes") {
         const noteText = value.toLowerCase();
         const hasInterestLoss = noteText.includes("interest") || noteText.includes("pleasure") || noteText.includes("lack of interest");
@@ -3696,10 +3748,10 @@ ${transcript.text}`;
               instrumentId: "PHQ-2",
               instrumentVersion: "1.0",
               responses: {
-                q1_interest: { value: q1Score, label: "Little interest or pleasure in doing things" },
-                q2_depressed: { value: q2Score, label: "Feeling down, depressed, or hopeless" },
-                voiceSource: true,
-                sourceSnippet: field.sourceSnippet?.substring(0, 300) || value.substring(0, 300),
+                q1: String(q1Score),
+                q2: String(q2Score),
+                _voiceSource: true,
+                _sourceSnippet: field.sourceSnippet?.substring(0, 300) || value.substring(0, 300),
               },
               computedScore: totalScore,
               interpretation,
@@ -3713,6 +3765,108 @@ ${transcript.text}`;
           }
         }
       }
+    }
+
+    if (field.category === "screening" || field.category === "measure") {
+      const visit = await storage.getVisit(field.visitId);
+      if (!visit) return;
+
+      const measureKeyMap: Record<string, string> = {
+        "screening.colonoscopy": "COL",
+        "screening.col": "COL",
+        "screening.colorectal": "COL",
+        "screening.mammogram": "BCS",
+        "screening.bcs": "BCS",
+        "screening.breastCancer": "BCS",
+        "measure.col": "COL",
+        "measure.bcs": "BCS",
+        "measure.colonoscopy": "COL",
+        "measure.mammogram": "BCS",
+      };
+
+      const measureId = measureKeyMap[field.fieldKey] || field.fieldKey.replace("screening.", "").replace("measure.", "").toUpperCase();
+      const existing = await storage.getMeasureResult(field.visitId, measureId);
+
+      const screeningTypeMap: Record<string, string> = {
+        "colonoscopy": "Colonoscopy",
+        "fobt": "FOBT",
+        "fit": "FIT-DNA",
+        "fit-dna": "FIT-DNA",
+        "cologuard": "FIT-DNA",
+        "sigmoidoscopy": "Flexible Sigmoidoscopy",
+        "ct colonography": "CT Colonography",
+      };
+
+      let screeningType = "Colonoscopy";
+      let screeningResult = "";
+      let screeningDate = new Date().toISOString().split("T")[0];
+      const valLower = value.toLowerCase();
+
+      for (const [key, mapped] of Object.entries(screeningTypeMap)) {
+        if (valLower.includes(key)) {
+          screeningType = mapped;
+          break;
+        }
+      }
+
+      const resultPatterns: [RegExp, string][] = [
+        [/normal|no\s*polyps|negative|clear|unremarkable/i, "normal"],
+        [/polyps?\s*(found|removed|resected)/i, "polyps_removed"],
+        [/adenoma/i, "adenoma_found"],
+        [/positive/i, "positive"],
+        [/incomplete/i, "incomplete"],
+      ];
+      for (const [pat, result] of resultPatterns) {
+        if (pat.test(value)) {
+          screeningResult = result;
+          break;
+        }
+      }
+
+      const dateMatch = value.match(/(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{2,4})/);
+      if (dateMatch) {
+        const year = dateMatch[3].length === 2 ? `20${dateMatch[3]}` : dateMatch[3];
+        screeningDate = `${year}-${dateMatch[1].padStart(2, "0")}-${dateMatch[2].padStart(2, "0")}`;
+      }
+      const yearMatch = value.match(/(?:in\s+)?(\d{4})/);
+      if (!dateMatch && yearMatch) {
+        screeningDate = `${yearMatch[1]}-01-01`;
+      }
+
+      const evidence: Record<string, any> = {
+        screeningType,
+        screeningDate,
+        screeningResult: screeningResult || null,
+        notes: `Auto-populated from voice capture: ${value}`,
+        capturedAt: new Date().toISOString(),
+        voiceSource: true,
+        sourceSnippet: field.sourceSnippet?.substring(0, 300) || "",
+      };
+
+      if (existing) {
+        await storage.updateMeasureResult(existing.id, {
+          captureMethod: "voice_capture",
+          evidenceMetadata: evidence,
+          status: "complete",
+          completedAt: new Date().toISOString(),
+        });
+      } else {
+        await storage.createMeasureResult({
+          visitId: field.visitId,
+          measureId,
+          captureMethod: "voice_capture",
+          evidenceMetadata: evidence,
+          status: "complete",
+          completedAt: new Date().toISOString(),
+        });
+      }
+
+      const checkItem = await storage.getChecklistItemByVisitAndItem(field.visitId, measureId);
+      if (checkItem) {
+        await storage.updateChecklistItem(checkItem.id, { status: "complete", completedAt: new Date().toISOString() });
+      }
+
+      console.log(`Voice capture: ${measureId} measure result saved with screening type ${screeningType}, result: ${screeningResult || "not specified"}`);
     }
   }
 

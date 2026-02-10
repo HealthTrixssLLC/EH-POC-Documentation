@@ -53,7 +53,17 @@ export default function AssessmentRunner() {
 
   useEffect(() => {
     if (existingResponse?.responses) {
-      setResponses(existingResponse.responses as Record<string, string>);
+      const raw = existingResponse.responses as Record<string, any>;
+      const normalized: Record<string, string> = {};
+      for (const [key, val] of Object.entries(raw)) {
+        if (key.startsWith("_")) continue;
+        if (typeof val === "object" && val !== null && "value" in val) {
+          normalized[key] = String(val.value);
+        } else if (typeof val === "string" || typeof val === "number") {
+          normalized[key] = String(val);
+        }
+      }
+      setResponses(normalized);
     }
   }, [existingResponse]);
 

@@ -3461,6 +3461,38 @@ ${transcript.text}`;
           recordedAt: new Date().toISOString(),
         });
       }
+
+      try {
+        const visit = await storage.getVisit(field.visitId);
+        if (visit) {
+          const updatedVitals = await storage.getVitalsByVisit(field.visitId);
+          if (updatedVitals) {
+            const today = new Date().toISOString().split("T")[0];
+            const existingHistory = await storage.getVitalsHistoryByMember(visit.memberId);
+            const todayEntry = existingHistory.find((h: any) => h.measureDate === today && h.source === "practice");
+            const historyData: any = {
+              memberId: visit.memberId,
+              measureDate: today,
+              systolic: updatedVitals.systolic ?? null,
+              diastolic: updatedVitals.diastolic ?? null,
+              heartRate: updatedVitals.heartRate ?? null,
+              oxygenSaturation: updatedVitals.oxygenSaturation ?? null,
+              weight: updatedVitals.weight ?? null,
+              bmi: updatedVitals.bmi ?? null,
+              temperature: updatedVitals.temperature ?? null,
+              respiratoryRate: updatedVitals.respiratoryRate ?? null,
+              source: "practice",
+            };
+            if (todayEntry) {
+              await storage.updateVitalsHistory(todayEntry.id, historyData);
+            } else {
+              await storage.createVitalsHistory(historyData);
+            }
+          }
+        }
+      } catch (histErr) {
+        console.error("Sync voice vitals to history failed:", histErr);
+      }
     }
 
     if (field.category === "medication" && field.fieldKey === "medication.name") {

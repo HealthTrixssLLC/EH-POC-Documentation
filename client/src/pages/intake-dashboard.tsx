@@ -263,15 +263,14 @@ export default function IntakeDashboard() {
   const pendingTasks = tasks.filter((t: any) => t.status !== "completed");
   const completedTasks = tasks.filter((t: any) => t.status === "completed");
 
-  const identityRequired = overview?.planPack?.identityVerificationRequired === true;
   const objectiveSteps = [
-    ...(identityRequired ? [{
+    {
       id: "identity",
       label: "Identity Verification",
       href: `/visits/${visitId}/intake/identity`,
       done: visit?.identityVerified,
       required: true,
-    }] : []),
+    },
     {
       id: "vitals",
       label: "Vitals & Physical Exam",

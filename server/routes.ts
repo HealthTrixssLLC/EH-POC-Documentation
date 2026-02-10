@@ -1032,47 +1032,9 @@ export async function registerRoutes(
       // Auto-evaluate clinically-driven measures after vitals save
       try {
         if (visit) {
-          const allDefs = await storage.getAllMeasureDefinitions();
-          const vitalsDefs = allDefs.filter(d => (d as any).evaluationType === "clinical_data" && (d as any).dataSource === "vitals");
-          const checklist = await storage.getChecklistByVisit(req.params.id);
-          for (const def of vitalsDefs) {
-            if (def.measureId === "CBP") {
-              const checkItem = checklist.find(c => c.itemType === "measure" && c.itemId === "CBP");
-              if (!checkItem) continue;
-              const systolic = req.body.systolic ?? req.body.systolicBp;
-              const diastolic = req.body.diastolic ?? req.body.diastolicBp;
-              if (systolic != null && diastolic != null) {
-                const criteria = (def as any).clinicalCriteria || {};
-                const sMax = criteria.systolicMax || 140;
-                const dMax = criteria.diastolicMax || 90;
-                const controlled = systolic < sMax && diastolic < dMax;
-                const evidence = {
-                  systolic, diastolic, controlled,
-                  threshold: `<${sMax}/<${dMax}`,
-                  evaluatedAt: new Date().toISOString(),
-                  source: "visit_vitals",
-                  cptII: controlled ? "3074F" : "3075F",
-                  hcpcs: controlled ? "G8476" : "G8477",
-                };
-                const existingMr = await storage.getMeasureResult(req.params.id, "CBP");
-                if (existingMr) {
-                  await storage.updateMeasureResult(existingMr.id, {
-                    status: "complete", captureMethod: "clinical_data_vitals",
-                    evidenceMetadata: evidence, completedAt: new Date().toISOString(),
-                  });
-                } else {
-                  await storage.createMeasureResult({
-                    visitId: req.params.id, measureId: "CBP", status: "complete",
-                    result: controlled ? "controlled" : "not_controlled",
-                    value: `${systolic}/${diastolic} mmHg`,
-                    captureMethod: "clinical_data_vitals", evidenceMetadata: evidence,
-                    completedAt: new Date().toISOString(), evaluatedAt: new Date().toISOString(),
-                  });
-                }
-                await storage.updateChecklistItem(checkItem.id, { status: "complete", completedAt: new Date().toISOString() });
-              }
-            }
-          }
+          const systolic = req.body.systolic ?? req.body.systolicBp;
+          const diastolic = req.body.diastolic ?? req.body.diastolicBp;
+          await evaluateVitalsMeasures(req.params.id, { systolic, diastolic });
         }
       } catch (evalErr) {
         console.error("Auto-evaluate measures after vitals failed:", evalErr);
@@ -1124,10 +1086,7 @@ export async function registerRoutes(
         });
 
         if (status === "complete") {
-          const checkItem = await storage.getChecklistItemByVisitAndItem(req.params.id, instrumentId);
-          if (checkItem) {
-            await storage.updateChecklistItem(checkItem.id, { status: "complete", completedAt: new Date().toISOString() });
-          }
+          await handleAssessmentCompletion(req.params.id, instrumentId, computedScore ?? null);
           await storage.createAuditEvent({
             eventType: "assessment_completed",
             visitId: req.params.id,
@@ -1149,39 +1108,7 @@ export async function registerRoutes(
         });
 
         if (status === "complete") {
-          const checkItem = await storage.getChecklistItemByVisitAndItem(req.params.id, instrumentId);
-          if (checkItem) {
-            await storage.updateChecklistItem(checkItem.id, { status: "complete", completedAt: new Date().toISOString() });
-          }
-        }
-      }
-
-      // Conditional assessment dependencies: PHQ-2 triggers PHQ-9 when positive
-      if (instrumentId === "PHQ-2" && status === "complete") {
-        try {
-          const phq9Checklist = await storage.getChecklistItemByVisitAndItem(req.params.id, "PHQ-9");
-          if (computedScore != null && computedScore >= 3) {
-            if (!phq9Checklist) {
-              const phq9Def = await storage.getAssessmentDefinition("PHQ-9");
-              await storage.createChecklistItem({
-                visitId: req.params.id,
-                itemType: "assessment",
-                itemId: "PHQ-9",
-                itemName: phq9Def?.name || "PHQ-9 Depression Assessment",
-                status: "not_started",
-              });
-            }
-          } else {
-            if (phq9Checklist && phq9Checklist.status !== "complete") {
-              await storage.deleteChecklistItem(phq9Checklist.id);
-              const phq9Response = await storage.getAssessmentResponse(req.params.id, "PHQ-9");
-              if (phq9Response) {
-                await storage.updateAssessmentResponse(phq9Response.id, { status: "not_started" });
-              }
-            }
-          }
-        } catch (depErr) {
-          console.error("Conditional PHQ-9 dependency handling failed:", depErr);
+          await handleAssessmentCompletion(req.params.id, instrumentId, computedScore ?? null);
         }
       }
 
@@ -3400,6 +3327,90 @@ ${transcript.text}`;
     }
   });
 
+  async function evaluateVitalsMeasures(visitId: string, vitalsData: { systolic?: number | null; diastolic?: number | null }) {
+    try {
+      const systolic = vitalsData.systolic;
+      const diastolic = vitalsData.diastolic;
+      if (systolic == null || diastolic == null) return;
+
+      const allDefs = await storage.getAllMeasureDefinitions();
+      const vitalsDefs = allDefs.filter(d => (d as any).evaluationType === "clinical_data" && (d as any).dataSource === "vitals");
+      const checklist = await storage.getChecklistByVisit(visitId);
+
+      for (const def of vitalsDefs) {
+        if (def.measureId === "CBP") {
+          const checkItem = checklist.find(c => c.itemType === "measure" && c.itemId === "CBP");
+          if (!checkItem) continue;
+          const criteria = (def as any).clinicalCriteria || {};
+          const sMax = criteria.systolicMax || 140;
+          const dMax = criteria.diastolicMax || 90;
+          const controlled = systolic < sMax && diastolic < dMax;
+          const evidence = {
+            systolic, diastolic, controlled,
+            threshold: `<${sMax}/<${dMax}`,
+            evaluatedAt: new Date().toISOString(),
+            source: "visit_vitals",
+            cptII: controlled ? "3074F" : "3075F",
+            hcpcs: controlled ? "G8476" : "G8477",
+          };
+          const existingMr = await storage.getMeasureResult(visitId, "CBP");
+          if (existingMr) {
+            await storage.updateMeasureResult(existingMr.id, {
+              status: "complete", captureMethod: "clinical_data_vitals",
+              evidenceMetadata: evidence, completedAt: new Date().toISOString(),
+            });
+          } else {
+            await storage.createMeasureResult({
+              visitId, measureId: "CBP", status: "complete",
+              result: controlled ? "controlled" : "not_controlled",
+              value: `${systolic}/${diastolic} mmHg`,
+              captureMethod: "clinical_data_vitals", evidenceMetadata: evidence,
+              completedAt: new Date().toISOString(), evaluatedAt: new Date().toISOString(),
+            });
+          }
+          await storage.updateChecklistItem(checkItem.id, { status: "complete", completedAt: new Date().toISOString() });
+        }
+      }
+    } catch (err) {
+      console.error("evaluateVitalsMeasures failed:", err);
+    }
+  }
+
+  async function handleAssessmentCompletion(visitId: string, instrumentId: string, computedScore: number | null) {
+    try {
+      const checkItem = await storage.getChecklistItemByVisitAndItem(visitId, instrumentId);
+      if (checkItem) {
+        await storage.updateChecklistItem(checkItem.id, { status: "complete", completedAt: new Date().toISOString() });
+      }
+
+      if (instrumentId === "PHQ-2") {
+        const phq9Checklist = await storage.getChecklistItemByVisitAndItem(visitId, "PHQ-9");
+        if (computedScore != null && computedScore >= 3) {
+          if (!phq9Checklist) {
+            const phq9Def = await storage.getAssessmentDefinition("PHQ-9");
+            await storage.createChecklistItem({
+              visitId,
+              itemType: "assessment",
+              itemId: "PHQ-9",
+              itemName: phq9Def?.name || "PHQ-9 Depression Assessment",
+              status: "not_started",
+            });
+          }
+        } else {
+          if (phq9Checklist && phq9Checklist.status !== "complete") {
+            await storage.deleteChecklistItem(phq9Checklist.id);
+            const phq9Response = await storage.getAssessmentResponse(visitId, "PHQ-9");
+            if (phq9Response) {
+              await storage.updateAssessmentResponse(phq9Response.id, { status: "not_started" });
+            }
+          }
+        }
+      }
+    } catch (err) {
+      console.error("handleAssessmentCompletion failed:", err);
+    }
+  }
+
   const vitalsFieldKeyMap: Record<string, string> = {
     "vitals.systolicBp": "systolic",
     "vitals.systolic": "systolic",
@@ -3493,6 +3504,18 @@ ${transcript.text}`;
       } catch (histErr) {
         console.error("Sync voice vitals to history failed:", histErr);
       }
+
+      try {
+        const updatedVitals = await storage.getVitalsByVisit(field.visitId);
+        if (updatedVitals) {
+          await evaluateVitalsMeasures(field.visitId, {
+            systolic: updatedVitals.systolic,
+            diastolic: updatedVitals.diastolic,
+          });
+        }
+      } catch (evalErr) {
+        console.error("Voice vitals measure evaluation failed:", evalErr);
+      }
     }
 
     if (field.category === "medication" && field.fieldKey === "medication.name") {
@@ -3564,6 +3587,8 @@ ${transcript.text}`;
               completedAt: new Date().toISOString(),
               status: "complete",
             });
+
+            await handleAssessmentCompletion(field.visitId, "PHQ-2", totalScore);
           }
         }
       }

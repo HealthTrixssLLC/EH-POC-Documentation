@@ -3238,6 +3238,116 @@ export async function registerRoutes(
     }
   });
 
+  function fallbackExtractFields(text: string): any[] {
+    const fields: any[] = [];
+    const t = text.toLowerCase();
+
+    const bpMatch = text.match(/blood\s*pressure\s*(?:is\s*|of\s*|:?\s*)(\d{2,3})\s*(?:over|\/)\s*(\d{2,3})/i);
+    if (bpMatch) {
+      fields.push({
+        fieldKey: "vitals.systolicBp", fieldLabel: "Systolic Blood Pressure", category: "vitals",
+        proposedValue: bpMatch[1], confidence: 0.95, sourceSnippet: bpMatch[0],
+      });
+      fields.push({
+        fieldKey: "vitals.diastolicBp", fieldLabel: "Diastolic Blood Pressure", category: "vitals",
+        proposedValue: bpMatch[2], confidence: 0.95, sourceSnippet: bpMatch[0],
+      });
+    }
+
+    const hrMatch = text.match(/heart\s*rate\s*(?:is\s*|of\s*|:?\s*)(\d{2,3})/i);
+    if (hrMatch) {
+      fields.push({
+        fieldKey: "vitals.heartRate", fieldLabel: "Heart Rate", category: "vitals",
+        proposedValue: hrMatch[1], confidence: 0.95, sourceSnippet: hrMatch[0],
+      });
+    }
+
+    const rrMatch = text.match(/respiratory\s*rate\s*(?:is\s*|of\s*|:?\s*)(\d{1,2})/i);
+    if (rrMatch) {
+      fields.push({
+        fieldKey: "vitals.respiratoryRate", fieldLabel: "Respiratory Rate", category: "vitals",
+        proposedValue: rrMatch[1], confidence: 0.95, sourceSnippet: rrMatch[0],
+      });
+    }
+
+    const tempMatch = text.match(/temperature\s*(?:is\s*|of\s*|:?\s*)([\d.]+)/i);
+    if (tempMatch) {
+      fields.push({
+        fieldKey: "vitals.temperature", fieldLabel: "Temperature", category: "vitals",
+        proposedValue: tempMatch[1], confidence: 0.95, sourceSnippet: tempMatch[0],
+      });
+    }
+
+    const o2Match = text.match(/(?:oxygen\s*saturation|o2\s*sat|spo2|sp\s*o2)\s*(?:is\s*|of\s*|:?\s*)([\d.]+)\s*%?/i);
+    if (o2Match) {
+      fields.push({
+        fieldKey: "vitals.oxygenSaturation", fieldLabel: "Oxygen Saturation", category: "vitals",
+        proposedValue: o2Match[1], confidence: 0.95, sourceSnippet: o2Match[0],
+      });
+    }
+
+    const weightMatch = text.match(/weight\s*(?:is\s*|of\s*|:?\s*)([\d.]+)\s*(?:pounds?|lbs?|kg)?/i);
+    if (weightMatch) {
+      fields.push({
+        fieldKey: "vitals.weight", fieldLabel: "Weight", category: "vitals",
+        proposedValue: weightMatch[1], confidence: 0.9, sourceSnippet: weightMatch[0],
+      });
+    }
+
+    const heightMatch = text.match(/height\s*(?:is\s*|of\s*|:?\s*)(\d)\s*(?:feet|foot|ft|')\s*(\d{1,2})\s*(?:inches?|in|")?/i);
+    if (heightMatch) {
+      const totalInches = parseInt(heightMatch[1]) * 12 + parseInt(heightMatch[2]);
+      fields.push({
+        fieldKey: "vitals.height", fieldLabel: "Height", category: "vitals",
+        proposedValue: String(totalInches), confidence: 0.9, sourceSnippet: heightMatch[0],
+      });
+    }
+
+    const painMatch = text.match(/pain\s*(?:level|scale|score)?\s*(?:is\s*|of\s*|:?\s*)?(?:a\s*)?(\d{1,2})/i);
+    if (painMatch) {
+      fields.push({
+        fieldKey: "vitals.painLevel", fieldLabel: "Pain Level", category: "vitals",
+        proposedValue: painMatch[1], confidence: 0.9, sourceSnippet: painMatch[0],
+      });
+    }
+
+    const conditionPatterns = [
+      /(?:patient|pt)\s+(?:cannot|can't|unable\s+to)\s+([\w\s]+?)(?:\.|,|$)/gi,
+      /(?:patient|pt)\s+(?:has|reports?|presents?\s+with)\s+([\w\s]+?)(?:\.|,|$)/gi,
+    ];
+    for (const pat of conditionPatterns) {
+      let m;
+      while ((m = pat.exec(text)) !== null) {
+        const condition = m[1].trim();
+        if (condition.length > 2 && condition.length < 80) {
+          fields.push({
+            fieldKey: "condition.name", fieldLabel: "Condition", category: "condition",
+            proposedValue: condition, confidence: 0.7, sourceSnippet: m[0].trim(),
+          });
+        }
+      }
+    }
+
+    const notePatterns = [
+      /general\s+(?:physical\s+)?conditions?\s*[,:]\s*(.+?)(?:\.|$)/gi,
+      /(?:assessment|impression|findings?)\s*[,:]\s*(.+?)(?:\.|$)/gi,
+    ];
+    for (const pat of notePatterns) {
+      let m;
+      while ((m = pat.exec(text)) !== null) {
+        const note = m[1].trim();
+        if (note.length > 5) {
+          fields.push({
+            fieldKey: "assessment.generalNotes", fieldLabel: "General Assessment Notes", category: "assessment",
+            proposedValue: note, confidence: 0.7, sourceSnippet: m[0].trim(),
+          });
+        }
+      }
+    }
+
+    return fields;
+  }
+
   app.post("/api/visits/:id/extract", async (req, res) => {
     try {
       const lockMsg = await checkVisitLock(req.params.id);
@@ -3279,10 +3389,21 @@ ${transcript.text}`;
         let fieldsData: any[] = [];
         try {
           const content = result.choices[0]?.message?.content || "{}";
+          console.log("AI extraction raw response:", content.substring(0, 500));
           const parsed = JSON.parse(content);
-          fieldsData = Array.isArray(parsed) ? parsed : (parsed.fields || parsed.extractedFields || parsed.data || []);
+          if (Array.isArray(parsed)) {
+            fieldsData = parsed;
+          } else {
+            const firstArrayKey = Object.keys(parsed).find(k => Array.isArray(parsed[k]));
+            fieldsData = firstArrayKey ? parsed[firstArrayKey] : (parsed.fields || parsed.extractedFields || parsed.extracted_fields || parsed.data || parsed.results || []);
+          }
         } catch {
           return res.status(502).json({ message: "AI returned invalid JSON for extraction" });
+        }
+
+        if (fieldsData.length === 0) {
+          fieldsData = fallbackExtractFields(transcript.text);
+          console.log(`AI returned 0 fields, fallback extracted ${fieldsData.length} fields`);
         }
 
         const insertFields = fieldsData.map((f: any) => ({

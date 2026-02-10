@@ -3462,6 +3462,80 @@ ${transcript.text}`;
         });
       }
     }
+
+    if (field.category === "medication" && field.fieldKey === "medication.name") {
+      const visit = await storage.getVisit(field.visitId);
+      if (!visit) return;
+      const existingMeds = await storage.getMedReconciliationByVisit(field.visitId);
+      const alreadyExists = existingMeds.some(
+        (m: any) => m.medicationName.toLowerCase() === value.toLowerCase()
+      );
+      if (!alreadyExists) {
+        await storage.createMedReconciliation({
+          visitId: field.visitId,
+          memberId: visit.memberId,
+          medicationName: value,
+          status: "active",
+          source: "voice_capture",
+          notes: `Auto-populated from voice transcription (confidence: ${field.confidence})`,
+        });
+      }
+    }
+
+    if (field.category === "assessment" && field.fieldKey) {
+      const visit = await storage.getVisit(field.visitId);
+      if (!visit) return;
+
+      if (field.fieldKey === "assessment.generalNotes") {
+        const noteText = value.toLowerCase();
+        const hasInterestLoss = noteText.includes("interest") || noteText.includes("pleasure") || noteText.includes("lack of interest");
+        const hasDepression = noteText.includes("down") || noteText.includes("depress") || noteText.includes("hopeless");
+
+        if (hasInterestLoss || hasDepression) {
+          const existingPhq2 = await storage.getAssessmentResponsesByVisit(field.visitId);
+          const phq2Done = existingPhq2.some((r: any) => r.instrumentId === "PHQ-2");
+          if (!phq2Done) {
+            let q1Score = 0;
+            let q2Score = 0;
+            if (noteText.includes("several") || noteText.includes("more than half") || noteText.includes("sometimes")) {
+              q1Score = hasInterestLoss ? 1 : 0;
+              q2Score = hasDepression ? 1 : 0;
+            }
+            if (noteText.includes("more than half") || noteText.includes("often") || noteText.includes("frequently")) {
+              q1Score = hasInterestLoss ? 2 : q1Score;
+              q2Score = hasDepression ? 2 : q2Score;
+            }
+            if (noteText.includes("nearly every day") || noteText.includes("always") || noteText.includes("constantly")) {
+              q1Score = hasInterestLoss ? 3 : q1Score;
+              q2Score = hasDepression ? 3 : q2Score;
+            }
+            if (q1Score === 0 && hasInterestLoss) q1Score = 1;
+            if (q2Score === 0 && hasDepression) q2Score = 1;
+
+            const totalScore = q1Score + q2Score;
+            const interpretation = totalScore >= 3 ? "Positive screen - PHQ-9 recommended" : "Negative screen";
+
+            await storage.createAssessmentResponse({
+              visitId: field.visitId,
+              instrumentId: "PHQ-2",
+              instrumentVersion: "1.0",
+              responses: {
+                q1_interest: { value: q1Score, label: "Little interest or pleasure in doing things" },
+                q2_depressed: { value: q2Score, label: "Feeling down, depressed, or hopeless" },
+                voiceSource: true,
+                sourceSnippet: field.sourceSnippet?.substring(0, 300) || value.substring(0, 300),
+              },
+              computedScore: totalScore,
+              interpretation,
+              performerId: field.acceptedBy || visit.npUserId,
+              sourceContext: "voice_capture",
+              completedAt: new Date().toISOString(),
+              status: "complete",
+            });
+          }
+        }
+      }
+    }
   }
 
   app.patch("/api/extracted-fields/:id", async (req, res) => {
@@ -3512,6 +3586,25 @@ ${transcript.text}`;
         }
       }
       return res.json({ accepted: results.length, fields: results });
+    } catch (err: any) {
+      return res.status(500).json({ message: err.message });
+    }
+  });
+
+  app.post("/api/visits/:id/extracted-fields/re-apply", async (req, res) => {
+    try {
+      const fields = await storage.getExtractedFieldsByVisit(req.params.id);
+      const accepted = fields.filter((f: any) => f.status === "accepted" || f.status === "edited");
+      let applied = 0;
+      for (const field of accepted) {
+        try {
+          await applyAcceptedFieldToVisit(field);
+          applied++;
+        } catch (applyErr) {
+          console.error("Failed to re-apply field:", field.id, applyErr);
+        }
+      }
+      return res.json({ total: accepted.length, applied });
     } catch (err: any) {
       return res.status(500).json({ message: err.message });
     }

@@ -1904,69 +1904,8 @@ export async function registerRoutes(
       const visit = await storage.getVisit(req.params.id);
       if (!visit) return res.status(404).json({ message: "Visit not found" });
 
-      const member = await storage.getMember(visit.memberId);
-      const vitals = await storage.getVitalsByVisit(visit.id);
-      const checklist = await storage.getChecklistByVisit(visit.id);
-      const note = await storage.getClinicalNote(visit.id);
-      const tasks = await storage.getTasksByVisit(visit.id);
-
-      const fhirBundle = {
-        resourceType: "Bundle",
-        type: "document",
-        timestamp: new Date().toISOString(),
-        entry: [
-          {
-            resource: {
-              resourceType: "Patient",
-              id: member?.id,
-              name: [{ family: member?.lastName, given: [member?.firstName] }],
-              birthDate: member?.dob,
-              gender: member?.gender,
-              address: member?.address ? [{ line: [member.address], city: member.city, state: member.state, postalCode: member.zip }] : [],
-            },
-          },
-          {
-            resource: {
-              resourceType: "Encounter",
-              id: visit.id,
-              status: "finished",
-              class: { code: "HH", display: "home health" },
-              period: { start: visit.scheduledDate, end: visit.finalizedAt },
-              type: [{ coding: [{ code: visit.visitType, display: visit.visitType?.replace(/_/g, " ") }] }],
-            },
-          },
-          ...(vitals ? [{
-            resource: {
-              resourceType: "Observation",
-              status: "final",
-              category: [{ coding: [{ code: "vital-signs" }] }],
-              component: [
-                vitals.systolic ? { code: { text: "Systolic BP" }, valueQuantity: { value: vitals.systolic, unit: "mmHg" } } : null,
-                vitals.diastolic ? { code: { text: "Diastolic BP" }, valueQuantity: { value: vitals.diastolic, unit: "mmHg" } } : null,
-                vitals.heartRate ? { code: { text: "Heart Rate" }, valueQuantity: { value: vitals.heartRate, unit: "bpm" } } : null,
-                vitals.bmi ? { code: { text: "BMI" }, valueQuantity: { value: vitals.bmi, unit: "kg/m2" } } : null,
-              ].filter(Boolean),
-            },
-          }] : []),
-          ...(note ? [{
-            resource: {
-              resourceType: "DocumentReference",
-              status: "current",
-              description: "Clinical Note",
-              content: [{ attachment: { contentType: "text/plain", data: Buffer.from(JSON.stringify(note)).toString("base64") } }],
-            },
-          }] : []),
-          ...tasks.map((t) => ({
-            resource: {
-              resourceType: "Task",
-              status: t.status,
-              description: t.title,
-              note: t.description ? [{ text: t.description }] : [],
-              priority: t.priority,
-            },
-          })),
-        ],
-      };
+      const fhirBundle = await buildComprehensiveFhirBundle(visit.id);
+      if (!fhirBundle) return res.status(404).json({ message: "Visit not found" });
 
       await storage.createExportArtifact({
         visitId: visit.id,
@@ -2618,6 +2557,300 @@ export async function registerRoutes(
       }));
   }
 
+  function memberConditionsToFhir(conditions: string[], memberId: string) {
+    return (conditions || []).map((c, i) => ({
+      resourceType: "Condition",
+      id: `problem-${memberId}-${i}`,
+      meta: { source: "patient-history" },
+      clinicalStatus: { coding: [{ system: "http://terminology.hl7.org/CodeSystem/condition-clinical", code: "active" }] },
+      category: [{ coding: [{ system: "http://terminology.hl7.org/CodeSystem/condition-category", code: "problem-list-item", display: "Problem List Item" }] }],
+      code: { text: c },
+      subject: { reference: `Patient/${memberId}` },
+    }));
+  }
+
+  function allergiesToFhir(allergies: string[], memberId: string) {
+    return (allergies || []).map((a, i) => ({
+      resourceType: "AllergyIntolerance",
+      id: `allergy-${memberId}-${i}`,
+      clinicalStatus: { coding: [{ system: "http://terminology.hl7.org/CodeSystem/allergyintolerance-clinical", code: "active" }] },
+      code: { text: a },
+      patient: { reference: `Patient/${memberId}` },
+    }));
+  }
+
+  function medicationHistoryToFhir(meds: any[], memberId: string) {
+    return meds.map(m => ({
+      resourceType: "MedicationStatement",
+      id: m.id,
+      meta: { source: m.source || "practice" },
+      status: m.status === "active" ? "active" : m.status === "discontinued" ? "stopped" : "completed",
+      medicationCodeableConcept: { text: m.medicationName, coding: m.genericName ? [{ display: m.genericName }] : [] },
+      subject: { reference: `Patient/${memberId}` },
+      effectivePeriod: {
+        start: m.startDate,
+        ...(m.endDate ? { end: m.endDate } : {}),
+      },
+      dosage: m.dosage ? [{ text: `${m.dosage}${m.frequency ? ` ${m.frequency}` : ""}${m.route ? ` (${m.route})` : ""}` }] : [],
+      ...(m.reason ? { reasonCode: [{ text: m.reason }] } : {}),
+      informationSource: m.prescriber ? { display: m.prescriber } : undefined,
+      category: m.category ? { coding: [{ system: "urn:easy-health:med-category", code: m.category }] } : undefined,
+    }));
+  }
+
+  function medReconToFhir(meds: any[], memberId: string, visitId: string) {
+    return meds.map(m => ({
+      resourceType: "MedicationStatement",
+      id: `recon-${m.id}`,
+      meta: { source: "visit-reconciliation" },
+      status: m.status === "continued" ? "active" : m.status === "discontinued" ? "stopped" : m.status === "new" ? "active" : "completed",
+      medicationCodeableConcept: { text: m.medicationName },
+      subject: { reference: `Patient/${memberId}` },
+      context: { reference: `Encounter/${visitId}` },
+      dosage: m.dosage ? [{ text: `${m.dosage}${m.frequency ? ` ${m.frequency}` : ""}` }] : [],
+      note: m.notes ? [{ text: m.notes }] : [],
+    }));
+  }
+
+  function labResultsToFhir(labs: any[], memberId: string) {
+    return labs.map(l => ({
+      resourceType: "Observation",
+      id: l.id,
+      meta: { source: l.source || "practice" },
+      status: "final",
+      category: [{ coding: [{ system: "http://terminology.hl7.org/CodeSystem/observation-category", code: "laboratory", display: "Laboratory" }] }],
+      code: {
+        ...(l.testCode ? { coding: [{ system: "http://loinc.org", code: l.testCode, display: l.testName }] } : {}),
+        text: l.testName,
+      },
+      subject: { reference: `Patient/${memberId}` },
+      effectiveDateTime: l.collectedDate,
+      issued: l.resultDate || undefined,
+      valueQuantity: { value: l.value, unit: l.unit },
+      referenceRange: (l.referenceMin != null || l.referenceMax != null) ? [{
+        ...(l.referenceMin != null ? { low: { value: l.referenceMin, unit: l.unit } } : {}),
+        ...(l.referenceMax != null ? { high: { value: l.referenceMax, unit: l.unit } } : {}),
+      }] : [],
+      ...(l.status ? { interpretation: [{ coding: [{ code: l.status === "abnormal" ? "A" : l.status === "critical" ? "AA" : "N", display: l.status }] }] } : {}),
+      performer: l.orderingProvider ? [{ display: l.orderingProvider }] : [],
+      note: l.notes ? [{ text: l.notes }] : [],
+    }));
+  }
+
+  function vitalsHistoryToFhir(vitals: any[], memberId: string) {
+    const observations: any[] = [];
+    for (const v of vitals) {
+      const base = {
+        meta: { source: v.source || "practice" },
+        status: "final" as const,
+        category: [{ coding: [{ system: "http://terminology.hl7.org/CodeSystem/observation-category", code: "vital-signs" }] }],
+        subject: { reference: `Patient/${memberId}` },
+        effectiveDateTime: v.measureDate,
+      };
+      if (v.systolic || v.diastolic) {
+        observations.push({
+          resourceType: "Observation", id: `${v.id}-bp`, ...base,
+          code: { coding: [{ system: "http://loinc.org", code: "85354-9", display: "Blood pressure panel" }] },
+          component: [
+            v.systolic ? { code: { coding: [{ system: "http://loinc.org", code: "8480-6", display: "Systolic BP" }] }, valueQuantity: { value: v.systolic, unit: "mmHg" } } : null,
+            v.diastolic ? { code: { coding: [{ system: "http://loinc.org", code: "8462-4", display: "Diastolic BP" }] }, valueQuantity: { value: v.diastolic, unit: "mmHg" } } : null,
+          ].filter(Boolean),
+        });
+      }
+      if (v.weight) {
+        observations.push({ resourceType: "Observation", id: `${v.id}-wt`, ...base, code: { coding: [{ system: "http://loinc.org", code: "29463-7", display: "Body weight" }] }, valueQuantity: { value: v.weight, unit: "lbs", code: "[lb_av]" } });
+      }
+      if (v.bmi) {
+        observations.push({ resourceType: "Observation", id: `${v.id}-bmi`, ...base, code: { coding: [{ system: "http://loinc.org", code: "39156-5", display: "BMI" }] }, valueQuantity: { value: v.bmi, unit: "kg/m2" } });
+      }
+    }
+    return observations;
+  }
+
+  function coverageToFhir(member: any) {
+    if (!member.insurancePlan) return [];
+    return [{
+      resourceType: "Coverage",
+      id: `coverage-${member.id}`,
+      status: "active",
+      type: { coding: [{ system: "urn:easy-health:plan-type", code: member.insurancePlan.startsWith("MA") ? "MA" : "ACA", display: member.insurancePlan.startsWith("MA") ? "Medicare Advantage" : "ACA" }] },
+      subscriber: { reference: `Patient/${member.id}` },
+      beneficiary: { reference: `Patient/${member.id}` },
+      payor: [{ display: member.insurancePlan }],
+    }];
+  }
+
+  function appointmentToFhir(visit: any, member: any) {
+    return {
+      resourceType: "Appointment",
+      id: `appt-${visit.id}`,
+      status: visit.status === "finalized" ? "fulfilled" : visit.status === "scheduled" ? "booked" : "arrived",
+      serviceType: [{ coding: [{ system: "urn:easy-health:visit-type", code: visit.visitType, display: visit.visitType?.replace(/_/g, " ") }] }],
+      start: `${visit.scheduledDate}T${convertTimeToISO(visit.scheduledTime)}`,
+      participant: [
+        { actor: { reference: `Patient/${member?.id || visit.memberId}`, display: member ? `${member.firstName} ${member.lastName}` : undefined }, status: "accepted" },
+        ...(visit.npUserId ? [{ actor: { reference: `Practitioner/${visit.npUserId}` }, status: "accepted" }] : []),
+      ],
+      ...(visit.travelNotes ? { comment: visit.travelNotes } : {}),
+    };
+  }
+
+  function convertTimeToISO(timeStr: string | null): string {
+    if (!timeStr) return "00:00:00";
+    const match = timeStr.match(/(\d{1,2}):(\d{2})\s*(AM|PM)?/i);
+    if (!match) return "00:00:00";
+    let hours = parseInt(match[1]);
+    const mins = match[2];
+    const ampm = match[3];
+    if (ampm) {
+      if (ampm.toUpperCase() === "PM" && hours !== 12) hours += 12;
+      if (ampm.toUpperCase() === "AM" && hours === 12) hours = 0;
+    }
+    return `${hours.toString().padStart(2, "0")}:${mins}:00`;
+  }
+
+  function measureResultsToFhir(results: any[], memberId: string, visitId: string) {
+    return results.map(r => ({
+      resourceType: "Observation",
+      id: `measure-${r.id}`,
+      meta: { source: r.captureMethod || "in_home_visit" },
+      status: r.status === "complete" ? "final" : "preliminary",
+      category: [{ coding: [{ system: "http://terminology.hl7.org/CodeSystem/observation-category", code: "survey", display: "Survey" }] }],
+      code: { coding: [{ system: "urn:easy-health:hedis-measure", code: r.measureId, display: r.measureId }], text: r.measureId },
+      subject: { reference: `Patient/${memberId}` },
+      encounter: { reference: `Encounter/${visitId}` },
+      effectiveDateTime: r.completedAt || undefined,
+      valueString: r.evidenceMetadata ? JSON.stringify(r.evidenceMetadata) : undefined,
+      note: r.notes ? [{ text: r.notes }] : [],
+    }));
+  }
+
+  function consentsToFhir(consents: any[], memberId: string, visitId: string) {
+    return consents.map(c => ({
+      resourceType: "Consent",
+      id: c.id,
+      status: c.status === "granted" ? "active" : c.status === "declined" ? "rejected" : "proposed",
+      scope: { coding: [{ system: "http://terminology.hl7.org/CodeSystem/consentscope", code: "patient-privacy" }] },
+      category: [{ coding: [{ system: "urn:easy-health:consent-type", code: c.consentType, display: c.consentType?.replace(/_/g, " ") }] }],
+      patient: { reference: `Patient/${memberId}` },
+      dateTime: c.signedAt || c.createdAt || undefined,
+      performer: c.witnessName ? [{ display: c.witnessName }] : [],
+    }));
+  }
+
+  async function buildComprehensiveFhirBundle(visitId: string) {
+    const visit = await storage.getVisit(visitId);
+    if (!visit) return null;
+
+    const member = await storage.getMember(visit.memberId);
+    const vitals = await storage.getVitalsByVisit(visit.id);
+    const codes = await storage.getCodesByVisit(visit.id);
+    const note = await storage.getClinicalNote(visit.id);
+    const tasks = await storage.getTasksByVisit(visit.id);
+    const assessments = await storage.getAssessmentResponsesByVisit(visit.id);
+    const labResults = await storage.getLabResultsByMember(visit.memberId);
+    const medHistory = await storage.getMedicationHistoryByMember(visit.memberId);
+    const vitalsHist = await storage.getVitalsHistoryByMember(visit.memberId);
+    const medRecon = await storage.getMedReconciliationByVisit(visit.id);
+    const measureResults = await storage.getMeasureResultsByVisit(visit.id);
+    const consents = await storage.getConsentsByVisit(visit.id);
+
+    const entries: any[] = [];
+
+    if (member) entries.push({ fullUrl: `urn:uuid:${member.id}`, resource: memberToFhirPatient(member) });
+
+    entries.push({ fullUrl: `urn:uuid:${visit.id}`, resource: visitToFhirEncounter(visit, member) });
+
+    if (member) entries.push({ fullUrl: `urn:uuid:appt-${visit.id}`, resource: appointmentToFhir(visit, member) });
+
+    if (member) {
+      coverageToFhir(member).forEach(c => entries.push({ fullUrl: `urn:uuid:${c.id}`, resource: c }));
+    }
+
+    if (member?.conditions) {
+      memberConditionsToFhir(member.conditions, member.id).forEach(c => entries.push({ fullUrl: `urn:uuid:${c.id}`, resource: c }));
+    }
+
+    if (member?.allergies) {
+      allergiesToFhir(member.allergies, member.id).forEach(a => entries.push({ fullUrl: `urn:uuid:${a.id}`, resource: a }));
+    }
+
+    if (vitals) {
+      vitalsToFhirObservations(vitals, visit.id).forEach(obs => entries.push({ fullUrl: `urn:uuid:${obs.id}`, resource: obs }));
+    }
+
+    (vitalsHist || []).length > 0 && vitalsHistoryToFhir(vitalsHist, visit.memberId).forEach(obs => entries.push({ fullUrl: `urn:uuid:${obs.id}`, resource: obs }));
+
+    (labResults || []).length > 0 && labResultsToFhir(labResults, visit.memberId).forEach(obs => entries.push({ fullUrl: `urn:uuid:${obs.id}`, resource: obs }));
+
+    (medHistory || []).length > 0 && medicationHistoryToFhir(medHistory, visit.memberId).forEach(ms => entries.push({ fullUrl: `urn:uuid:${ms.id}`, resource: ms }));
+
+    (medRecon || []).length > 0 && medReconToFhir(medRecon, visit.memberId, visit.id).forEach(ms => entries.push({ fullUrl: `urn:uuid:${ms.id}`, resource: ms }));
+
+    codesToFhirConditions(codes, visit.id, visit.memberId).forEach(cond => entries.push({ fullUrl: `urn:uuid:${cond.id}`, resource: cond }));
+
+    assessments.forEach(a => {
+      entries.push({
+        fullUrl: `urn:uuid:${a.id}`,
+        resource: {
+          resourceType: "Observation",
+          id: a.id,
+          status: a.status === "completed" ? "final" : "preliminary",
+          category: [{ coding: [{ system: "http://terminology.hl7.org/CodeSystem/observation-category", code: "survey", display: "Survey" }] }],
+          code: { coding: [{ system: "urn:easy-health:instrument", code: a.instrumentId, display: a.instrumentId }] },
+          encounter: { reference: `Encounter/${visit.id}` },
+          subject: { reference: `Patient/${visit.memberId}` },
+          valueInteger: a.computedScore ?? undefined,
+          interpretation: a.interpretation ? [{ text: a.interpretation }] : [],
+        },
+      });
+    });
+
+    (measureResults || []).length > 0 && measureResultsToFhir(measureResults, visit.memberId, visit.id).forEach(obs => entries.push({ fullUrl: `urn:uuid:${obs.id}`, resource: obs }));
+
+    (consents || []).length > 0 && consentsToFhir(consents, visit.memberId, visit.id).forEach(c => entries.push({ fullUrl: `urn:uuid:${c.id}`, resource: c }));
+
+    if (note) {
+      entries.push({
+        fullUrl: `urn:uuid:${note.id}`,
+        resource: {
+          resourceType: "DocumentReference",
+          id: note.id,
+          status: "current",
+          type: { coding: [{ system: "http://loinc.org", code: "11506-3", display: "Progress note" }] },
+          subject: { reference: `Patient/${visit.memberId}` },
+          context: { encounter: [{ reference: `Encounter/${visit.id}` }] },
+          content: [{ attachment: { contentType: "application/json", data: Buffer.from(JSON.stringify(note)).toString("base64") } }],
+        },
+      });
+    }
+
+    tasks.forEach(t => {
+      entries.push({
+        fullUrl: `urn:uuid:${t.id}`,
+        resource: {
+          resourceType: "Task",
+          id: t.id,
+          status: t.status === "completed" ? "completed" : t.status === "in_progress" ? "in-progress" : "requested",
+          description: t.title,
+          for: { reference: `Patient/${visit.memberId}` },
+          encounter: { reference: `Encounter/${visit.id}` },
+          note: t.description ? [{ text: t.description }] : [],
+          priority: t.priority === "urgent" ? "urgent" : t.priority === "high" ? "asap" : "routine",
+        },
+      });
+    });
+
+    return {
+      resourceType: "Bundle",
+      id: `export-${visit.id}`,
+      type: "document",
+      timestamp: new Date().toISOString(),
+      total: entries.length,
+      entry: entries,
+    };
+  }
+
   // --- Outbound: GET /api/fhir/Patient/:id ---
   app.get("/api/fhir/Patient/:id", async (req, res) => {
     try {
@@ -2686,76 +2919,8 @@ export async function registerRoutes(
     try {
       const visitId = req.query.visit as string;
       if (!visitId) return res.status(400).json({ resourceType: "OperationOutcome", issue: [{ severity: "error", code: "required", diagnostics: "visit query parameter required" }] });
-      const visit = await storage.getVisit(visitId);
-      if (!visit) return res.status(404).json({ resourceType: "OperationOutcome", issue: [{ severity: "error", code: "not-found", diagnostics: "Visit not found" }] });
-
-      const member = await storage.getMember(visit.memberId);
-      const vitals = await storage.getVitalsByVisit(visit.id);
-      const codes = await storage.getCodesByVisit(visit.id);
-      const note = await storage.getClinicalNote(visit.id);
-      const tasks = await storage.getTasksByVisit(visit.id);
-      const assessments = await storage.getAssessmentResponsesByVisit(visit.id);
-
-      const entries: any[] = [];
-      if (member) entries.push({ fullUrl: `urn:uuid:${member.id}`, resource: memberToFhirPatient(member) });
-      entries.push({ fullUrl: `urn:uuid:${visit.id}`, resource: visitToFhirEncounter(visit, member) });
-      if (vitals) {
-        vitalsToFhirObservations(vitals, visit.id).forEach(obs => {
-          entries.push({ fullUrl: `urn:uuid:${obs.id}`, resource: obs });
-        });
-      }
-      codesToFhirConditions(codes, visit.id, visit.memberId).forEach(cond => {
-        entries.push({ fullUrl: `urn:uuid:${cond.id}`, resource: cond });
-      });
-      assessments.forEach(a => {
-        entries.push({
-          fullUrl: `urn:uuid:${a.id}`,
-          resource: {
-            resourceType: "Observation",
-            id: a.id,
-            status: a.status === "completed" ? "final" : "preliminary",
-            category: [{ coding: [{ system: "http://terminology.hl7.org/CodeSystem/observation-category", code: "survey", display: "Survey" }] }],
-            code: { coding: [{ system: "urn:easy-health:instrument", code: a.instrumentId, display: a.instrumentId }] },
-            encounter: { reference: `Encounter/${visit.id}` },
-            valueInteger: a.computedScore ?? undefined,
-            interpretation: a.interpretation ? [{ text: a.interpretation }] : [],
-          },
-        });
-      });
-      if (note) {
-        entries.push({
-          fullUrl: `urn:uuid:${note.id}`,
-          resource: {
-            resourceType: "DocumentReference",
-            id: note.id,
-            status: "current",
-            type: { coding: [{ system: "http://loinc.org", code: "11506-3", display: "Progress note" }] },
-            content: [{ attachment: { contentType: "application/json", data: Buffer.from(JSON.stringify(note)).toString("base64") } }],
-          },
-        });
-      }
-      tasks.forEach(t => {
-        entries.push({
-          fullUrl: `urn:uuid:${t.id}`,
-          resource: {
-            resourceType: "Task",
-            id: t.id,
-            status: t.status === "completed" ? "completed" : t.status === "in_progress" ? "in-progress" : "requested",
-            description: t.title,
-            note: t.description ? [{ text: t.description }] : [],
-            priority: t.priority === "urgent" ? "urgent" : t.priority === "high" ? "asap" : "routine",
-          },
-        });
-      });
-
-      const bundle = {
-        resourceType: "Bundle",
-        id: `export-${visit.id}`,
-        type: "document",
-        timestamp: new Date().toISOString(),
-        entry: entries,
-      };
-
+      const bundle = await buildComprehensiveFhirBundle(visitId);
+      if (!bundle) return res.status(404).json({ resourceType: "OperationOutcome", issue: [{ severity: "error", code: "not-found", diagnostics: "Visit not found" }] });
       return res.json(bundle);
     } catch (err: any) {
       return res.status(500).json({ resourceType: "OperationOutcome", issue: [{ severity: "error", code: "exception", diagnostics: err.message }] });

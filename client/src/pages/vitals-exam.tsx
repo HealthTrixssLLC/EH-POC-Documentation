@@ -118,7 +118,8 @@ export default function VitalsExam() {
     temperature: "",
     oxygenSaturation: "",
     weight: "",
-    height: "",
+    heightFt: "",
+    heightIn: "",
     painLevel: "",
     notes: "",
   });
@@ -133,7 +134,8 @@ export default function VitalsExam() {
         temperature: existing.temperature?.toString() || "",
         oxygenSaturation: existing.oxygenSaturation?.toString() || "",
         weight: existing.weight?.toString() || "",
-        height: existing.height?.toString() || "",
+        heightFt: existing.height ? Math.floor(existing.height / 12).toString() : "",
+        heightIn: existing.height ? (existing.height % 12).toString() : "",
         painLevel: existing.painLevel?.toString() || "",
         notes: existing.notes || "",
       });
@@ -160,11 +162,11 @@ export default function VitalsExam() {
       if (form.temperature) data.temperature = parseFloat(form.temperature);
       if (form.oxygenSaturation) data.oxygenSaturation = parseInt(form.oxygenSaturation);
       if (form.weight) data.weight = parseFloat(form.weight);
-      if (form.height) data.height = parseFloat(form.height);
+      if (form.heightFt || form.heightIn) data.height = parseInt(form.heightFt || "0") * 12 + parseInt(form.heightIn || "0");
       if (form.painLevel) data.painLevel = parseInt(form.painLevel);
       if (form.notes) data.notes = form.notes;
       if (data.weight && data.height) {
-        data.bmi = parseFloat((data.weight / ((data.height / 100) ** 2)).toFixed(1));
+        data.bmi = parseFloat(((data.weight / (data.height * data.height)) * 703).toFixed(1));
       }
       await apiRequest("POST", `/api/visits/${visitId}/vitals`, data);
 
@@ -224,7 +226,7 @@ export default function VitalsExam() {
     if (form.temperature) data.temperature = parseFloat(form.temperature);
     if (form.oxygenSaturation) data.oxygenSaturation = parseInt(form.oxygenSaturation);
     if (form.weight) data.weight = parseFloat(form.weight);
-    if (form.height) data.height = parseFloat(form.height);
+    if (form.heightFt || form.heightIn) data.height = parseInt(form.heightFt || "0") * 12 + parseInt(form.heightIn || "0");
     if (form.painLevel) data.painLevel = parseInt(form.painLevel);
 
     validateMutation.mutate(data, {
@@ -387,11 +389,11 @@ export default function VitalsExam() {
               voiceInferred={voiceInferred["oxygenSaturation"]}
             />
             <VitalField
-              label="Weight (kg)"
+              label="Weight (lbs)"
               field="weight"
               value={form.weight}
               onChange={updateField}
-              placeholder="70"
+              placeholder="165"
               warning={getFieldWarning("weight")}
               overridden={!!overrides["weight"]}
               onOverride={(w) => setOverrideDialog({ open: true, warning: w })}
@@ -400,16 +402,27 @@ export default function VitalsExam() {
               voiceInferred={voiceInferred["weight"]}
             />
             <VitalField
-              label="Height (cm)"
-              field="height"
-              value={form.height}
+              label="Height (ft)"
+              field="heightFt"
+              value={form.heightFt}
               onChange={updateField}
-              placeholder="170"
+              placeholder="5"
               warning={getFieldWarning("height")}
               overridden={!!overrides["height"]}
               onOverride={(w) => setOverrideDialog({ open: true, warning: w })}
-              testId="input-height"
-              step="0.1"
+              testId="input-height-ft"
+              voiceInferred={voiceInferred["height"]}
+            />
+            <VitalField
+              label="Height (in)"
+              field="heightIn"
+              value={form.heightIn}
+              onChange={updateField}
+              placeholder="8"
+              warning={getFieldWarning("height")}
+              overridden={!!overrides["height"]}
+              onOverride={(w) => setOverrideDialog({ open: true, warning: w })}
+              testId="input-height-in"
               voiceInferred={voiceInferred["height"]}
             />
             <VitalField
@@ -473,7 +486,7 @@ export default function VitalsExam() {
             if (form.temperature) data.temperature = parseFloat(form.temperature);
             if (form.oxygenSaturation) data.oxygenSaturation = parseInt(form.oxygenSaturation);
             if (form.weight) data.weight = parseFloat(form.weight);
-            if (form.height) data.height = parseFloat(form.height);
+            if (form.heightFt || form.heightIn) data.height = parseInt(form.heightFt || "0") * 12 + parseInt(form.heightIn || "0");
             if (form.painLevel) data.painLevel = parseInt(form.painLevel);
             validateMutation.mutate(data);
           }}

@@ -455,7 +455,7 @@ function VitalsSection({ vitalsHistory, vitalType }: { vitalsHistory: VitalsHist
     weight: {
       label: "Weight & BMI",
       keys: [
-        { key: "weight", label: "Weight (kg)", color: "hsl(var(--chart-2))" },
+        { key: "weight", label: "Weight (lbs)", color: "hsl(var(--chart-2))" },
         { key: "bmi", label: "BMI", color: "hsl(var(--chart-4))" },
       ],
       yLabel: "",
@@ -856,7 +856,7 @@ export default function PatientTimeline() {
                       if (type === "bp") value = `${latest.systolic || "-"}/${latest.diastolic || "-"} mmHg`;
                       else if (type === "hr") value = `${latest.heartRate || "-"} bpm`;
                       else if (type === "o2") value = `${latest.oxygenSaturation || "-"}%`;
-                      else if (type === "weight") value = `${latest.weight || "-"} kg (BMI: ${latest.bmi || "-"})`;
+                      else if (type === "weight") value = `${latest.weight || "-"} lbs (BMI: ${latest.bmi || "-"})`;
                     }
                     return (
                       <div

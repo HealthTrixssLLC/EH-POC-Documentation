@@ -303,6 +303,7 @@ export async function registerRoutes(
         if ((vitals as any).temperature) vParts.push(`Temp: ${(vitals as any).temperature}\u00B0F`);
         if ((vitals as any).oxygenSaturation) vParts.push(`SpO2: ${(vitals as any).oxygenSaturation}%`);
         if ((vitals as any).weight) vParts.push(`Weight: ${(vitals as any).weight} lbs`);
+        if ((vitals as any).height) vParts.push(`Height: ${Math.floor((vitals as any).height / 12)}'${(vitals as any).height % 12}"`);
         if ((vitals as any).bmi) vParts.push(`BMI: ${(vitals as any).bmi}`);
         if ((vitals as any).painLevel != null) vParts.push(`Pain: ${(vitals as any).painLevel}/10`);
         let vContent = vParts.join(" | ");
@@ -2105,6 +2106,8 @@ export async function registerRoutes(
         { field: "respiratoryRate", min: 6, max: 60, label: "Respiratory Rate" },
         { field: "temperature", min: 90, max: 108, label: "Temperature" },
         { field: "oxygenSaturation", min: 50, max: 100, label: "O2 Saturation" },
+        { field: "weight", min: 50, max: 700, label: "Weight" },
+        { field: "height", min: 36, max: 96, label: "Height" },
         { field: "bmi", min: 10, max: 70, label: "BMI" },
         { field: "painLevel", min: 0, max: 10, label: "Pain Level" },
       ];
@@ -2574,6 +2577,17 @@ export async function registerRoutes(
         code: { coding: [{ system: "http://loinc.org", code: "29463-7", display: "Body weight" }] },
         encounter: { reference: `Encounter/${visitId}` },
         valueQuantity: { value: vitals.weight, unit: "lbs", system: "http://unitsofmeasure.org", code: "[lb_av]" },
+      });
+    }
+    if (vitals.height) {
+      observations.push({
+        resourceType: "Observation",
+        id: `${vitals.id}-ht`,
+        status: "final",
+        category: [{ coding: [{ system: "http://terminology.hl7.org/CodeSystem/observation-category", code: "vital-signs" }] }],
+        code: { coding: [{ system: "http://loinc.org", code: "8302-2", display: "Body height" }] },
+        encounter: { reference: `Encounter/${visitId}` },
+        valueQuantity: { value: vitals.height, unit: "[in_i]", system: "http://unitsofmeasure.org", code: "[in_i]" },
       });
     }
     if (vitals.bmi) {
@@ -3301,6 +3315,15 @@ export async function registerRoutes(
         fieldKey: "vitals.height", fieldLabel: "Height", category: "vitals",
         proposedValue: String(totalInches), confidence: 0.9, sourceSnippet: heightMatch[0],
       });
+    }
+    if (!heightMatch) {
+      const heightInchesMatch = text.match(/height\s*(?:is\s*|of\s*|:?\s*)(\d{2,3})\s*(?:inches?|in)/i);
+      if (heightInchesMatch) {
+        fields.push({
+          fieldKey: "vitals.height", fieldLabel: "Height", category: "vitals",
+          proposedValue: heightInchesMatch[1], confidence: 0.9, sourceSnippet: heightInchesMatch[0],
+        });
+      }
     }
 
     const painMatch = text.match(/pain\s*(?:level|scale|score)?\s*(?:is\s*|of\s*|:?\s*)?(?:a\s*)?(\d{1,2})/i);

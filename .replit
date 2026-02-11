@@ -44,3 +44,4 @@ waitForPort = 5000
 [userenv.shared]
 OPENAI_API_KEY = "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"
 AZURE_OPENAI_API_KEY = "3G0YWRk2R2VkmZ5HrkafgfFcFbn7tmVs4jlezsJX0cXivuast0diJQQJ99BHACHYHv6XJ3w3AAAAACOGfX1h"
+VITE_API_BASE_URL = "https://def0aec2-3c91-4b4f-877e-365954a7664b-00-20u8hxogqvck0.spock.replit.dev"

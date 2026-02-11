@@ -1,0 +1,33 @@
+`UIScene` lifecycle will soon be required. Failure to adopt will result in an assert in the future.
+Failed to resolve host network app id to config: bundleID: com.apple.WebKit.Networking instance ID: Optional([_EXExtensionInstanceIdentifier: 647C31A1-40A7-4DEB-B1CD-5513977CBC0B])
+⚡️  Loading app at capacitor://localhost...
+-[RTIInputSystemClient remoteTextInputSessionWithID:performInputOperation:]  Can only perform input operation for an active session. sessionID = 8E74AC97-B6D4-4134-8309-A7D40BD2A231
+Unable to simultaneously satisfy constraints.
+	Probably at least one of the constraints in the following list is one you don't want. 
+	Try this: 
+		(1) look at each constraint and try to figure out which you don't expect; 
+		(2) find the code that added the unwanted constraint or constraints and fix it. 
+(
+    "<NSLayoutConstraint:0x600002148460 V:|-(7)-[TUIKeyboardContentView:0x10152d0c0]   (active, names: '|':TUIKeyplaneView:0x1010258b0 )>",
+    "<NSLayoutConstraint:0x6000021484b0 V:[TUIKeyboardContentView:0x10152d0c0]-(12)-|   (active, names: '|':TUIKeyplaneView:0x1010258b0 )>",
+    "<NSLayoutConstraint:0x600002140780 V:|-(0)-[TUIKeyplaneView:0x1010258b0]   (active, names: UIKeyboardLayoutStar Prev...:0x101827400, '|':UIKeyboardLayoutStar Prev...:0x101827400 )>",
+    "<NSLayoutConstraint:0x6000021407d0 V:[TUIKeyplaneView:0x1010258b0]-(0)-|   (active, names: UIKeyboardLayoutStar Prev...:0x101827400, '|':UIKeyboardLayoutStar Prev...:0x101827400 )>",
+    "<NSLayoutConstraint:0x600002140870 V:|-(0)-[UIKeyboardLayoutStar Prev...]   (active, names: UIKeyboardLayoutStar Prev...:0x101827400, '|':UIKeyboardImpl:0x1093077b0 )>",
+    "<NSLayoutConstraint:0x600002140910 V:[UIKeyboardLayoutStar Prev...]-(0)-|   (active, names: UIKeyboardLayoutStar Prev...:0x101827400, '|':UIKeyboardImpl:0x1093077b0 )>",
+    "<NSLayoutConstraint:0x600002145450 '_UITemporaryLayoutHeight' UIKeyboardImpl:0x1093077b0.height == 241   (active)>",
+    "<NSLayoutConstraint:0x600002148640 'TUIKeyplane.height' TUIKeyboardContentView:0x10152d0c0.height == 224   (active)>"
+)
+
+Will attempt to recover by breaking constraint 
+<NSLayoutConstraint:0x600002148640 'TUIKeyplane.height' TUIKeyboardContentView:0x10152d0c0.height == 224   (active)>
+
+Make a symbolic breakpoint at UIViewAlertForUnsatisfiableConstraints to catch this in the debugger.
+The methods in the UIConstraintBasedLayoutDebugging category on UIView listed in <UIKitCore/UIView.h> may also be helpful.
+-[RTIInputSystemClient remoteTextInputSessionWithID:textSuggestionsChanged:]  Can only set suggestions for an active session. sessionID = 8E74AC97-B6D4-4134-8309-A7D40BD2A231
+GPU process (0x1121341e0) took 1.231391 seconds to launch
+WebContent process (0x112104100) took 1.336829 seconds to launch
+Networking process (0x11208c190) took 1.407973 seconds to launch
+Result accumulator timeout: 0.250000, exceeded.
+WebContent[5020] Unable to hide query parameters from script (missing data)
+-[RTIInputSystemClient remoteTextInputSessionWithID:textSuggestionsChanged:]  Can only set suggestions for an active session. sessionID = 8E74AC97-B6D4-4134-8309-A7D40BD2A231
+⚡️  WebView loaded

@@ -6,15 +6,19 @@ const config: CapacitorConfig = {
   webDir: "dist/public",
   server: {
     androidScheme: "https",
-    iosScheme: "https",
+    iosScheme: "capacitor",
+    allowNavigation: ["eh-poc-application.healthtrixss.com"],
   },
   ios: {
     contentInset: "automatic",
     preferredContentMode: "mobile",
-    scheme: "Easy Health",
     backgroundColor: "#2E456B",
+    allowsLinkPreview: false,
   },
   plugins: {
+    CapacitorHttp: {
+      enabled: true,
+    },
     SplashScreen: {
       launchShowDuration: 2000,
       launchAutoHide: true,

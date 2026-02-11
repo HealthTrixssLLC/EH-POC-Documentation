@@ -1,6 +1,8 @@
 import { QueryClient, QueryFunction } from "@tanstack/react-query";
 
-function isCapacitorNative(): boolean {
+const PRODUCTION_API_URL = "https://eh-poc-application.healthtrixss.com";
+
+export function isCapacitorNative(): boolean {
   return !!(window as any).Capacitor?.isNativePlatform?.();
 }
 
@@ -8,7 +10,7 @@ function getApiBase(): string {
   if (isCapacitorNative()) {
     const configured = import.meta.env.VITE_API_BASE_URL;
     if (configured) return configured.replace(/\/$/, "");
-    return "";
+    return PRODUCTION_API_URL;
   }
   return "";
 }

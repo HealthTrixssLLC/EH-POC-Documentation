@@ -30,7 +30,7 @@ export async function registerRoutes(
 ): Promise<Server> {
   app.use((req, res, next) => {
     const origin = req.headers.origin;
-    if (origin && (origin.startsWith("capacitor://") || origin.startsWith("ionic://") || origin === "http://localhost")) {
+    if (origin && (origin.startsWith("capacitor://") || origin.startsWith("ionic://") || origin === "http://localhost" || origin === "https://localhost")) {
       res.setHeader("Access-Control-Allow-Origin", origin);
       res.setHeader("Access-Control-Allow-Methods", "GET, POST, PUT, PATCH, DELETE, OPTIONS");
       res.setHeader("Access-Control-Allow-Headers", "Content-Type, x-user-id, x-user-name, x-user-role");

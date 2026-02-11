@@ -180,7 +180,7 @@ function ExportTab() {
           break;
       }
       if (!url) return;
-      const response = await fetch(url);
+      const response = await fetch(resolveUrl(url));
       const data = await response.json();
       setResult(data);
     } catch (err: any) {

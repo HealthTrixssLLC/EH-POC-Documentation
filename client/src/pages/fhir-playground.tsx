@@ -8,7 +8,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
-import { apiRequest, queryClient } from "@/lib/queryClient";
+import { apiRequest, queryClient, resolveUrl } from "@/lib/queryClient";
 import {
   Download,
   Upload,
@@ -295,7 +295,7 @@ function ImportTab() {
   const loadDemoBundle = async () => {
     setDemoBundleLoading(true);
     try {
-      const response = await fetch("/api/fhir/demo-bundle");
+      const response = await fetch(resolveUrl("/api/fhir/demo-bundle"));
       const data = await response.json();
       setJsonInput(JSON.stringify(data, null, 2));
       setImportType("bundle");
@@ -309,7 +309,7 @@ function ImportTab() {
 
   const downloadDemoBundle = async () => {
     try {
-      const response = await fetch("/api/fhir/demo-bundle");
+      const response = await fetch(resolveUrl("/api/fhir/demo-bundle"));
       const data = await response.json();
       const text = JSON.stringify(data, null, 2);
       const blob = new Blob([text], { type: "application/json" });

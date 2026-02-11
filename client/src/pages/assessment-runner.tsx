@@ -22,7 +22,7 @@ import {
   AlertTriangle,
   Pen,
 } from "lucide-react";
-import { apiRequest, queryClient } from "@/lib/queryClient";
+import { apiRequest, queryClient, resolveUrl } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/lib/auth";
 
@@ -319,10 +319,10 @@ export default function AssessmentRunner() {
   const { data: reasonCodes } = useQuery<any[]>({
     queryKey: ["/api/reason-codes", { category: "unable_to_assess" }],
     queryFn: async () => {
-      const res = await fetch("/api/reason-codes?category=unable_to_assess");
+      const res = await fetch(resolveUrl("/api/reason-codes?category=unable_to_assess"));
       if (!res.ok) return [];
       const data = await res.json();
-      const declined = await fetch("/api/reason-codes?category=patient_declined");
+      const declined = await fetch(resolveUrl("/api/reason-codes?category=patient_declined"));
       if (declined.ok) {
         const d = await declined.json();
         return [...data, ...d];

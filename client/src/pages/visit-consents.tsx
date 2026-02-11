@@ -17,7 +17,7 @@ import {
   AlertTriangle,
   Info,
 } from "lucide-react";
-import { apiRequest, queryClient } from "@/lib/queryClient";
+import { apiRequest, queryClient, resolveUrl } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 
 const noppMethods = [
@@ -51,7 +51,7 @@ export default function VisitConsents() {
   const { data: consentExceptionReasons } = useQuery<any[]>({
     queryKey: ["/api/reason-codes", { category: "consent_exception" }],
     queryFn: async () => {
-      const res = await fetch("/api/reason-codes?category=consent_exception");
+      const res = await fetch(resolveUrl("/api/reason-codes?category=consent_exception"));
       if (!res.ok) return [];
       return res.json();
     },

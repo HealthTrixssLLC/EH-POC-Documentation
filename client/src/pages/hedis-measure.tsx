@@ -15,7 +15,7 @@ import {
   AlertTriangle, RefreshCw, FileText, ArrowRight, Zap, Ban, Clock,
   CalendarIcon, Info, Search
 } from "lucide-react";
-import { apiRequest, queryClient } from "@/lib/queryClient";
+import { apiRequest, queryClient, resolveUrl } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 
 const captureMethods = [
@@ -50,10 +50,10 @@ export default function HedisMeasure() {
   const { data: reasonCodes } = useQuery<any[]>({
     queryKey: ["/api/reason-codes", { category: "unable_to_assess" }],
     queryFn: async () => {
-      const res = await fetch("/api/reason-codes?category=unable_to_assess");
+      const res = await fetch(resolveUrl("/api/reason-codes?category=unable_to_assess"));
       if (!res.ok) return [];
       const data = await res.json();
-      const contra = await fetch("/api/reason-codes?category=clinical_contraindication");
+      const contra = await fetch(resolveUrl("/api/reason-codes?category=clinical_contraindication"));
       if (contra.ok) {
         const c = await contra.json();
         return [...data, ...c];

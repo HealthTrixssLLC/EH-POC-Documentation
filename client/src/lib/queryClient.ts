@@ -1,5 +1,26 @@
 import { QueryClient, QueryFunction } from "@tanstack/react-query";
 
+function isCapacitorNative(): boolean {
+  return !!(window as any).Capacitor?.isNativePlatform?.();
+}
+
+function getApiBase(): string {
+  if (isCapacitorNative()) {
+    const configured = import.meta.env.VITE_API_BASE_URL;
+    if (configured) return configured.replace(/\/$/, "");
+    return "";
+  }
+  return "";
+}
+
+export function resolveUrl(path: string): string {
+  const base = getApiBase();
+  if (base && path.startsWith("/")) {
+    return base + path;
+  }
+  return path;
+}
+
 function getAuthHeaders(): Record<string, string> {
   try {
     const stored = localStorage.getItem("feh_user");
@@ -31,11 +52,11 @@ export async function apiRequest(
     ...getAuthHeaders(),
     ...(data ? { "Content-Type": "application/json" } : {}),
   };
-  const res = await fetch(url, {
+  const res = await fetch(resolveUrl(url), {
     method,
     headers,
     body: data ? JSON.stringify(data) : undefined,
-    credentials: "include",
+    credentials: isCapacitorNative() ? "omit" : "include",
   });
 
   await throwIfResNotOk(res);
@@ -48,8 +69,9 @@ export const getQueryFn: <T>(options: {
 }) => QueryFunction<T> =
   ({ on401: unauthorizedBehavior }) =>
   async ({ queryKey }) => {
-    const res = await fetch(queryKey.join("/") as string, {
-      credentials: "include",
+    const rawUrl = queryKey.join("/") as string;
+    const res = await fetch(resolveUrl(rawUrl), {
+      credentials: isCapacitorNative() ? "omit" : "include",
       headers: getAuthHeaders(),
     });
 

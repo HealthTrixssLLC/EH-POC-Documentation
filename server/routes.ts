@@ -28,6 +28,19 @@ export async function registerRoutes(
   httpServer: Server,
   app: Express
 ): Promise<Server> {
+  app.use((req, res, next) => {
+    const origin = req.headers.origin;
+    if (origin && (origin.startsWith("capacitor://") || origin.startsWith("ionic://") || origin === "http://localhost")) {
+      res.setHeader("Access-Control-Allow-Origin", origin);
+      res.setHeader("Access-Control-Allow-Methods", "GET, POST, PUT, PATCH, DELETE, OPTIONS");
+      res.setHeader("Access-Control-Allow-Headers", "Content-Type, x-user-id, x-user-name, x-user-role");
+      res.setHeader("Access-Control-Allow-Credentials", "true");
+      if (req.method === "OPTIONS") {
+        return res.sendStatus(204);
+      }
+    }
+    next();
+  });
 
   // Auth
   app.post("/api/auth/login", async (req, res) => {

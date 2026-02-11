@@ -42,6 +42,6 @@ waitForPort = 5000
 [userenv]
 
 [userenv.shared]
-OPENAI_API_KEY = "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"
+OPENAI_API_KEY = "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"
 AZURE_OPENAI_API_KEY = "3G0YWRk2R2VkmZ5HrkafgfFcFbn7tmVs4jlezsJX0cXivuast0diJQQJ99BHACHYHv6XJ3w3AAAAACOGfX1h"
 VITE_API_BASE_URL = "https://eh-poc-application.healthtrixss.com"

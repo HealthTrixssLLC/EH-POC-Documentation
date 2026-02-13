@@ -1,57 +1,195 @@
-FHIR Resource Type,FHIR Profile/Category,Direction,API Endpoint,HTTP Method,Workflow,EH POC Internal Table(s),LOINC/Code System,Coding System URI,Code(s) Used,Data Category,Helper Function,Bundle Inclusion,CR-002 Planned,Notes
-Patient,US Core Patient,Outbound,/api/fhir/Patient/:id,GET,FHIR Read - Single Patient,members,,urn:easy-health:member-id,,Demographics,memberToFhirPatient(),Yes,,Returns single patient by ID
-Patient,US Core Patient,Outbound,/api/fhir/Patient,GET,FHIR Search - All Patients,members,,urn:easy-health:member-id,,Demographics,memberToFhirPatient(),No,,Returns searchset Bundle of all patients
-Patient,US Core Patient,Inbound,/api/fhir/Patient,POST,FHIR Create/Update Patient,members,,urn:easy-health:member-id,,Demographics,memberToFhirPatient(),No,,Upsert patient by member-id identifier
-Patient,US Core Patient,Inbound,/api/fhir/Bundle,POST,FHIR Bundle Import - Patient Creation,members,,urn:easy-health:member-id,,Demographics,,No,,Patient processed within Bundle import; includes extension-based vitals/labs/meds history import
-Patient,US Core Patient,Outbound,/api/demo/fhir-bundle/:memberId,GET,Demo - Member FHIR Bundle,members,,urn:easy-health:member-id,,Demographics,memberToFhirPatient(),Yes,,Per-member demo export
-Patient,US Core Patient,Outbound,/api/demo/fhir-bundles,GET,Demo - All Members FHIR Bundles,members,,urn:easy-health:member-id,,Demographics,memberToFhirPatient(),Yes,,Batch demo export
-Patient,US Core Patient,Static,/api/fhir/demo-bundle,GET,Demo - Sample Import Bundle,N/A (file-based),,urn:easy-health:member-id,,Demographics,,Yes,,Served from server/data/demo-fhir-bundle.json
-Patient,US Core Patient,Static,/api/demo/sample-import-bundle,GET,Demo - Sample Import Bundle (alt),N/A (file-based),,urn:easy-health:member-id,,Demographics,,Yes,,Alternate route for same demo bundle
-Encounter,US Core Encounter,Outbound,/api/fhir/Encounter/:id,GET,FHIR Read - Single Encounter,visits,,http://terminology.hl7.org/CodeSystem/v3-ActCode,HH (home health),Visit,visitToFhirEncounter(),Yes,,Maps visit status to FHIR encounter status
-Encounter,US Core Encounter,Inbound,/api/fhir/Bundle,POST,FHIR Bundle Import - Encounter Creation,visits,,urn:easy-health:visit-type,,Visit,,No,,Creates visit from Encounter in Bundle; assigns NP and plan pack
-Encounter,US Core Encounter,Outbound,/api/demo/fhir-bundle/:memberId,GET,Demo - Member FHIR Bundle,visits,,http://terminology.hl7.org/CodeSystem/v3-ActCode,HH,Visit,visitToFhirEncounter(),Yes,,Per-member demo export
-Encounter,US Core Encounter,Outbound,/api/fhir/Bundle?visit=:id,GET,FHIR Comprehensive Visit Export,visits,,http://terminology.hl7.org/CodeSystem/v3-ActCode,HH,Visit,visitToFhirEncounter(),Yes,,Comprehensive bundle includes Encounter
-Encounter,US Core Encounter,Static,/api/fhir/demo-bundle,GET,Demo - Sample Import Bundle,N/A (file-based),,urn:easy-health:visit-type,,Visit,,Yes,,Encounter resources in demo bundle JSON
-Observation,Vital Signs - Blood Pressure,Outbound,/api/fhir/Observation?encounter=:id,GET,FHIR Search - Vitals by Encounter,visit_vitals,http://loinc.org,http://terminology.hl7.org/CodeSystem/observation-category,"85354-9 (BP panel), 8480-6 (systolic), 8462-4 (diastolic)",Vital Signs,vitalsToFhirObservations(),Yes,,Component-style BP observation with systolic+diastolic
-Observation,Vital Signs - Heart Rate,Outbound,/api/fhir/Observation?encounter=:id,GET,FHIR Search - Vitals by Encounter,visit_vitals,http://loinc.org,http://terminology.hl7.org/CodeSystem/observation-category,8867-4,Vital Signs,vitalsToFhirObservations(),Yes,,
-Observation,Vital Signs - Respiratory Rate,Outbound,/api/fhir/Observation?encounter=:id,GET,FHIR Search - Vitals by Encounter,visit_vitals,http://loinc.org,http://terminology.hl7.org/CodeSystem/observation-category,9279-1,Vital Signs,vitalsToFhirObservations(),Yes,,
-Observation,Vital Signs - Temperature,Outbound,/api/fhir/Observation?encounter=:id,GET,FHIR Search - Vitals by Encounter,visit_vitals,http://loinc.org,http://terminology.hl7.org/CodeSystem/observation-category,8310-5,Vital Signs,vitalsToFhirObservations(),Yes,,US units: degF
-Observation,Vital Signs - Oxygen Saturation,Outbound,/api/fhir/Observation?encounter=:id,GET,FHIR Search - Vitals by Encounter,visit_vitals,http://loinc.org,http://terminology.hl7.org/CodeSystem/observation-category,2708-6,Vital Signs,vitalsToFhirObservations(),Yes,,
-Observation,Vital Signs - Body Weight,Outbound,/api/fhir/Observation?encounter=:id,GET,FHIR Search - Vitals by Encounter,visit_vitals,http://loinc.org,http://terminology.hl7.org/CodeSystem/observation-category,"29463-7, [lb_av]",Vital Signs,vitalsToFhirObservations(),Yes,,US units: lbs
-Observation,Vital Signs - Body Height,Outbound,/api/fhir/Observation?encounter=:id,GET,FHIR Search - Vitals by Encounter,visit_vitals,http://loinc.org,http://terminology.hl7.org/CodeSystem/observation-category,"8302-2, [in_i]",Vital Signs,vitalsToFhirObservations(),Yes,,US units: inches
-Observation,Vital Signs - BMI,Outbound,/api/fhir/Observation?encounter=:id,GET,FHIR Search - Vitals by Encounter,visit_vitals,http://loinc.org,http://terminology.hl7.org/CodeSystem/observation-category,39156-5,Vital Signs,vitalsToFhirObservations(),Yes,,Calculated from weight/height
-Observation,Vital Signs - Historical BP,Outbound,/api/fhir/Bundle?visit=:id,GET,FHIR Comprehensive Visit Export,vitals_history,http://loinc.org,http://terminology.hl7.org/CodeSystem/observation-category,"85354-9, 8480-6, 8462-4",Vital Signs (Historical),vitalsHistoryToFhir(),Yes,,Longitudinal vitals from member history
-Observation,Vital Signs - Historical Weight,Outbound,/api/fhir/Bundle?visit=:id,GET,FHIR Comprehensive Visit Export,vitals_history,http://loinc.org,http://terminology.hl7.org/CodeSystem/observation-category,29463-7,Vital Signs (Historical),vitalsHistoryToFhir(),Yes,,
-Observation,Vital Signs - Historical BMI,Outbound,/api/fhir/Bundle?visit=:id,GET,FHIR Comprehensive Visit Export,vitals_history,http://loinc.org,http://terminology.hl7.org/CodeSystem/observation-category,39156-5,Vital Signs (Historical),vitalsHistoryToFhir(),Yes,,
-Observation,Laboratory Result,Outbound,/api/fhir/Bundle?visit=:id,GET,FHIR Comprehensive Visit Export,lab_results,http://loinc.org,http://terminology.hl7.org/CodeSystem/observation-category,laboratory (category),Laboratory,labResultsToFhir(),Yes,,Includes referenceRange and interpretation
-Observation,Laboratory Result,Inbound (CR-002),/api/fhir/PrevisitContext,POST,HIE Pre-Visit Intelligence Ingestion,lab_results,http://loinc.org,http://terminology.hl7.org/CodeSystem/observation-category,laboratory (category),Laboratory,,No,Yes,CR-002-01: Route by category=laboratory to lab_results with source=hie
-Observation,Vital Signs,Inbound (CR-002),/api/fhir/PrevisitContext,POST,HIE Pre-Visit Intelligence Ingestion,vitals_history,http://loinc.org,http://terminology.hl7.org/CodeSystem/observation-category,vital-signs (category),Vital Signs,,No,Yes,CR-002-01: Route by category=vital-signs to vitals_history with source=hie
-Observation,Survey - Assessment,Outbound,/api/fhir/Bundle?visit=:id,GET,FHIR Comprehensive Visit Export,assessment_responses,,urn:easy-health:instrument,"PHQ-2, PHQ-9, PRAPARE, AWV",Assessment,,Yes,,Clinical assessment results with computed scores
-Observation,Survey - HEDIS Measure,Outbound,/api/fhir/Bundle?visit=:id,GET,FHIR Comprehensive Visit Export,measure_results,,urn:easy-health:hedis-measure,"BCS, COL, CDC-A1C, CBP, FMC",Quality Measure,measureResultsToFhir(),Yes,,HEDIS measure results with evidence metadata
-Condition,US Core Condition,Outbound,/api/fhir/Condition?encounter=:id,GET,FHIR Search - Conditions by Encounter,visit_codes,,http://hl7.org/fhir/sid/icd-10-cm,ICD-10-CM codes,Diagnosis (Encounter),codesToFhirConditions(),Yes,,Encounter-specific diagnoses from visit codes
-Condition,Problem List Item,Outbound,/api/fhir/Bundle?visit=:id,GET,FHIR Comprehensive Visit Export,members.conditions,,http://terminology.hl7.org/CodeSystem/condition-category,problem-list-item,Diagnosis (History),memberConditionsToFhir(),Yes,,Member-level problem list from conditions array
-Condition,US Core Condition,Inbound (CR-002),/api/fhir/PrevisitContext,POST,HIE Pre-Visit Intelligence Ingestion,suspected_conditions,,http://hl7.org/fhir/sid/icd-10-cm,ICD-10-CM codes,Suspected Diagnosis,,No,Yes,CR-002-03: Creates suspected_condition if not in encounter; NP confirms/dismisses
-Condition,US Core Condition,Static,/api/fhir/demo-bundle,GET,Demo - Sample Import Bundle,N/A (file-based),,http://hl7.org/fhir/sid/icd-10-cm,ICD-10-CM codes,Diagnosis,,Yes,,Condition resources in demo bundle JSON (4-5 per patient)
-Condition,US Core Condition,Outbound,/api/demo/fhir-bundle/:memberId,GET,Demo - Member FHIR Bundle,visit_codes,,http://hl7.org/fhir/sid/icd-10-cm,ICD-10-CM codes,Diagnosis,codesToFhirConditions(),Yes,,Per-member demo export
-AllergyIntolerance,US Core AllergyIntolerance,Outbound,/api/fhir/Bundle?visit=:id,GET,FHIR Comprehensive Visit Export,members.allergies,,http://terminology.hl7.org/CodeSystem/allergyintolerance-clinical,active,Allergy,allergiesToFhir(),Yes,,Member-level allergies from allergies array
-AllergyIntolerance,US Core AllergyIntolerance,Static,/api/fhir/demo-bundle,GET,Demo - Sample Import Bundle,N/A (file-based),,http://terminology.hl7.org/CodeSystem/allergyintolerance-clinical,active,Allergy,,Yes,,AllergyIntolerance resources in demo bundle JSON (1-2 per patient)
-MedicationStatement,US Core MedicationStatement,Outbound,/api/fhir/Bundle?visit=:id,GET,FHIR Comprehensive Visit Export,medication_history,,urn:easy-health:med-category,,Medication (History),medicationHistoryToFhir(),Yes,,Member medication history with prescriber and dosage
-MedicationStatement,Visit Reconciliation,Outbound,/api/fhir/Bundle?visit=:id,GET,FHIR Comprehensive Visit Export,med_reconciliation,,,visit-reconciliation (meta.source),Medication (Reconciled),medReconToFhir(),Yes,,Visit-specific reconciled medications
-MedicationStatement,US Core MedicationStatement,Inbound (CR-002),/api/fhir/PrevisitContext,POST,HIE Pre-Visit Intelligence Ingestion,"med_reconciliation, medication_history",,,,Medication (HIE),,No,Yes,"CR-002-02: Pre-populates med_reconciliation with source=hie, status=pending; also creates medication_history record"
-MedicationStatement,US Core MedicationStatement,Static,/api/fhir/demo-bundle,GET,Demo - Sample Import Bundle,N/A (file-based),,,,Medication,,Yes,,MedicationStatement resources in demo bundle JSON (4-6 per patient)
-Coverage,Coverage,Outbound,/api/fhir/Bundle?visit=:id,GET,FHIR Comprehensive Visit Export,members.insurancePlan,,urn:easy-health:plan-type,"MA (Medicare Advantage), ACA",Insurance,coverageToFhir(),Yes,,Derived from member insurance plan field
-Appointment,Appointment,Outbound,/api/fhir/Bundle?visit=:id,GET,FHIR Comprehensive Visit Export,visits,,urn:easy-health:visit-type,"annual_wellness, follow_up",Scheduling,appointmentToFhir(),Yes,,Maps visit scheduling data to Appointment
-Consent,Consent,Outbound,/api/fhir/Bundle?visit=:id,GET,FHIR Comprehensive Visit Export,visit_consents,,urn:easy-health:consent-type,"nopp, voice_transcription, treatment",Consent,consentsToFhir(),Yes,,Patient consent records with status mapping
-DocumentReference,Progress Note,Outbound,/api/fhir/Bundle?visit=:id,GET,FHIR Comprehensive Visit Export,clinical_notes,http://loinc.org,,11506-3 (Progress note),Clinical Documentation,,Yes,,Base64-encoded JSON clinical note attachment
-Task,Care Plan Task,Outbound,/api/fhir/Bundle?visit=:id,GET,FHIR Comprehensive Visit Export,visit_tasks,,,,Care Coordination,,Yes,,Provider tasks with priority mapping (urgent/asap/routine)
-Bundle,Document Bundle,Outbound,/api/fhir/Bundle?visit=:id,GET,FHIR Comprehensive Visit Export,Multiple (aggregated),,,,"Container (11 resource types, 80+ entries)",,N/A,,Comprehensive export bundle with all visit data
-Bundle,Searchset Bundle,Outbound,/api/fhir/Patient,GET,FHIR Search - All Patients,members,,,,Container (searchset),,N/A,,Wraps Patient search results
-Bundle,Searchset Bundle,Outbound,/api/fhir/Observation?encounter=:id,GET,FHIR Search - Vitals by Encounter,visit_vitals,,,,Container (searchset),,N/A,,Wraps Observation search results
-Bundle,Searchset Bundle,Outbound,/api/fhir/Condition?encounter=:id,GET,FHIR Search - Conditions by Encounter,visit_codes,,,,Container (searchset),,N/A,,Wraps Condition search results
-Bundle,Transaction Bundle,Inbound,/api/fhir/Bundle,POST,FHIR Bundle Import,Multiple,,,,Container (transaction),,N/A,,Import bundle containing Patient + Encounter resources
-Bundle,Transaction Bundle,Inbound (CR-002),/api/fhir/PrevisitContext,POST,HIE Pre-Visit Intelligence Ingestion,Multiple,,,,Container (transaction),,N/A,Yes,"CR-002-01: Import bundle containing MedicationStatement, Condition, Observation, Procedure"
-Bundle,Document Bundle,Outbound,/api/demo/fhir-bundles,GET,Demo - All Members FHIR Bundles,Multiple,,,,Container (document),,N/A,,Batch export for all members
-Bundle,Document Bundle,Outbound,/api/demo/fhir-bundle/:memberId,GET,Demo - Member FHIR Bundle,Multiple,,,,Container (document),,N/A,,Per-member export
-Bundle,Document Bundle,Static,/api/fhir/demo-bundle,GET,Demo - Sample Import Bundle,N/A (file-based),,,,Container (document),,N/A,,"Static demo bundle with 5 patients, conditions, meds, allergies"
-OperationOutcome,OperationOutcome,Outbound,All /api/fhir/* endpoints,GET/POST,Error Handling & Processing Results,N/A,,,,Error/Status,,N/A,,Standard FHIR error and success response format across all endpoints
-Procedure,Procedure,Inbound (CR-002),/api/fhir/PrevisitContext,POST,HIE Pre-Visit Intelligence Ingestion,visit_codes,,,"CPT, HCPCS",Procedure,,No,Yes,"CR-002-01: Maps to visit_codes with codeType=cpt/hcpcs, source=hie, verified=false"
+Resource Type,Profile/Category,Direction,API Endpoint,HTTP Method,Application Workflow,Database Table(s),Code System,Coding System URI,Code(s) Used,Data Category,FHIR Helper Function,In Comprehensive Bundle,CR-002 Planned,Frontend Page(s),Notes
+,,,,,,,,,,,,,,,,
+,,,,,SECTION: AUTHENTICATION & ACCESS CONTROL,,,,,,,,,,
+User,App User,Internal,/api/auth/login,POST,Authentication - Login,users,,,,Authentication,,,No,login.tsx,Session-based login with role selection
+User,App Role,Internal,All protected routes,Middleware,RBAC Middleware,users,,,,Access Control,,,No,All pages,"Roles: np, supervisor, care_coordinator, admin, compliance"
+AuditEvent,Access Log,Internal,/api/access-log,GET,Access Governance - Log Viewer,audit_events,,,,Compliance,,,No,audit-viewer.tsx,Role-restricted: admin and compliance only
+AuditEvent,Audit Trail,Internal,/api/audit,GET,Audit Event History,audit_events,,,,Compliance,,,No,audit-viewer.tsx,Full audit trail of system events
+,,,,,,,,,,,,,,,,
+,,,,,SECTION: DASHBOARDS,,,,,,,,,,
+Dashboard,NP Dashboard,Internal,/api/dashboard/np,GET,NP Home Dashboard,"visits, members",,,,Dashboard,,,No,dashboard.tsx,"Counts: todayVisits, upcomingVisits, pendingReview, totalMembers"
+Dashboard,Supervisor Dashboard,Internal,/api/dashboard/supervisor,GET,Supervisor Home Dashboard,visits,,,,Dashboard,,,No,dashboard.tsx,"Counts: pendingReview, approvedToday, corrections, totalVisits"
+Dashboard,Coordinator Dashboard,Internal,/api/dashboard/coordinator,GET,Care Coordinator Dashboard,"visits, care_plan_tasks",,,,Dashboard,,,No,dashboard.tsx,"Counts: openTasks, completedTasks, pendingReferrals"
+,,,,,,,,,,,,,,,,
+,,,,,SECTION: VISIT MANAGEMENT,,,,,,,,,,
+Visit,Visit List,Internal,/api/visits,GET,Visit Schedule Management,visits,,,,Visit,,,No,visit-list.tsx,All visits with member join
+Visit,Visit Bundle,Internal,/api/visits/:id/bundle,GET,Pre-Visit Summary,"visits, members, required_checklists, plan_packs, plan_targets, visit_alerts",,,,Visit,,,No,visit-detail.tsx,Aggregated pre-visit data package
+Visit,Visit Overview,Internal,/api/visits/:id/overview,GET,Intake Dashboard - Full Overview,"visits, members, required_checklists, vitals_records, care_plan_tasks, visit_recommendations, med_reconciliation, assessment_responses, measure_results, visit_codes, validation_overrides, objective_exclusions, measure_definitions, visit_consents, visit_alerts, extracted_fields",,,,Visit,,,No,intake-dashboard.tsx,"Master endpoint: 16 parallel data fetches, computes vitals flags and assessment flags"
+Visit,Identity Verification,Internal,/api/visits/:id/verify-identity,POST,Identity Verification,visits,,,,Visit,,,No,identity-verification.tsx,Sets identityVerified flag and method
+Visit,Visit Finalization,Internal,/api/visits/:id/finalize,POST,Visit Finalization with Gating,"visits, required_checklists, vitals_records, visit_consents, med_reconciliation",,,,Visit,,,No,review-finalize.tsx,"Gating: checks completeness, vitals, consents, identity, med recon before allowing finalization"
+Visit,Visit Export,Internal,/api/visits/:id/export,POST,FHIR Export & Artifact Creation,"visits, export_artifacts",,,,Visit,,,No,review-finalize.tsx,Creates export artifact and updates visit sync status
+,,,,,,,,,,,,,,,,
+,,,,,SECTION: VITALS & EXAMINATION,,,,,,,,,,
+Vitals,Visit Vitals,Internal,/api/visits/:id/vitals,POST,Vitals & Physical Exam Entry,vitals_records,,,,Clinical,,,No,vitals-exam.tsx,"US units: lbs, feet/inches, degF. Calculates BMI. Records pain scale, exam findings"
+Vitals,Vitals Validation,Internal,/api/visits/:id/validate-vitals,POST,CDS - Vitals Range Validation,vitals_records,,,,Clinical,,,No,vitals-exam.tsx,Validates against clinical ranges; generates alerts for out-of-range values
+Vitals,Vitals History,Internal,/api/members/:id/vitals-history,GET,Patient Timeline - Historical Vitals,vitals_history,,,,Clinical,,,No,patient-timeline.tsx,Longitudinal vitals trend data with source tracking
+,,,,,,,,,,,,,,,,
+,,,,,SECTION: ASSESSMENTS,,,,,,,,,,
+Assessment,Definition Lookup,Internal,/api/assessments/definitions/:id,GET,Assessment Runner - Load Definition,assessment_definitions,,,,Clinical,,,No,assessment-runner.tsx,"Definitions: PHQ-2, PHQ-9, PRAPARE, AWV with questions, scoring rules"
+Assessment,Response Lookup,Internal,/api/visits/:id/assessments/:aid,GET,Assessment Runner - Load Saved Response,assessment_responses,,,,Clinical,,,No,assessment-runner.tsx,Retrieves existing assessment response for editing
+Assessment,Response Submit,Internal,/api/visits/:id/assessments,POST,Assessment Runner - Score & Save,"assessment_responses, required_checklists, visit_recommendations",,,,Clinical,,,No,assessment-runner.tsx,"Deterministic scoring: PHQ-2 (0-6), PHQ-9 (0-27), PRAPARE (risk items), AWV (multi-domain)"
+Assessment,Unable to Assess,Internal,/api/visits/:id/assessments/unable,POST,Assessment Exception Handling,"required_checklists, objective_exclusions",,,,Clinical,,,No,intake-dashboard.tsx,Records reason code for why assessment could not be completed
+,,,,,,,,,,,,,,,,
+,,,,,SECTION: HEDIS QUALITY MEASURES,,,,,,,,,,
+Measure,Definition Lookup,Internal,/api/measures/definitions/:id,GET,HEDIS Measure Runner - Load Definition,measure_definitions,,,,Quality,,,No,hedis-measure.tsx,"Definitions: BCS, COL, CDC-A1C, CBP, FMC with clinical criteria, CPT/HCPCS/ICD codes"
+Measure,Result Lookup,Internal,/api/visits/:id/measures/:mid,GET,HEDIS Measure Runner - Load Saved Result,measure_results,,,,Quality,,,No,hedis-measure.tsx,Retrieves existing measure result for editing
+Measure,Result Submit,Internal,/api/visits/:id/measures,POST,HEDIS Measure Runner - Save Result,"measure_results, required_checklists",,,,Quality,,,No,hedis-measure.tsx,Records evidence type/metadata and capture method
+Measure,Unable to Measure,Internal,/api/visits/:id/measures/unable,POST,Measure Exception Handling,"required_checklists, objective_exclusions",,,,Quality,,,No,intake-dashboard.tsx,Records reason code for why measure could not be captured
+Measure,Auto-Evaluate,Internal,/api/visits/:id/measures/evaluate,POST,HEDIS Auto-Evaluation Engine,"measure_results, measure_definitions, vitals_records, lab_results",,,,Quality,,,No,hedis-measure.tsx,"Auto-evaluates: CBP from vitals (systolic <140 AND diastolic <90), CDC-A1C from labs"
+,,,,,,,,,,,,,,,,
+,,,,,SECTION: MEDICATION RECONCILIATION,,,,,,,,,,
+Medication,Reconciliation List,Internal,/api/visits/:visitId/med-reconciliation,GET,Medication Reconciliation - Load,"med_reconciliation, medication_history, members",,,,Medication,,,No,med-reconciliation.tsx,"Loads recon list + member med history + known meds; includes Beers Criteria and drug interaction checking"
+Medication,Add Single Med,Internal,/api/visits/:visitId/med-reconciliation,POST,Medication Reconciliation - Add,med_reconciliation,,,,Medication,,,No,med-reconciliation.tsx,Add single medication to reconciliation
+Medication,Bulk Import,Internal,/api/visits/:visitId/med-reconciliation/bulk,POST,Medication Reconciliation - Bulk Import,med_reconciliation,,,,Medication,,,No,med-reconciliation.tsx,Imports multiple medications from member history in one operation
+Medication,Update Med,Internal,/api/visits/:visitId/med-reconciliation/:id,PUT,Medication Reconciliation - Update,med_reconciliation,,,,Medication,,,No,med-reconciliation.tsx,Update dosage/frequency/status/notes on reconciled med
+Medication,Delete Med,Internal,/api/visits/:visitId/med-reconciliation/:id,DELETE,Medication Reconciliation - Remove,med_reconciliation,,,,Medication,,,No,med-reconciliation.tsx,Remove medication from reconciliation
+Medication,History,Internal,/api/members/:id/medications,GET,Patient Timeline - Medication History,medication_history,,,,Medication,,,No,patient-timeline.tsx,Longitudinal medication history with source tracking
+,,,,,,,,,,,,,,,,
+,,,,,SECTION: DIAGNOSIS & CODING,,,,,,,,,,
+Code,Visit Codes,Internal,/api/visits/:id/codes,GET,Diagnosis Code List,visit_codes,,http://hl7.org/fhir/sid/icd-10-cm,"ICD-10-CM, CPT, HCPCS",Coding,,,No,intake-dashboard.tsx,All codes for a visit with evidence mapping
+Code,Auto-Generate Codes,Internal,/api/visits/:id/generate-codes,POST,CDS - Auto-Code Generation,"visit_codes, assessment_responses, vitals_records, measure_results, med_reconciliation",,,"ICD-10-CM, CPT, HCPCS",Coding,,,No,intake-dashboard.tsx,"Auto-assigns codes based on clinical data: vitals → hypertension codes, assessments → depression codes, etc."
+Code,Update Code,Internal,/api/codes/:id,PATCH,Code Verification/Removal,visit_codes,,,,Coding,,,No,intake-dashboard.tsx,"NP can verify, remove, or modify auto-assigned codes"
+Code,Evidence Map,Internal,/api/visits/:id/code-evidence,GET,Code Evidence Support,visit_codes,,,,Coding,,,No,intake-dashboard.tsx,Returns evidence supporting each diagnosis code
+Code,Diagnosis Validation,Internal,/api/visits/:id/diagnoses/validate,POST,Diagnosis Rules Validation,"visit_codes, diagnosis_rules, vitals_records, assessment_responses, med_reconciliation, lab_results",,,,Coding,,,No,intake-dashboard.tsx,Validates diagnoses against clinical rules; checks evidence support
+Code,Diagnosis Rules,Internal,/api/diagnosis-rules,GET,Admin - Diagnosis Rules List,diagnosis_rules,,,,Admin,,,No,admin-console.tsx,List all diagnosis validation rules
+,,,,,,,,,,,,,,,,
+,,,,,SECTION: CLINICAL DECISION SUPPORT,,,,,,,,,,
+Rule,Clinical Rules,Internal,/api/clinical-rules,GET,CDS - Rules List,clinical_rules,,,,CDS,,,No,admin-console.tsx,All clinical decision support rules
+Rule,Update Rule,Internal,/api/clinical-rules/:id,PUT,Admin - Update Clinical Rule,clinical_rules,,,,Admin,,,No,admin-console.tsx,Modify clinical rule parameters
+Rule,Evaluate Rules,Internal,/api/visits/:id/evaluate-rules,POST,CDS - Rule Evaluation Engine,"clinical_rules, visit_recommendations, vitals_records, assessment_responses, med_reconciliation, lab_results",,,,CDS,,,No,intake-dashboard.tsx,"Evaluates rules against visit data; generates recommendations with severity, actions"
+Recommendation,List,Internal,/api/visits/:id/recommendations,GET,CDS - Recommendations for Visit,visit_recommendations,,,,CDS,,,No,intake-dashboard.tsx,Active recommendations from rule evaluation
+Recommendation,Update,Internal,/api/recommendations/:id,PATCH,CDS - Accept/Dismiss Recommendation,visit_recommendations,,,,CDS,,,No,intake-dashboard.tsx,"NP accepts, dismisses, or defers recommendation"
+Override,List,Internal,/api/visits/:id/overrides,GET,CDS - Validation Overrides,validation_overrides,,,,CDS,,,No,intake-dashboard.tsx,Overrides to clinical validation warnings
+Override,Create,Internal,/api/visits/:id/overrides,POST,CDS - Create Override,validation_overrides,,,,CDS,,,No,intake-dashboard.tsx,NP overrides a clinical validation with justification
+,,,,,,,,,,,,,,,,
+,,,,,SECTION: CONSENT MANAGEMENT,,,,,,,,,,
+Consent,List,Internal,/api/visits/:id/consents,GET,Visit Consent Status,visit_consents,,,,Consent,,,No,visit-consents.tsx,"Consent types: nopp, voice_transcription, treatment"
+Consent,Capture,Internal,/api/visits/:id/consents,POST,Consent Capture,"visit_consents, audit_events",,,,Consent,,,No,visit-consents.tsx,"Captures consent with method (digital, verbal, written) and exception handling"
+,,,,,,,,,,,,,,,,
+,,,,,SECTION: COMPLETENESS & GATING,,,,,,,,,,
+Completeness,Evaluation,Internal,/api/visits/:id/completeness,GET,Completeness Engine,"completeness_rules, visit_consents, vitals_records, med_reconciliation, required_checklists",,,,Gating,,,No,review-finalize.tsx,"Evaluates all rules: consent, vitals, medication, assessment, measure components. Returns pass/fail/exception per rule."
+ReasonCode,List,Internal,/api/reason-codes,GET,Reason Code Lookup,reason_codes,,,,Reference,,,No,"intake-dashboard.tsx, visit-consents.tsx","Categories: patient_declined, unable_to_assess, clinical_contraindication, equipment_unavailable, environmental, cognitive_barrier, deferred, consent_exception"
+Exclusion,List,Internal,/api/visits/:id/exclusions,GET,Objective Exclusion List,objective_exclusions,,,,Gating,,,No,intake-dashboard.tsx,Exclusions (unable to assess/measure) for visit objectives
+Exclusion,Create,Internal,/api/visits/:id/exclusions,POST,Record Objective Exclusion,objective_exclusions,,,,Gating,,,No,intake-dashboard.tsx,Records why an objective was excluded with reason code
+Exclusion,Delete,Internal,/api/exclusions/:id,DELETE,Remove Objective Exclusion,objective_exclusions,,,,Gating,,,No,intake-dashboard.tsx,Removes previously recorded exclusion
+,,,,,,,,,,,,,,,,
+,,,,,SECTION: PROGRESS NOTES & DOCUMENTATION,,,,,,,,,,
+Note,Clinical Note,Internal,/api/visits/:id/note,GET,Progress Note Viewer,clinical_notes,,,,Documentation,,,No,intake-dashboard.tsx,MEAT/TAMPER compliant structured progress note
+Note,Structured Export,Internal,/api/visits/:id/progress-note/structured,GET,Progress Note - Structured JSON,"visits, members, vitals_records, assessment_responses, med_reconciliation, visit_codes, measure_results, visit_consents",,,,Documentation,,,No,intake-dashboard.tsx,"Auto-generated multi-section note: HPI, Exam, Assessments, A&P (MEAT), Quality Measures, Attestation"
+Note,Text Export,Internal,/api/visits/:id/progress-note/export,GET,Progress Note - Text Export,Same as structured,,,,Documentation,,,No,review-finalize.tsx,Plain-text formatted export of progress note
+Note,Edit History,Internal,/api/visits/:id/note-edits,GET,Note Edit Audit Trail,note_edits,,,,Documentation,,,No,intake-dashboard.tsx,History of edits to clinical note
+Note,Save Edit,Internal,/api/visits/:id/note-edits,POST,Note Edit - Save Change,"note_edits, clinical_notes, audit_events",,,,Documentation,,,No,intake-dashboard.tsx,Saves section-level edit with audit trail
+Note,Signatures,Internal,/api/visits/:id/note-signatures,GET,Note Signature Status,note_signatures,,,,Documentation,,,No,review-finalize.tsx,Electronic signature records on note
+Note,Sign,Internal,/api/visits/:id/note-signatures,POST,Note Electronic Signature,"note_signatures, audit_events",,,,Documentation,,,No,review-finalize.tsx,Applies electronic signature to note section
+,,,,,,,,,,,,,,,,
+,,,,,SECTION: CARE COORDINATION,,,,,,,,,,
+Task,Visit Tasks,Internal,/api/visits/:id/tasks,GET,Provider Tasks for Visit,care_plan_tasks,,,,Care Plan,,,No,intake-dashboard.tsx,Tasks tied to specific visit
+Task,Create Task,Internal,/api/visits/:id/tasks,POST,Create Provider Task,care_plan_tasks,,,,Care Plan,,,No,intake-dashboard.tsx,Add task with priority and category
+Task,All Tasks,Internal,/api/tasks,GET,Care Coordination - All Tasks,care_plan_tasks,,,,Care Plan,,,No,care-coordination.tsx,Cross-visit task list for care coordinator
+Task,Update Task,Internal,/api/tasks/:id,PATCH,Task Status Update,"care_plan_tasks, audit_events",,,,Care Plan,,,No,"care-coordination.tsx, intake-dashboard.tsx","Update status: pending, in_progress, completed, cancelled"
+,,,,,,,,,,,,,,,,
+,,,,,SECTION: SUPERVISOR REVIEW,,,,,,,,,,
+Review,Review Queue,Internal,/api/reviews,GET,Supervisor Review Queue,visits,,,,Review,,,No,supervisor-reviews.tsx,Visits in ready_for_review status
+Review,Enhanced Queue,Internal,/api/reviews/enhanced,GET,Enhanced Supervisor Queue,"visits, review_sign_offs",,,,Review,,,No,supervisor-reviews.tsx,"Enriched: completeness score, diagnosis support score, flag count, rework count, last return reasons"
+Review,Submit Decision,Internal,/api/visits/:id/review,POST,Supervisor Review Decision,"review_sign_offs, visits, audit_events",,,,Review,,,No,supervisor-reviews.tsx,"Decisions: approve, return, escalate with structured reasons and quality flags"
+Review,Adjudication Summary,Internal,/api/visits/:id/adjudication-summary,GET,Adjudication Scorecard,"visits, completeness_rules, visit_consents, vitals_records, med_reconciliation, required_checklists, visit_codes, assessment_responses, measure_results",,,,Review,,,No,supervisor-reviews.tsx,"Comprehensive scorecard: completeness %, diagnosis support %, quality flags, recommendation (approve/review/return)"
+Review,Sign-Off History,Internal,/api/visits/:id/sign-offs,GET,Review Sign-Off History,review_sign_offs,,,,Review,,,No,supervisor-reviews.tsx,All sign-off records for a visit with decision history
+,,,,,,,,,,,,,,,,
+,,,,,SECTION: VISIT ALERTS,,,,,,,,,,
+Alert,List,Internal,/api/visits/:id/alerts,GET,Visit Alert List,visit_alerts,,,,Alerts,,,No,intake-dashboard.tsx,"Alert severities: emergency, critical, warning, info"
+Alert,Create,Internal,/api/visits/:id/alerts,POST,Create Visit Alert,"visit_alerts, audit_events",,,,Alerts,,,No,intake-dashboard.tsx,Manual or system-generated alerts
+Alert,Update,Internal,/api/alerts/:id,PATCH,Update Alert,visit_alerts,,,,Alerts,,,No,intake-dashboard.tsx,Modify alert properties
+Alert,Acknowledge,Internal,/api/alerts/:id/acknowledge,POST,Acknowledge Alert,"visit_alerts, audit_events",,,,Alerts,,,No,intake-dashboard.tsx,NP acknowledges alert with optional note
+Alert,Dismiss,Internal,/api/alerts/:id/dismiss,POST,Dismiss Alert,"visit_alerts, audit_events",,,,Alerts,,,No,intake-dashboard.tsx,NP dismisses alert with required reason
+,,,,,,,,,,,,,,,,
+,,,,,SECTION: AI & VOICE CAPTURE,,,,,,,,,,
+AIProvider,List Providers,Internal,/api/ai-providers,GET,AI Provider Management,ai_provider_config,,,,AI Config,,,No,admin-console.tsx,List all configured AI providers
+AIProvider,Active Provider,Internal,/api/ai-providers/active,GET,Active AI Provider Check,ai_provider_config,,,,AI Config,,,No,voice-capture.tsx,Returns active provider with key availability status
+AIProvider,Create Provider,Internal,/api/ai-providers,POST,Create AI Provider Config,ai_provider_config,,,,AI Config,,,No,admin-console.tsx,Configure new AI provider (OpenAI etc.)
+AIProvider,Update Provider,Internal,/api/ai-providers/:id,PATCH,Update AI Provider Config,ai_provider_config,,,,AI Config,,,No,admin-console.tsx,Modify provider settings
+AIProvider,Test Connection,Internal,/api/ai-providers/:id/test,POST,Test AI Provider,ai_provider_config,,,,AI Config,,,No,admin-console.tsx,Tests API key and model availability
+Recording,List,Internal,/api/visits/:id/recordings,GET,Voice Recordings for Visit,voice_recordings,,,,Voice,,,No,voice-capture.tsx,All audio recordings for a visit
+Recording,Create,Internal,/api/visits/:id/recordings,POST,Record Audio Clip,"voice_recordings, audit_events",,,,Voice,,,No,"voice-capture.tsx, assessment-runner.tsx",Saves base64 audio with duration and consent linkage
+Transcript,Transcribe,Internal,/api/visits/:id/transcribe,POST,AI Transcription (Whisper),"transcripts, voice_recordings",,,,Voice,,,No,voice-capture.tsx,Sends audio to OpenAI Whisper; saves transcript with confidence score
+Transcript,List,Internal,/api/visits/:id/transcripts,GET,Transcript List,transcripts,,,,Voice,,,No,voice-capture.tsx,All transcripts for a visit with status
+ExtractedField,Extract Fields,Internal,/api/visits/:id/extract,POST,AI Field Extraction (GPT-4o),"extracted_fields, transcripts",,,,Voice,,,No,voice-capture.tsx,"Extracts structured clinical fields from transcript: vitals, medications, conditions, assessments"
+ExtractedField,Extract for Assessment,Internal,/api/visits/:id/extract-assessment,POST,AI Assessment Extraction (GPT-4o),"extracted_fields, transcripts, assessment_definitions",,,,Voice,,,No,assessment-runner.tsx,Extracts assessment-specific responses from voice transcript
+ExtractedField,List,Internal,/api/visits/:id/extracted-fields,GET,Extracted Fields for Visit,extracted_fields,,,,Voice,,,No,voice-capture.tsx,"All extracted fields with confidence, source snippet, acceptance status"
+ExtractedField,Accept/Reject,Internal,/api/extracted-fields/:id,PATCH,Field Accept/Reject/Edit,extracted_fields,,,,Voice,,,No,voice-capture.tsx,"NP reviews: accept, reject, or edit proposed value"
+ExtractedField,Bulk Accept,Internal,/api/visits/:id/extracted-fields/bulk-accept,POST,Bulk Accept Fields,extracted_fields,,,,Voice,,,No,voice-capture.tsx,Accept all pending extracted fields at once
+ExtractedField,Re-Apply,Internal,/api/visits/:id/extracted-fields/re-apply,POST,Re-Apply Accepted Fields,"extracted_fields, vitals_records, med_reconciliation, assessment_responses",,,,Voice,,,No,voice-capture.tsx,Applies accepted extracted field values to actual clinical records
+,,,,,,,,,,,,,,,,
+,,,,,SECTION: PATIENT DATA,,,,,,,,,,
+Lab,Lab Results,Internal,/api/members/:id/labs,GET,Patient Timeline - Lab History,lab_results,,,,Clinical,,,No,patient-timeline.tsx,Longitudinal lab results with source and reference ranges
+,,,,,,,,,,,,,,,,
+,,,,,SECTION: ADMIN & CONFIGURATION,,,,,,,,,,
+PlanPack,List,Internal,/api/admin/plan-packs,GET,Admin - Plan Pack Management,plan_packs,,,,Admin,,,No,admin-console.tsx,"Plan packs: required assessments, measures, feature flags per insurance plan"
+PlanPack,Update,Internal,/api/plan-packs/:id,PUT,Admin - Update Plan Pack,plan_packs,,,,Admin,,,No,admin-console.tsx,Modify plan pack configuration
+AssessmentDef,List,Internal,/api/admin/assessment-definitions,GET,Admin - Assessment Definition Management,assessment_definitions,,,,Admin,,,No,admin-console.tsx,All assessment instrument definitions
+MeasureDef,List,Internal,/api/admin/measure-definitions,GET,Admin - Measure Definition Management,measure_definitions,,,,Admin,,,No,admin-console.tsx,All HEDIS measure definitions with clinical criteria
+Member,List,Internal,/api/admin/members,GET,Admin - Member Management,members,,,,Admin,,,No,admin-console.tsx,All members with full demographic data
+Member,Update,Internal,/api/admin/members/:id,PATCH,Admin - Update Member,members,,,,Admin,,,No,admin-console.tsx,Update member demographics or clinical data
+DemoConfig,Get,Internal,/api/demo-config,GET,Demo Mode Configuration,demo_config,,,,Admin,,,No,demo-management.tsx,Current demo configuration settings
+DemoConfig,Update,Internal,/api/demo-config,PUT,Admin - Update Demo Config,demo_config,,,,Admin,,,No,demo-management.tsx,Modify demo mode settings (admin only)
+Demo,Reset,Internal,/api/demo/reset,POST,Demo - Full Data Reset,"All tables",,,,Admin,,,No,demo-management.tsx,Reseeds all demo data to initial state
+,,,,,,,,,,,,,,,,
+,,,,,SECTION: COMPLIANCE & AUDIT,,,,,,,,,,
+Audit,Assignments,Internal,/api/audit-assignments,GET,Audit Queue - Assignment List,"audit_assignments, visits, members",,,,Compliance,,,No,audit-queue.tsx,"Role-restricted: admin, compliance, supervisor"
+Audit,Create Assignment,Internal,/api/audit-assignments,POST,Audit Queue - Manual Assignment,audit_assignments,,,,Compliance,,,No,audit-queue.tsx,"Role-restricted: admin, compliance"
+Audit,Random Sampling,Internal,/api/audit-assignments/sample,POST,Audit Queue - Random Sample,"audit_assignments, visits",,,,Compliance,,,No,audit-queue.tsx,Random sampling of visits for compliance audit
+Audit,Update Assignment,Internal,/api/audit-assignments/:id,PUT,Audit Queue - Update Assignment,audit_assignments,,,,Compliance,,,No,audit-queue.tsx,Update audit assignment status
+Audit,Outcomes,Internal,/api/audit-assignments/:id/outcomes,GET,Audit Queue - Outcome History,audit_outcomes,,,,Compliance,,,No,audit-queue.tsx,All outcomes for an audit assignment
+Audit,Record Outcome,Internal,/api/audit-outcomes,POST,Audit Queue - Record Outcome,"audit_outcomes, audit_events",,,,Compliance,,,No,audit-queue.tsx,Structured outcome capture with findings
+,,,,,,,,,,,,,,,,
+,,,,,SECTION: FHIR R4 API - OUTBOUND (READ),,,,,,,,,,
+Patient,US Core Patient,Outbound,/api/fhir/Patient/:id,GET,FHIR Read - Single Patient,members,,urn:easy-health:member-id,,Demographics,memberToFhirPatient(),Yes,No,,Returns single patient by ID
+Patient,US Core Patient,Outbound,/api/fhir/Patient,GET,FHIR Search - All Patients,members,,urn:easy-health:member-id,,Demographics,memberToFhirPatient(),No,No,,Returns searchset Bundle of all patients
+Encounter,US Core Encounter,Outbound,/api/fhir/Encounter/:id,GET,FHIR Read - Single Encounter,visits,,http://terminology.hl7.org/CodeSystem/v3-ActCode,HH (home health),Visit,visitToFhirEncounter(),Yes,No,,Maps visit status to FHIR encounter status
+Observation,Vital Signs,Outbound,/api/fhir/Observation?encounter=:id,GET,FHIR Search - Vitals by Encounter,vitals_records,http://loinc.org,http://terminology.hl7.org/CodeSystem/observation-category,"85354-9 (BP), 8867-4 (HR), 9279-1 (RR), 8310-5 (Temp), 2708-6 (SpO2), 29463-7 (Wt), 8302-2 (Ht), 39156-5 (BMI)",Vital Signs,vitalsToFhirObservations(),Yes,No,,8 distinct vital sign Observations; BP as component-style
+Condition,Encounter Diagnosis,Outbound,/api/fhir/Condition?encounter=:id,GET,FHIR Search - Conditions by Encounter,visit_codes,,http://hl7.org/fhir/sid/icd-10-cm,ICD-10-CM codes,Diagnosis,codesToFhirConditions(),Yes,No,,Encounter-specific diagnoses from visit codes; filters removedByNp
+Bundle,Comprehensive Export,Outbound,/api/fhir/Bundle?visit=:id,GET,FHIR Comprehensive Visit Export,"visits, members, vitals_records, visit_codes, clinical_notes, care_plan_tasks, assessment_responses, lab_results, medication_history, vitals_history, med_reconciliation, measure_results, visit_consents",,,"ICD-10-CM, LOINC, CPT, HCPCS","Container (11 resource types, 80+ entries)",buildComprehensiveFhirBundle(),N/A,No,fhir-playground.tsx,"Includes: Patient, Encounter, Appointment, Coverage, Condition (encounter + problem list), AllergyIntolerance, Observation (vitals + vitals history + labs + assessments + HEDIS measures), MedicationStatement (history + reconciliation), Consent, DocumentReference, Task"
+,,,,,,,,,,,,,,,,
+,,,,,SECTION: FHIR R4 API - OUTBOUND (BUNDLE RESOURCE TYPES),,,,,,,,,,
+Observation,Vital Signs - Blood Pressure,Outbound,/api/fhir/Bundle?visit=:id (within),GET,Comprehensive Bundle - Vitals,vitals_records,http://loinc.org,http://terminology.hl7.org/CodeSystem/observation-category,"85354-9 (panel), 8480-6 (systolic), 8462-4 (diastolic)",Vital Signs,vitalsToFhirObservations(),Yes,No,,Component-style BP with systolic+diastolic sub-observations
+Observation,Vital Signs - Heart Rate,Outbound,/api/fhir/Bundle?visit=:id (within),GET,Comprehensive Bundle - Vitals,vitals_records,http://loinc.org,,8867-4,Vital Signs,vitalsToFhirObservations(),Yes,No,,
+Observation,Vital Signs - Respiratory Rate,Outbound,/api/fhir/Bundle?visit=:id (within),GET,Comprehensive Bundle - Vitals,vitals_records,http://loinc.org,,9279-1,Vital Signs,vitalsToFhirObservations(),Yes,No,,
+Observation,Vital Signs - Temperature,Outbound,/api/fhir/Bundle?visit=:id (within),GET,Comprehensive Bundle - Vitals,vitals_records,http://loinc.org,,8310-5,Vital Signs,vitalsToFhirObservations(),Yes,No,,US units: degF
+Observation,Vital Signs - Oxygen Saturation,Outbound,/api/fhir/Bundle?visit=:id (within),GET,Comprehensive Bundle - Vitals,vitals_records,http://loinc.org,,2708-6,Vital Signs,vitalsToFhirObservations(),Yes,No,,
+Observation,Vital Signs - Body Weight,Outbound,/api/fhir/Bundle?visit=:id (within),GET,Comprehensive Bundle - Vitals,vitals_records,http://loinc.org,,29463-7,Vital Signs,vitalsToFhirObservations(),Yes,No,,US units: lbs [lb_av]
+Observation,Vital Signs - Body Height,Outbound,/api/fhir/Bundle?visit=:id (within),GET,Comprehensive Bundle - Vitals,vitals_records,http://loinc.org,,8302-2,Vital Signs,vitalsToFhirObservations(),Yes,No,,US units: inches [in_i]
+Observation,Vital Signs - BMI,Outbound,/api/fhir/Bundle?visit=:id (within),GET,Comprehensive Bundle - Vitals,vitals_records,http://loinc.org,,39156-5,Vital Signs,vitalsToFhirObservations(),Yes,No,,Calculated kg/m2
+Observation,Historical Vitals (BP/Wt/BMI),Outbound,/api/fhir/Bundle?visit=:id (within),GET,Comprehensive Bundle - Vitals History,vitals_history,http://loinc.org,,"85354-9, 29463-7, 39156-5",Vital Signs (Historical),vitalsHistoryToFhir(),Yes,No,,Longitudinal vitals with meta.source provenance
+Observation,Laboratory Result,Outbound,/api/fhir/Bundle?visit=:id (within),GET,Comprehensive Bundle - Labs,lab_results,http://loinc.org,http://terminology.hl7.org/CodeSystem/observation-category,laboratory (category),Laboratory,labResultsToFhir(),Yes,No,,Includes referenceRange and interpretation coding
+Observation,Survey - Assessment Result,Outbound,/api/fhir/Bundle?visit=:id (within),GET,Comprehensive Bundle - Assessments,assessment_responses,,urn:easy-health:instrument,"PHQ-2, PHQ-9, PRAPARE, AWV",Assessment,,Yes,No,,Assessment scores with interpretation text
+Observation,Survey - HEDIS Measure,Outbound,/api/fhir/Bundle?visit=:id (within),GET,Comprehensive Bundle - HEDIS,measure_results,,urn:easy-health:hedis-measure,"BCS, COL, CDC-A1C, CBP, FMC",Quality Measure,measureResultsToFhir(),Yes,No,,HEDIS evidence with capture method meta.source
+Condition,Problem List Item,Outbound,/api/fhir/Bundle?visit=:id (within),GET,Comprehensive Bundle - Problem List,members.conditions,,http://terminology.hl7.org/CodeSystem/condition-category,problem-list-item,Diagnosis (History),memberConditionsToFhir(),Yes,No,,Member-level chronic conditions from problem list
+Condition,Encounter Diagnosis,Outbound,/api/fhir/Bundle?visit=:id (within),GET,Comprehensive Bundle - Encounter Dx,visit_codes,,http://hl7.org/fhir/sid/icd-10-cm,ICD-10-CM codes,Diagnosis (Encounter),codesToFhirConditions(),Yes,No,,Visit-specific coded diagnoses
+AllergyIntolerance,US Core AllergyIntolerance,Outbound,/api/fhir/Bundle?visit=:id (within),GET,Comprehensive Bundle - Allergies,members.allergies,,http://terminology.hl7.org/CodeSystem/allergyintolerance-clinical,active,Allergy,allergiesToFhir(),Yes,No,,Member allergy list
+MedicationStatement,Medication History,Outbound,/api/fhir/Bundle?visit=:id (within),GET,Comprehensive Bundle - Med History,medication_history,,urn:easy-health:med-category,,Medication (History),medicationHistoryToFhir(),Yes,No,,Longitudinal medication history with prescriber info and meta.source
+MedicationStatement,Visit Reconciliation,Outbound,/api/fhir/Bundle?visit=:id (within),GET,Comprehensive Bundle - Med Recon,med_reconciliation,,,visit-reconciliation (meta.source),Medication (Reconciled),medReconToFhir(),Yes,No,,Visit-specific reconciled medications
+Coverage,Insurance Coverage,Outbound,/api/fhir/Bundle?visit=:id (within),GET,Comprehensive Bundle - Coverage,members.insurancePlan,,urn:easy-health:plan-type,"MA (Medicare Advantage), ACA",Insurance,coverageToFhir(),Yes,No,,Derived from member insurance plan field
+Appointment,Visit Appointment,Outbound,/api/fhir/Bundle?visit=:id (within),GET,Comprehensive Bundle - Scheduling,visits,,urn:easy-health:visit-type,"annual_wellness, follow_up",Scheduling,appointmentToFhir(),Yes,No,,Maps visit scheduling to FHIR Appointment
+Consent,Patient Consent,Outbound,/api/fhir/Bundle?visit=:id (within),GET,Comprehensive Bundle - Consents,visit_consents,,urn:easy-health:consent-type,"nopp, voice_transcription, treatment",Consent,consentsToFhir(),Yes,No,,Consent records with status mapping (active/rejected/proposed)
+DocumentReference,Progress Note,Outbound,/api/fhir/Bundle?visit=:id (within),GET,Comprehensive Bundle - Clinical Note,clinical_notes,http://loinc.org,,11506-3 (Progress note),Documentation,,Yes,No,,Base64-encoded JSON clinical note as attachment
+Task,Care Plan Task,Outbound,/api/fhir/Bundle?visit=:id (within),GET,Comprehensive Bundle - Tasks,care_plan_tasks,,,,Care Coordination,,Yes,No,,Tasks with FHIR priority mapping (urgent/asap/routine)
+OperationOutcome,Error/Status,Outbound,All /api/fhir/* endpoints,GET/POST,Error Handling & Processing Results,N/A,,,,Error/Status,,N/A,No,,Standard FHIR error and success response format
+,,,,,,,,,,,,,,,,
+,,,,,SECTION: FHIR R4 API - INBOUND (WRITE),,,,,,,,,,
+Patient,US Core Patient,Inbound,/api/fhir/Patient,POST,FHIR Create/Update Patient,members,,urn:easy-health:member-id,,Demographics,memberToFhirPatient(),No,No,fhir-playground.tsx,Upsert patient by member-id identifier
+Bundle,Transaction Bundle,Inbound,/api/fhir/Bundle,POST,FHIR Bundle Import,"members, visits, vitals_history, lab_results, medication_history, required_checklists, plan_packs",,urn:easy-health:member-id,,Container (transaction),,N/A,No,fhir-playground.tsx,"Processes Patient + Encounter; imports vitals/labs/meds from extensions; auto-assigns NP and plan pack"
+Patient,Patient in Bundle,Inbound,/api/fhir/Bundle (within),POST,Bundle Import - Patient Processing,"members, vitals_history, lab_results, medication_history",,urn:easy-health:member-id,,Demographics,,No,No,,"Upserts member; imports historical data from urn:easy-health:* extensions"
+Encounter,Encounter in Bundle,Inbound,/api/fhir/Bundle (within),POST,Bundle Import - Encounter Processing,"visits, required_checklists",,urn:easy-health:visit-type,,Visit,,No,No,,"Creates visit; populates checklist from plan pack; assigns NP"
+,,,,,,,,,,,,,,,,
+,,,,,SECTION: FHIR R4 API - DEMO UTILITIES,,,,,,,,,,
+Bundle,Demo Export (All),Outbound,/api/demo/fhir-bundles,GET,Demo - All Members FHIR Bundles,"members, visits, vitals_records, visit_codes",,,,Container (document),"memberToFhirPatient(), visitToFhirEncounter(), vitalsToFhirObservations(), codesToFhirConditions()",N/A,No,,Batch export for all members with visits
+Bundle,Demo Export (Single),Outbound,/api/demo/fhir-bundle/:memberId,GET,Demo - Single Member FHIR Bundle,"members, visits, vitals_records, visit_codes",,,,Container (document),"memberToFhirPatient(), visitToFhirEncounter(), vitalsToFhirObservations(), codesToFhirConditions()",N/A,No,,Per-member export with encounters and observations
+Bundle,Demo Import Bundle,Static,/api/fhir/demo-bundle,GET,Demo - Sample Import Bundle,N/A (file-based: server/data/demo-fhir-bundle.json),,,,Container (document),,N/A,No,fhir-playground.tsx,"Static bundle with 5 patients, each with Encounter, Conditions (4-5), AllergyIntolerances (1-2), MedicationStatements (4-6)"
+Bundle,Demo Import Bundle (alt),Static,/api/demo/sample-import-bundle,GET,Demo - Sample Import Bundle (alt),N/A (file-based: server/data/demo-fhir-bundle.json),,,,Container (document),,N/A,No,,Alternate route for same demo bundle
+,,,,,,,,,,,,,,,,
+,,,,,SECTION: CR-002 PLANNED - HIE PRE-VISIT INTELLIGENCE,,,,,,,,,,
+Bundle,HIE Pre-Visit Context,Inbound (CR-002),/api/fhir/PrevisitContext,POST,HIE Pre-Visit Intelligence Ingestion,"hie_ingestion_log, med_reconciliation, medication_history, suspected_conditions, lab_results, vitals_history, visit_codes",,,,Container (transaction),,N/A,Yes,,"CR-002-01: Accepts FHIR Bundle from Easy Health with MedicationStatement, Condition, Observation, Procedure resources"
+MedicationStatement,HIE Medication,Inbound (CR-002),/api/fhir/PrevisitContext (within),POST,HIE Ingestion - Medication Pre-Population,"med_reconciliation, medication_history",,,,Medication (HIE),,No,Yes,,"CR-002-02: Pre-populates med_reconciliation with source=hie, status=pending"
+Condition,HIE Suspected Condition,Inbound (CR-002),/api/fhir/PrevisitContext (within),POST,HIE Ingestion - Condition Suspecting,suspected_conditions,,http://hl7.org/fhir/sid/icd-10-cm,ICD-10-CM codes,Suspected Diagnosis,,No,Yes,,"CR-002-03: Creates suspected_condition if not in encounter; NP confirms/dismisses"
+Observation,HIE Laboratory,Inbound (CR-002),/api/fhir/PrevisitContext (within),POST,HIE Ingestion - Lab Results,lab_results,http://loinc.org,http://terminology.hl7.org/CodeSystem/observation-category,laboratory (category),Laboratory,,No,Yes,,CR-002-01: Routes by category=laboratory; source=hie
+Observation,HIE Vital Signs,Inbound (CR-002),/api/fhir/PrevisitContext (within),POST,HIE Ingestion - Vitals History,vitals_history,http://loinc.org,http://terminology.hl7.org/CodeSystem/observation-category,vital-signs (category),Vital Signs,,No,Yes,,CR-002-01: Routes by category=vital-signs; source=hie
+Procedure,HIE Procedure,Inbound (CR-002),/api/fhir/PrevisitContext (within),POST,HIE Ingestion - Procedure Codes,visit_codes,,,"CPT, HCPCS",Procedure,,No,Yes,,"CR-002-01: Maps to visit_codes with source=hie, verified=false"

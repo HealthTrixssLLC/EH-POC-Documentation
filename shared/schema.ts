@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { pgTable, text, varchar, integer, boolean, timestamp, jsonb, real } from "drizzle-orm/pg-core";
+import { pgTable, text, varchar, integer, boolean, timestamp, jsonb, real, unique } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
@@ -889,6 +889,50 @@ export const auditOutcomes = pgTable("audit_outcomes", {
 export const insertAuditOutcomeSchema = createInsertSchema(auditOutcomes).omit({ id: true });
 export type InsertAuditOutcome = z.infer<typeof insertAuditOutcomeSchema>;
 export type AuditOutcome = typeof auditOutcomes.$inferSelect;
+
+// CR-002: HIE Pre-Visit Intelligence
+export const hieIngestionLog = pgTable("hie_ingestion_log", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  visitId: varchar("visit_id").notNull(),
+  memberId: varchar("member_id").notNull(),
+  bundleId: varchar("bundle_id"),
+  sourceSystem: text("source_system").notNull().default("EH"),
+  resourceCount: integer("resource_count").notNull().default(0),
+  resourceSummary: jsonb("resource_summary").$type<Record<string, number>>(),
+  status: text("status").notNull().default("processing"),
+  errorDetails: text("error_details").array(),
+  receivedAt: text("received_at").notNull(),
+  processedAt: text("processed_at"),
+  processedBy: text("processed_by").default("system"),
+});
+
+export const insertHieIngestionLogSchema = createInsertSchema(hieIngestionLog).omit({ id: true });
+export type InsertHieIngestionLog = z.infer<typeof insertHieIngestionLogSchema>;
+export type HieIngestionLog = typeof hieIngestionLog.$inferSelect;
+
+export const suspectedConditions = pgTable("suspected_conditions", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  visitId: varchar("visit_id").notNull(),
+  memberId: varchar("member_id").notNull(),
+  icdCode: text("icd_code").notNull(),
+  description: text("description").notNull(),
+  hieSource: text("hie_source").default("EH"),
+  confidence: text("confidence").default("suspected"),
+  status: text("status").notNull().default("pending"),
+  reviewedBy: varchar("reviewed_by"),
+  reviewedByName: text("reviewed_by_name"),
+  reviewedAt: text("reviewed_at"),
+  dismissalReason: text("dismissal_reason"),
+  linkedCodeId: varchar("linked_code_id"),
+  ingestionLogId: varchar("ingestion_log_id"),
+  createdAt: text("created_at"),
+}, (table) => [
+  unique("uq_suspected_visit_icd").on(table.visitId, table.icdCode),
+]);
+
+export const insertSuspectedConditionSchema = createInsertSchema(suspectedConditions).omit({ id: true });
+export type InsertSuspectedCondition = z.infer<typeof insertSuspectedConditionSchema>;
+export type SuspectedCondition = typeof suspectedConditions.$inferSelect;
 
 export const AUDIT_FINDING_CATEGORIES = [
   { code: "documentation_quality", label: "Documentation Quality", description: "Completeness and accuracy of clinical documentation" },

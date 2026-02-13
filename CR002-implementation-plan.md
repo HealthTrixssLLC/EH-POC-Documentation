@@ -5,7 +5,7 @@
 **System:** Easy Health Point of Care Application
 **Requestor:** Jay Baker
 **Date:** February 13, 2026
-**Status:** Planning
+**Status:** In Progress - Phase 1 Complete
 
 ---
 
@@ -120,13 +120,13 @@ The following tables already have `source` fields that accept "hie":
 ### Phase 1: Schema & Storage Layer
 
 - [x] Design review completed (this document)
-- [ ] **T1.1** Add `hie_ingestion_log` table to `shared/schema.ts` with insert schema and types
-- [ ] **T1.2** Add `suspected_conditions` table to `shared/schema.ts` with insert schema and types
-- [ ] **T1.3** Run `npm run db:push` to sync new tables to database
-- [ ] **T1.4** Add `IStorage` interface methods for new tables:
-  - `createHieIngestionLog(log)` / `getHieIngestionLogsByVisit(visitId)` / `updateHieIngestionLog(id, updates)`
-  - `createSuspectedCondition(cond)` / `getSuspectedConditionsByVisit(visitId)` / `updateSuspectedCondition(id, updates)`
-- [ ] **T1.5** Implement `DatabaseStorage` methods for new tables
+- [x] **T1.1** Add `hie_ingestion_log` table to `shared/schema.ts` with insert schema and types *(completed 2026-02-13)*
+- [x] **T1.2** Add `suspected_conditions` table to `shared/schema.ts` with insert schema and types *(completed 2026-02-13)*
+- [x] **T1.3** Run `npm run db:push` to sync new tables to database *(completed 2026-02-13 - both tables verified in PostgreSQL)*
+- [x] **T1.4** Add `IStorage` interface methods for new tables *(completed 2026-02-13)*
+  - `createHieIngestionLog(log)` / `getHieIngestionLogsByVisit(visitId)` / `getHieIngestionLogByBundleId(visitId, bundleId)` / `updateHieIngestionLog(id, updates)`
+  - `createSuspectedCondition(cond)` / `getSuspectedConditionsByVisit(visitId)` / `getSuspectedCondition(id)` / `getSuspectedConditionByVisitAndCode(visitId, icdCode)` / `updateSuspectedCondition(id, updates)`
+- [x] **T1.5** Implement `DatabaseStorage` methods for new tables *(completed 2026-02-13)*
 
 ### Phase 2: FHIR Ingestion API (CR-002-01)
 

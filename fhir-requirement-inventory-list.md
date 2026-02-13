@@ -822,14 +822,22 @@ All references use the relative reference format:
 
 ---
 
-## 10. CR-002 Planned Resources
+## 10. CR-002 HIE Pre-Visit Intelligence
 
-### 10.1 New Inbound Endpoint
+### 10.1 Inbound Endpoint
 
 **Endpoint**: POST `/api/fhir/PrevisitContext`  
 **Purpose**: Accept FHIR Bundle from HIE containing pre-visit clinical context  
-**New Table**: `hie_ingestion_log` (tracks bundleId for idempotency)  
-**New Table**: `suspected_conditions` (NP confirm/dismiss workflow)
+**Status**: Phase 1 Complete (schema + storage); Phase 2 pending (API endpoint)
+
+**Implemented Table**: `hie_ingestion_log`
+- Columns: id (PK), visitId, memberId, bundleId, sourceSystem, resourceCount, resourceSummary (jsonb), status (processing/completed/partial/failed), errorDetails (text[]), receivedAt, processedAt, processedBy
+- Dedup: `getHieIngestionLogByBundleId(visitId, bundleId)` prevents duplicate bundle ingestion
+
+**Implemented Table**: `suspected_conditions`
+- Columns: id (PK), visitId, memberId, icdCode, description, hieSource, confidence (suspected/probable/confirmed), status (pending/confirmed/dismissed), reviewedBy, reviewedByName, reviewedAt, dismissalReason, linkedCodeId (FK → visit_codes), ingestionLogId (FK → hie_ingestion_log), createdAt
+- Unique constraint: `uq_suspected_visit_icd` on (visitId, icdCode)
+- Dedup: `getSuspectedConditionByVisitAndCode(visitId, icdCode)` prevents duplicate suspected conditions per visit
 
 ### 10.2 New Inbound Resource Handling
 

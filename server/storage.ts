@@ -59,6 +59,10 @@ import {
   type AuditAssignment, type InsertAuditAssignment,
   auditOutcomes,
   type AuditOutcome, type InsertAuditOutcome,
+  hieIngestionLog,
+  type HieIngestionLog, type InsertHieIngestionLog,
+  suspectedConditions,
+  type SuspectedCondition, type InsertSuspectedCondition,
 } from "@shared/schema";
 
 export interface IStorage {
@@ -243,6 +247,18 @@ export interface IStorage {
 
   // Review Sign-offs for rework tracking (CR-001-20)
   getAllReviewSignOffs(): Promise<ReviewSignOff[]>;
+
+  // CR-002: HIE Pre-Visit Intelligence
+  createHieIngestionLog(log: InsertHieIngestionLog): Promise<HieIngestionLog>;
+  getHieIngestionLogsByVisit(visitId: string): Promise<HieIngestionLog[]>;
+  getHieIngestionLogByBundleId(visitId: string, bundleId: string): Promise<HieIngestionLog | undefined>;
+  updateHieIngestionLog(id: string, updates: Partial<HieIngestionLog>): Promise<HieIngestionLog | undefined>;
+
+  createSuspectedCondition(cond: InsertSuspectedCondition): Promise<SuspectedCondition>;
+  getSuspectedConditionsByVisit(visitId: string): Promise<SuspectedCondition[]>;
+  getSuspectedCondition(id: string): Promise<SuspectedCondition | undefined>;
+  getSuspectedConditionByVisitAndCode(visitId: string, icdCode: string): Promise<SuspectedCondition | undefined>;
+  updateSuspectedCondition(id: string, updates: Partial<SuspectedCondition>): Promise<SuspectedCondition | undefined>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -938,6 +954,50 @@ export class DatabaseStorage implements IStorage {
   // Review Sign-offs for rework tracking (CR-001-20)
   async getAllReviewSignOffs() {
     return db.select().from(reviewSignOffs).orderBy(desc(reviewSignOffs.signedAt));
+  }
+
+  // CR-002: HIE Pre-Visit Intelligence
+  async createHieIngestionLog(log: InsertHieIngestionLog) {
+    const [created] = await db.insert(hieIngestionLog).values(log).returning();
+    return created;
+  }
+
+  async getHieIngestionLogsByVisit(visitId: string) {
+    return db.select().from(hieIngestionLog).where(eq(hieIngestionLog.visitId, visitId)).orderBy(desc(hieIngestionLog.receivedAt));
+  }
+
+  async getHieIngestionLogByBundleId(visitId: string, bundleId: string) {
+    const [log] = await db.select().from(hieIngestionLog).where(and(eq(hieIngestionLog.visitId, visitId), eq(hieIngestionLog.bundleId, bundleId)));
+    return log;
+  }
+
+  async updateHieIngestionLog(id: string, updates: Partial<HieIngestionLog>) {
+    const [updated] = await db.update(hieIngestionLog).set(updates).where(eq(hieIngestionLog.id, id)).returning();
+    return updated;
+  }
+
+  async createSuspectedCondition(cond: InsertSuspectedCondition) {
+    const [created] = await db.insert(suspectedConditions).values(cond).returning();
+    return created;
+  }
+
+  async getSuspectedConditionsByVisit(visitId: string) {
+    return db.select().from(suspectedConditions).where(eq(suspectedConditions.visitId, visitId));
+  }
+
+  async getSuspectedCondition(id: string) {
+    const [cond] = await db.select().from(suspectedConditions).where(eq(suspectedConditions.id, id));
+    return cond;
+  }
+
+  async getSuspectedConditionByVisitAndCode(visitId: string, icdCode: string) {
+    const [cond] = await db.select().from(suspectedConditions).where(and(eq(suspectedConditions.visitId, visitId), eq(suspectedConditions.icdCode, icdCode)));
+    return cond;
+  }
+
+  async updateSuspectedCondition(id: string, updates: Partial<SuspectedCondition>) {
+    const [updated] = await db.update(suspectedConditions).set(updates).where(eq(suspectedConditions.id, id)).returning();
+    return updated;
   }
 }
 

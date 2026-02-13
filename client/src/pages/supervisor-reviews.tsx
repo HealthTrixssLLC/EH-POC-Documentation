@@ -27,6 +27,9 @@ import {
   RefreshCw,
   ExternalLink,
   Filter,
+  Database,
+  Pill,
+  Stethoscope,
 } from "lucide-react";
 import { useState, useMemo } from "react";
 import { apiRequest, queryClient } from "@/lib/queryClient";
@@ -39,6 +42,10 @@ interface AdjudicationSummary {
   qualityFlags: { flag: string; severity: string; description: string }[];
   overallScore: number;
   recommendation: "approve" | "review" | "return";
+  hieDataAvailable: boolean;
+  hieIngestionSummary: { resourceCount: number; receivedAt: string | null; status: string } | null;
+  suspectedConditionsReviewed: { total: number; confirmed: number; dismissed: number; pending: number };
+  hieMedReconciliationStatus: { total: number; verified: number; pending: number };
 }
 
 interface EnhancedVisit {
@@ -52,6 +59,7 @@ interface EnhancedVisit {
   completenessScore: number | null;
   diagnosisSupportScore: number | null;
   flagCount: number;
+  hieDataAvailable: boolean;
   lastReturnReasons: any;
   lastReturnComments: string | null;
   lastReviewDate: string | null;
@@ -108,6 +116,62 @@ function AdjudicationCard({ visitId }: { visitId: string }) {
         </div>
       </div>
 
+      {summary.hieDataAvailable && (
+        <>
+          <Separator />
+          <div className="space-y-2">
+            <div className="flex items-center gap-2">
+              <Database className="w-3.5 h-3.5 text-teal-600 dark:text-teal-400" />
+              <span className="text-xs font-medium text-muted-foreground">HIE Pre-Visit Data</span>
+              {summary.suspectedConditionsReviewed.pending === 0 && summary.hieMedReconciliationStatus.pending === 0 ? (
+                <Badge variant="outline" className="text-xs text-green-700 dark:text-green-400 border-green-300 dark:border-green-700" data-testid="badge-hie-available">
+                  <CheckCircle2 className="w-3 h-3 mr-1" /> Fully Reviewed
+                </Badge>
+              ) : (
+                <Badge variant="outline" className="text-xs text-amber-700 dark:text-amber-400 border-amber-300 dark:border-amber-700" data-testid="badge-hie-available">
+                  Pending Review
+                </Badge>
+              )}
+            </div>
+
+            {summary.hieIngestionSummary && (
+              <div className="text-xs text-muted-foreground pl-5" data-testid="text-hie-ingestion-info">
+                {summary.hieIngestionSummary.resourceCount} resources received
+                {summary.hieIngestionSummary.receivedAt && (
+                  <> on {new Date(summary.hieIngestionSummary.receivedAt).toLocaleDateString()}</>
+                )}
+              </div>
+            )}
+
+            <div className="flex items-center gap-2 pl-5" data-testid="text-hie-conditions-status">
+              <Stethoscope className="w-3 h-3 flex-shrink-0" />
+              <span className="text-xs">
+                Suspected Conditions: {summary.suspectedConditionsReviewed.confirmed} confirmed, {summary.suspectedConditionsReviewed.dismissed} dismissed
+                {summary.suspectedConditionsReviewed.pending > 0 && (
+                  <span className="text-amber-600 dark:text-amber-400 font-medium"> ({summary.suspectedConditionsReviewed.pending} pending)</span>
+                )}
+              </span>
+              {summary.suspectedConditionsReviewed.pending === 0 && summary.suspectedConditionsReviewed.total > 0 && (
+                <CheckCircle2 className="w-3 h-3 text-green-600 dark:text-green-400 flex-shrink-0" />
+              )}
+            </div>
+
+            <div className="flex items-center gap-2 pl-5" data-testid="text-hie-meds-status">
+              <Pill className="w-3 h-3 flex-shrink-0" />
+              <span className="text-xs">
+                HIE Medications: {summary.hieMedReconciliationStatus.verified} of {summary.hieMedReconciliationStatus.total} verified
+                {summary.hieMedReconciliationStatus.pending > 0 && (
+                  <span className="text-amber-600 dark:text-amber-400 font-medium"> ({summary.hieMedReconciliationStatus.pending} pending)</span>
+                )}
+              </span>
+              {summary.hieMedReconciliationStatus.pending === 0 && summary.hieMedReconciliationStatus.total > 0 && (
+                <CheckCircle2 className="w-3 h-3 text-green-600 dark:text-green-400 flex-shrink-0" />
+              )}
+            </div>
+          </div>
+        </>
+      )}
+
       {summary.qualityFlags.length > 0 && (
         <>
           <Separator />
@@ -143,6 +207,11 @@ function AdjudicationCard({ visitId }: { visitId: string }) {
 function MiniSummary({ visit }: { visit: EnhancedVisit }) {
   return (
     <div className="flex items-center gap-2 flex-wrap">
+      {visit.hieDataAvailable && (
+        <Badge variant="outline" className="text-xs text-teal-700 dark:text-teal-400 border-teal-300 dark:border-teal-700" data-testid={`badge-hie-data-${visit.id}`}>
+          <Database className="w-3 h-3 mr-1" /> HIE Data
+        </Badge>
+      )}
       {visit.completenessScore != null && (
         <Badge variant="outline" className="text-xs">{visit.completenessScore}% complete</Badge>
       )}

@@ -1819,6 +1819,12 @@ export async function registerRoutes(
 
       let completenessData = { score: 100, total: 0, passed: 0, items: [] as any[] };
       const planId = visit.planId;
+      const [hieIngestionLogs, suspectedConds] = await Promise.all([
+        storage.getHieIngestionLogsByVisit(visit.id),
+        storage.getSuspectedConditionsByVisit(visit.id),
+      ]);
+      const hasHieData = hieIngestionLogs.length > 0;
+
       if (planId) {
         const rules = await storage.getCompletenessRules(planId);
         if (rules.length > 0) {
@@ -1846,6 +1852,22 @@ export async function registerRoutes(
                 const ci = checklist.find(c => c.itemType === rule.componentType && c.itemId === rule.componentId);
                 if (ci?.status === "complete") status = "passed";
                 else if (ci?.status === "unable_to_assess") status = "exception";
+                break;
+              }
+              case "previsit_data": {
+                if (!hasHieData) { status = "not_applicable"; break; }
+                if (rule.componentId === "suspected_conditions") {
+                  if (suspectedConds.length === 0) { status = "not_applicable"; break; }
+                  const pending = suspectedConds.filter(sc => sc.status === "pending");
+                  status = pending.length === 0 ? "passed" : "failed";
+                } else if (rule.componentId === "hie_medication_review") {
+                  const hieMeds = medRecon.filter((m: any) => m.source === "external" && m.status === "new");
+                  if (hieMeds.length === 0) { status = "not_applicable"; break; }
+                  status = "failed";
+                  const allHieMeds = medRecon.filter((m: any) => m.source === "external");
+                  const pendingHieMeds = allHieMeds.filter((m: any) => m.status === "new");
+                  status = pendingHieMeds.length === 0 ? "passed" : "failed";
+                }
                 break;
               }
             }
@@ -1928,6 +1950,37 @@ export async function registerRoutes(
         qualityFlags.push({ flag: "medication_reconciliation", severity: "warning", description: "Medication reconciliation not completed" });
       }
 
+      const hieIngestionSummary = hasHieData ? {
+        resourceCount: hieIngestionLogs.reduce((sum, log) => sum + (log.resourceCount || 0), 0),
+        receivedAt: hieIngestionLogs[0]?.receivedAt || null,
+        status: hieIngestionLogs[0]?.status || "unknown",
+      } : null;
+
+      const confirmed = suspectedConds.filter(sc => sc.status === "confirmed").length;
+      const dismissed = suspectedConds.filter(sc => sc.status === "dismissed").length;
+      const pendingConds = suspectedConds.filter(sc => sc.status === "pending").length;
+      const suspectedConditionsReviewed = {
+        total: suspectedConds.length,
+        confirmed,
+        dismissed,
+        pending: pendingConds,
+      };
+
+      const allHieMeds = medRecon.filter((m: any) => m.source === "external");
+      const pendingHieMeds = allHieMeds.filter((m: any) => m.status === "new");
+      const hieMedReconciliationStatus = {
+        total: allHieMeds.length,
+        verified: allHieMeds.length - pendingHieMeds.length,
+        pending: pendingHieMeds.length,
+      };
+
+      if (hasHieData && pendingConds > 0) {
+        qualityFlags.push({ flag: "hie_conditions_pending", severity: "warning", description: `${pendingConds} HIE-suspected condition(s) not yet reviewed` });
+      }
+      if (hasHieData && pendingHieMeds.length > 0) {
+        qualityFlags.push({ flag: "hie_meds_pending", severity: "warning", description: `${pendingHieMeds.length} HIE medication(s) not yet verified` });
+      }
+
       const overallScore = Math.round((completenessData.score + diagnosisSupportData.score) / 2);
       const errorFlags = qualityFlags.filter(f => f.severity === "error").length;
       const warningFlags = qualityFlags.filter(f => f.severity === "warning").length;
@@ -1942,6 +1995,10 @@ export async function registerRoutes(
         qualityFlags,
         overallScore,
         recommendation,
+        hieDataAvailable: hasHieData,
+        hieIngestionSummary,
+        suspectedConditionsReviewed,
+        hieMedReconciliationStatus,
       });
     } catch (err: any) {
       return res.status(500).json({ message: err.message });
@@ -6000,12 +6057,16 @@ Return ONLY the JSON object, no other text.`;
           flagCount = Array.isArray(lastSignOff.qualityFlags) ? (lastSignOff.qualityFlags as any[]).length : 0;
         }
 
+        const hieIngestionLogs = await storage.getHieIngestionLogsByVisit(v.id);
+        const hieDataAvailable = hieIngestionLogs.length > 0;
+
         return {
           ...v,
           reworkCount,
           completenessScore,
           diagnosisSupportScore,
           flagCount,
+          hieDataAvailable,
           lastReturnReasons: lastSignOff?.decision === "return" ? lastSignOff.returnReasons : null,
           lastReturnComments: lastSignOff?.decision === "return" ? lastSignOff.comments : null,
           lastReviewDate: lastSignOff?.signedAt || null,

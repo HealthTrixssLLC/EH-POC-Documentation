@@ -5,7 +5,7 @@
 **System:** Easy Health Point of Care Application
 **Requestor:** Jay Baker
 **Date:** February 13, 2026
-**Status:** In Progress - Phase 8 Complete
+**Status:** In Progress - Phase 9 Complete
 
 ---
 
@@ -259,17 +259,22 @@ The following tables already have `source` fields that accept "hie":
 
 ### Phase 9: Supervisor Adjudication Enrichment (CR-002-08)
 
-- [ ] **T9.1** Extend adjudication summary endpoint with HIE indicators
-  - Add to `/api/visits/:id/adjudication-summary`:
-    - `hieDataAvailable: boolean`
-    - `hieIngestionSummary: { resourceCount, receivedAt, status }`
-    - `suspectedConditionsReviewed: { total, confirmed, dismissed, pending }`
-    - `hieMedReconciliationStatus: { total, verified, pending }`
-- [ ] **T9.2** Update Supervisor Review UI to display HIE validation badges
-  - Show "HIE Verified" indicators on conditions that were confirmed from HIE
-  - Show med reconciliation completion status for HIE-sourced meds
-  - Show care gap closure indicators
-  - Follow existing adjudication scorecard UI patterns
+- [x] **T9.1** Extend adjudication summary endpoint with HIE indicators *(completed 2026-02-13)*
+  - Added to `/api/visits/:id/adjudication-summary`:
+    - `hieDataAvailable: boolean` - whether HIE ingestion logs exist
+    - `hieIngestionSummary: { resourceCount, receivedAt, status }` - ingestion metadata
+    - `suspectedConditionsReviewed: { total, confirmed, dismissed, pending }` - condition review status
+    - `hieMedReconciliationStatus: { total, verified, pending }` - HIE med verification status
+  - Added `previsit_data` case to completeness evaluation in adjudication endpoint
+  - Added HIE quality flags: `hie_conditions_pending`, `hie_meds_pending` when items remain unreviewed
+  - Added `hieDataAvailable` to `/api/reviews/enhanced` for list-level badges
+- [x] **T9.2** Update Supervisor Review UI to display HIE validation badges *(completed 2026-02-13)*
+  - Added "HIE Pre-Visit Data" section in adjudication dialog with Database icon
+  - Context-aware badge: "Fully Reviewed" (green) when all items reviewed, "Pending Review" (amber) when items remain
+  - Suspected conditions line showing confirmed/dismissed/pending counts with check icon when complete
+  - HIE medications line showing verified/total counts with check icon when complete
+  - "HIE Data" teal badge on visit cards in the review queue list (MiniSummary)
+  - Added Stethoscope, Pill, Database icons from lucide-react
 
 ### Phase 10: Demo Data & Testing
 

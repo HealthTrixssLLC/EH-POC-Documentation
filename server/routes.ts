@@ -180,7 +180,7 @@ export async function registerRoutes(
       const visit = await storage.getVisit(req.params.id);
       if (!visit) return res.status(404).json({ message: "Visit not found" });
 
-      const [member, checklist, vitals, tasks, recommendations, medRecon, assessmentResponses, measureResults, codes, overrides, npUser, exclusions, allMeasureDefs, consents, alerts, extractedFields] = await Promise.all([
+      const [member, checklist, vitals, tasks, recommendations, medRecon, assessmentResponses, measureResults, codes, overrides, npUser, exclusions, allMeasureDefs, consents, alerts, extractedFields, suspectedConditions] = await Promise.all([
         storage.getMember(visit.memberId),
         storage.getChecklistByVisit(visit.id),
         storage.getVitalsByVisit(visit.id),
@@ -197,6 +197,7 @@ export async function registerRoutes(
         storage.getConsentsByVisit(visit.id),
         storage.getAlertsByVisit(visit.id),
         storage.getExtractedFieldsByVisit(visit.id),
+        storage.getSuspectedConditionsByVisit(visit.id),
       ]);
 
       const targets = member ? await storage.getPlanTargets(member.id) : [];
@@ -635,6 +636,7 @@ export async function registerRoutes(
         planPack,
         alerts,
         extractedFields,
+        suspectedConditions,
       });
     } catch (err: any) {
       return res.status(500).json({ message: err.message });
@@ -3685,6 +3687,95 @@ export async function registerRoutes(
         resourceType: "OperationOutcome",
         issue: [{ severity: "error", code: "exception", diagnostics: err.message }],
       });
+    }
+  });
+
+  // --- CR-002 Phase 5: Suspected Conditions API ---
+
+  // GET /api/visits/:id/suspected-conditions
+  app.get("/api/visits/:id/suspected-conditions", async (req, res) => {
+    try {
+      const visit = await storage.getVisit(req.params.id);
+      if (!visit) return res.status(404).json({ message: "Visit not found" });
+
+      const conditions = await storage.getSuspectedConditionsByVisit(visit.id);
+      const ingestionLogs = await storage.getHieIngestionLogsByVisit(visit.id);
+      const logMap = new Map(ingestionLogs.map(l => [l.id, l]));
+
+      const enriched = conditions.map(c => ({
+        ...c,
+        ingestionLog: c.ingestionLogId ? logMap.get(c.ingestionLogId) || null : null,
+      }));
+
+      return res.json(enriched);
+    } catch (err: any) {
+      return res.status(500).json({ message: err.message });
+    }
+  });
+
+  // PATCH /api/visits/:id/suspected-conditions/:condId
+  app.patch("/api/visits/:id/suspected-conditions/:condId", async (req, res) => {
+    try {
+      const visit = await storage.getVisit(req.params.id);
+      if (!visit) return res.status(404).json({ message: "Visit not found" });
+
+      if (visit.status === "finalized" || visit.status === "exported") {
+        return res.status(409).json({ message: "Cannot modify suspected conditions on a finalized/exported visit" });
+      }
+      if (visit.lockedBy) {
+        return res.status(409).json({ message: "Visit is locked for supervisor review" });
+      }
+
+      const condition = await storage.getSuspectedCondition(req.params.condId);
+      if (!condition) return res.status(404).json({ message: "Suspected condition not found" });
+      if (condition.visitId !== visit.id) return res.status(400).json({ message: "Condition does not belong to this visit" });
+
+      const { action, dismissalReason, reviewedBy, reviewedByName } = req.body;
+
+      if (!action || !["confirm", "dismiss"].includes(action)) {
+        return res.status(400).json({ message: "action must be 'confirm' or 'dismiss'" });
+      }
+
+      if (action === "dismiss" && !dismissalReason) {
+        return res.status(400).json({ message: "dismissalReason is required when dismissing a condition" });
+      }
+
+      const now = new Date().toISOString();
+
+      if (action === "confirm") {
+        const visitCode = await storage.createVisitCode({
+          visitId: visit.id,
+          codeType: "ICD-10",
+          code: condition.icdCode,
+          description: condition.description,
+          source: "hie",
+          autoAssigned: false,
+          verified: true,
+          removedByNp: false,
+        });
+
+        const updated = await storage.updateSuspectedCondition(condition.id, {
+          status: "confirmed",
+          reviewedBy: reviewedBy || null,
+          reviewedByName: reviewedByName || null,
+          reviewedAt: now,
+          linkedCodeId: visitCode.id,
+        });
+
+        return res.json({ condition: updated, visitCode });
+      } else {
+        const updated = await storage.updateSuspectedCondition(condition.id, {
+          status: "dismissed",
+          reviewedBy: reviewedBy || null,
+          reviewedByName: reviewedByName || null,
+          reviewedAt: now,
+          dismissalReason,
+        });
+
+        return res.json({ condition: updated });
+      }
+    } catch (err: any) {
+      return res.status(500).json({ message: err.message });
     }
   });
 

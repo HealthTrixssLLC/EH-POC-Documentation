@@ -5,7 +5,7 @@
 **System:** Easy Health Point of Care Application
 **Requestor:** Jay Baker
 **Date:** February 13, 2026
-**Status:** In Progress - Phase 3 Complete
+**Status:** In Progress - Phase 5 Complete
 
 ---
 
@@ -190,16 +190,18 @@ The following tables already have `source` fields that accept "hie":
 
 ### Phase 5: HIE-Derived Condition Suspecting (CR-002-03)
 
-- [ ] **T5.1** Create `GET /api/visits/:id/suspected-conditions` endpoint
-  - Return suspected conditions for the visit
-  - Include linked ingestion log metadata
-- [ ] **T5.2** Create `PATCH /api/visits/:id/suspected-conditions/:condId` endpoint
-  - Allow NP to confirm (creates visit_code entry) or dismiss (with reason)
-  - When confirmed: create `visit_code` via existing `createVisitCode()` with `source = "hie"`, `verified = true`
-  - Update suspected condition status and link to created code
-- [ ] **T5.3** Add suspected conditions to visit overview response
-  - Extend `/api/visits/:id/overview` to include `suspectedConditions` array
-  - No new endpoint needed for dashboard consumption
+- [x] **T5.1** Create `GET /api/visits/:id/suspected-conditions` endpoint *(completed 2026-02-13)*
+  - Returns suspected conditions array for the visit
+  - Each condition enriched with linked ingestion log metadata (joined via ingestionLogId)
+  - Validates visit existence (404 if not found)
+- [x] **T5.2** Create `PATCH /api/visits/:id/suspected-conditions/:condId` endpoint *(completed 2026-02-13)*
+  - Confirm action: creates `visit_code` with codeType="ICD-10", source="hie", verified=true, autoAssigned=false; links back via linkedCodeId
+  - Dismiss action: requires dismissalReason, sets status="dismissed"
+  - Validation gates: visit not finalized/exported (409), visit not locked (409), condition exists (404), condition belongs to visit (400), valid action (400), dismissalReason required for dismiss (400)
+  - Sets reviewedBy, reviewedByName, reviewedAt on both actions
+- [x] **T5.3** Add suspected conditions to visit overview response *(completed 2026-02-13)*
+  - Extended `/api/visits/:id/overview` Promise.all to fetch suspectedConditions in parallel
+  - Added `suspectedConditions` array to response JSON (backwards-compatible addition)
 
 ### Phase 6: Pre-Visit NP Guidance Panel (CR-002-05)
 

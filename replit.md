@@ -33,6 +33,7 @@ Easy Health employs a modern web architecture:
     -   **Demo Mode & Access Governance**: Server-side RBAC, demo configuration, and access audit logging.
     -   **Human Audit Workflow**: Random sampling and audit queue for compliance review with structured outcome capture.
     -   **Supervisor Review Queue**: Enhanced UX with metrics, filters, rework tracking, and structured return reasons.
+    -   **HIE Pre-Visit Intelligence (CR-002)**: Full Health Information Exchange integration with FHIR R4 PrevisitContext ingestion (MedicationStatement, Condition, Observation, Procedure), provenance tagging, condition suspecting with NP confirm/dismiss workflow, pre-visit NP guidance panel, care gap prioritization, completeness engine awareness, and supervisor adjudication enrichment with HIE verification badges. Includes HIE Simulation tool in FHIR Playground for demo/testing.
     -   **PWA & iOS App Preparation**: Implemented PWA features (manifest, service worker, iOS meta tags) and Capacitor configuration for potential native iOS wrapping.
 
 ## External Dependencies

@@ -5720,6 +5720,18 @@ Return ONLY the JSON object, no other text.`;
     }
   });
 
+  app.get("/api/fhir/demo-hie-bundle", async (_req, res) => {
+    try {
+      const fs = await import("fs");
+      const path = await import("path");
+      const bundlePath = path.join(process.cwd(), "server", "data", "demo-hie-previsit-bundle.json");
+      const bundleData = JSON.parse(fs.readFileSync(bundlePath, "utf-8"));
+      res.json(bundleData);
+    } catch (err: any) {
+      res.status(500).json({ message: err.message });
+    }
+  });
+
   // Diagnosis Rules
   app.get("/api/diagnosis-rules", async (_req, res) => {
     try {

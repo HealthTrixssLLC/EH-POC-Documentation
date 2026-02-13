@@ -872,11 +872,13 @@ export async function registerRoutes(
         return res.json({ complete: true, totalRules: 0, passedRules: 0, items: [] });
       }
 
-      const [consents, vitals, medRecon, checklist] = await Promise.all([
+      const [consents, vitals, medRecon, checklist, hieIngestionLogs, suspectedConds] = await Promise.all([
         storage.getConsentsByVisit(visit.id),
         storage.getVitalsByVisit(visit.id),
         storage.getMedReconciliationByVisit(visit.id),
         storage.getChecklistByVisit(visit.id),
+        storage.getHieIngestionLogsByVisit(visit.id),
+        storage.getSuspectedConditionsByVisit(visit.id),
       ]);
 
       const items = rules.map((rule) => {
@@ -959,6 +961,39 @@ export async function registerRoutes(
             } else {
               status = "failed";
               remediation = `Complete the ${rule.label} measure`;
+            }
+            break;
+          }
+          case "previsit_data": {
+            link = `/visits/${visit.id}/intake`;
+            const hasHieData = hieIngestionLogs.length > 0;
+
+            if (!hasHieData) {
+              status = "not_applicable";
+              break;
+            }
+
+            if (rule.componentId === "suspected_conditions") {
+              const pendingConds = suspectedConds.filter(c => c.status === "pending");
+              if (suspectedConds.length === 0) {
+                status = "not_applicable";
+              } else if (pendingConds.length === 0) {
+                status = "passed";
+              } else {
+                status = "failed";
+                remediation = `${pendingConds.length} suspected condition${pendingConds.length > 1 ? "s" : ""} pending review`;
+              }
+            } else if (rule.componentId === "hie_medication_review") {
+              const hieMeds = medRecon.filter(m => m.source === "external" && m.status === "new");
+              if (medRecon.filter(m => m.source === "external").length === 0) {
+                status = "not_applicable";
+              } else if (hieMeds.length === 0) {
+                status = "passed";
+              } else {
+                status = "failed";
+                remediation = `${hieMeds.length} HIE medication${hieMeds.length > 1 ? "s" : ""} pending verification`;
+                link = `/visits/${visit.id}/med-reconciliation`;
+              }
             }
             break;
           }

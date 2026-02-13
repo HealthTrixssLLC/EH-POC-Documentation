@@ -396,6 +396,7 @@ export default function ReviewFinalize() {
           {(() => {
             const groups: { key: string; label: string; types: string[] }[] = [
               { key: "compliance", label: "Compliance", types: ["consent"] },
+              { key: "previsit", label: "Pre-Visit HIE Data", types: ["previsit_data"] },
               { key: "clinical", label: "Clinical", types: ["vitals", "medication"] },
               { key: "assessments", label: "Assessments", types: ["assessment"] },
               { key: "measures", label: "Measures", types: ["measure"] },

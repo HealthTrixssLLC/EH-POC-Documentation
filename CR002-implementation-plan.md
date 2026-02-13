@@ -5,7 +5,7 @@
 **System:** Easy Health Point of Care Application
 **Requestor:** Jay Baker
 **Date:** February 13, 2026
-**Status:** In Progress - Phase 7 Complete
+**Status:** In Progress - Phase 8 Complete
 
 ---
 
@@ -243,15 +243,19 @@ The following tables already have `source` fields that accept "hie":
 
 ### Phase 8: Completeness Engine Pre-Visit Awareness (CR-002-07)
 
-- [ ] **T8.1** Extend completeness engine with `previsit_data` component type
-  - Add new case in completeness rule evaluation switch
-  - Check: has HIE ingestion been processed? Are suspected conditions reviewed?
-  - Status: `passed` if all HIE items reviewed, `failed` if pending items remain
-- [ ] **T8.2** Add completeness rules for pre-visit data to seed/plan packs
-  - Rule: "HIE Medication Review" - requires all `source=hie` meds in `med_reconciliation` to be verified
-  - Rule: "Suspected Condition Review" - requires all suspected conditions to be confirmed or dismissed
-- [ ] **T8.3** Update completeness UI to show pre-visit items
-  - Reuses existing completeness display - new rules appear automatically
+- [x] **T8.1** Extend completeness engine with `previsit_data` component type *(completed 2026-02-13)*
+  - Added parallel fetches for `hieIngestionLogs` and `suspectedConds` in completeness endpoint
+  - New switch case for `previsit_data` with two componentIds:
+    - `suspected_conditions`: checks all suspected conditions are confirmed or dismissed; `not_applicable` when no HIE data or no conditions
+    - `hie_medication_review`: checks all HIE meds (source="external", status="new") are verified; `not_applicable` when no HIE data or no HIE meds
+  - Proper remediation messages with pending counts and correct navigation links
+- [x] **T8.2** Add completeness rules for pre-visit data to seed/plan packs *(completed 2026-02-13)*
+  - Added 4 rules (2 per plan pack): `suspected_conditions` and `hie_medication_review` for both MA-PLAN-001 and ACA-PLAN-001
+  - Sort order 105-106 (after measures, before audit events)
+  - Both rules are required with exception allowed
+- [x] **T8.3** Update completeness UI to show pre-visit items *(completed 2026-02-13)*
+  - Added "Pre-Visit HIE Data" group to review-finalize completeness report (positioned between Compliance and Clinical)
+  - Reuses existing completeness item rendering (checkmarks, X icons, "Go Fix" links, remediation text)
 
 ### Phase 9: Supervisor Adjudication Enrichment (CR-002-08)
 

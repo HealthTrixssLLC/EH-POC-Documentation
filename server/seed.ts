@@ -1241,6 +1241,8 @@ export async function seedDatabase() {
   await storage.createCompletenessRule({ planPackId: "MA-PLAN-001", componentType: "measure", componentId: "CBP", label: "Controlling Blood Pressure", required: true, exceptionAllowed: true, sortOrder: 80 });
   await storage.createCompletenessRule({ planPackId: "MA-PLAN-001", componentType: "measure", componentId: "CDC-A1C", label: "Diabetes HbA1c Control", required: true, exceptionAllowed: true, sortOrder: 90 });
   await storage.createCompletenessRule({ planPackId: "MA-PLAN-001", componentType: "measure", componentId: "COL", label: "Colorectal Cancer Screening", required: true, exceptionAllowed: true, sortOrder: 100 });
+  await storage.createCompletenessRule({ planPackId: "MA-PLAN-001", componentType: "previsit_data", componentId: "suspected_conditions", label: "Suspected Condition Review", description: "All HIE-derived suspected conditions must be confirmed or dismissed", required: true, exceptionAllowed: true, sortOrder: 105 });
+  await storage.createCompletenessRule({ planPackId: "MA-PLAN-001", componentType: "previsit_data", componentId: "hie_medication_review", label: "HIE Medication Verification", description: "All HIE-sourced medications must be verified in medication reconciliation", required: true, exceptionAllowed: true, sortOrder: 106 });
 
   // Completeness Rules for ACA-PLAN-001
   await storage.createCompletenessRule({ planPackId: "ACA-PLAN-001", componentType: "consent", componentId: "nopp", label: "NOPP Acknowledgement", required: true, exceptionAllowed: true, sortOrder: 10 });
@@ -1253,6 +1255,8 @@ export async function seedDatabase() {
   await storage.createCompletenessRule({ planPackId: "ACA-PLAN-001", componentType: "measure", componentId: "BCS", label: "Breast Cancer Screening", required: true, exceptionAllowed: true, sortOrder: 80 });
   await storage.createCompletenessRule({ planPackId: "ACA-PLAN-001", componentType: "measure", componentId: "COL", label: "Colorectal Cancer Screening", required: true, exceptionAllowed: true, sortOrder: 90 });
   await storage.createCompletenessRule({ planPackId: "ACA-PLAN-001", componentType: "measure", componentId: "CBP", label: "Controlling Blood Pressure", required: true, exceptionAllowed: true, sortOrder: 100 });
+  await storage.createCompletenessRule({ planPackId: "ACA-PLAN-001", componentType: "previsit_data", componentId: "suspected_conditions", label: "Suspected Condition Review", description: "All HIE-derived suspected conditions must be confirmed or dismissed", required: true, exceptionAllowed: true, sortOrder: 105 });
+  await storage.createCompletenessRule({ planPackId: "ACA-PLAN-001", componentType: "previsit_data", componentId: "hie_medication_review", label: "HIE Medication Verification", description: "All HIE-sourced medications must be verified in medication reconciliation", required: true, exceptionAllowed: true, sortOrder: 106 });
 
   // Audit events
   await storage.createAuditEvent({

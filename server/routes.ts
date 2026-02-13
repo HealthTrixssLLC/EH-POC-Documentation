@@ -2504,13 +2504,46 @@ export async function registerRoutes(
       const userName = med.reconciledBy ? (await storage.getUser(med.reconciledBy))?.fullName : undefined;
 
       const existingHistory = await storage.getMedicationHistoryByMember(med.memberId);
-      const matchingEntry = existingHistory.find(
+
+      const medNameLower = med.medicationName.toLowerCase().trim();
+      const extractBase = (n: string) => n.replace(/\s*(er|xr|sr|cr|dr|hcl|tablet|capsule|oral)\b/gi, "")
+        .replace(/\s*\d+\s*(mg|mcg|ml|g|units?|iu)\b.*/i, "").trim().toLowerCase();
+      const medBaseName = extractBase(medNameLower);
+
+      const activeEntries = existingHistory.filter(
+        (h) => {
+          if (h.status !== "active" && h.status !== "on_hold") return false;
+          const hName = h.medicationName.toLowerCase().trim();
+          const hBaseName = extractBase(hName);
+          return hName === medNameLower
+            || hBaseName === medBaseName
+            || hName === medBaseName
+            || hBaseName === medNameLower;
+        }
+      );
+
+      if (activeEntries.length > 0 && reconStatus !== "new") {
+        for (const entry of activeEntries) {
+          await storage.updateMedicationHistory(entry.id, {
+            status: timelineStatus,
+            endDate: reconStatus === "discontinued" ? (med.endDate || today) : (med.endDate || entry.endDate),
+            dosage: med.dosage || entry.dosage,
+            frequency: med.frequency || entry.frequency,
+            changeType: changeType,
+            changeReason: changeReason,
+            actorName: userName || entry.actorName,
+          });
+        }
+        return;
+      }
+
+      const alreadySynced = existingHistory.find(
         (h) => h.medicationName.toLowerCase() === med.medicationName.toLowerCase()
           && h.source === "practice"
           && h.startDate === today
       );
 
-      if (matchingEntry) {
+      if (alreadySynced) {
         return;
       }
 
@@ -2523,7 +2556,7 @@ export async function registerRoutes(
         route: med.route || null,
         prescriber: userName || null,
         startDate: reconStatus === "new" ? today : (med.startDate || today),
-        endDate: reconStatus === "discontinued" ? today : (med.endDate || null),
+        endDate: reconStatus === "discontinued" ? (med.endDate || today) : (med.endDate || null),
         status: timelineStatus,
         source: "practice",
         category: med.category || null,

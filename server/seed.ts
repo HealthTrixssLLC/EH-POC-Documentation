@@ -1275,7 +1275,7 @@ export async function seedDatabase() {
     displayName: "OpenAI (Default)",
     apiKeySecretName: "OPENAI_API_KEY",
     baseUrl: "https://api.openai.com/v1",
-    modelName: "gpt-4o-mini-transcribe",
+    modelName: "whisper-1",
     extractionModel: "gpt-4o-mini",
     active: true,
     featureFlags: { transcription: true, extraction: true, clinicalSuggestions: false },

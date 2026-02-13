@@ -3289,6 +3289,405 @@ export async function registerRoutes(
     }
   });
 
+  // --- Inbound: POST /api/fhir/PrevisitContext ---
+  // CR-002: Accept HIE FHIR Bundle for pre-visit clinical intelligence
+  app.post("/api/fhir/PrevisitContext", async (req, res) => {
+    try {
+      const bundle = req.body;
+      const visitId = req.query.scheduledEncounterId as string;
+
+      if (!visitId) {
+        return res.status(400).json({
+          resourceType: "OperationOutcome",
+          issue: [{ severity: "error", code: "required", diagnostics: "Query parameter 'scheduledEncounterId' is required" }],
+        });
+      }
+      if (!bundle || bundle.resourceType !== "Bundle") {
+        return res.status(400).json({
+          resourceType: "OperationOutcome",
+          issue: [{ severity: "error", code: "invalid", diagnostics: "Request body must be a FHIR Bundle" }],
+        });
+      }
+      if (!bundle.entry || !Array.isArray(bundle.entry) || bundle.entry.length === 0) {
+        return res.status(400).json({
+          resourceType: "OperationOutcome",
+          issue: [{ severity: "error", code: "required", diagnostics: "Bundle.entry is required and must not be empty" }],
+        });
+      }
+
+      const visit = await storage.getVisit(visitId);
+      if (!visit) {
+        return res.status(404).json({
+          resourceType: "OperationOutcome",
+          issue: [{ severity: "error", code: "not-found", diagnostics: `Visit '${visitId}' not found` }],
+        });
+      }
+
+      const blockedStatuses = ["finalized", "exported"];
+      if (blockedStatuses.includes(visit.status)) {
+        return res.status(409).json({
+          resourceType: "OperationOutcome",
+          issue: [{ severity: "error", code: "business-rule", diagnostics: `Visit '${visitId}' has status '${visit.status}' and cannot accept new HIE data` }],
+        });
+      }
+
+      if (visit.lockedAt) {
+        return res.status(409).json({
+          resourceType: "OperationOutcome",
+          issue: [{ severity: "error", code: "lock-error", diagnostics: `Visit '${visitId}' is locked and cannot accept new HIE data` }],
+        });
+      }
+
+      const bundleId = bundle.id || bundle.identifier?.value || null;
+      if (bundleId) {
+        const existing = await storage.getHieIngestionLogByBundleId(visitId, bundleId);
+        if (existing) {
+          return res.status(200).json({
+            resourceType: "OperationOutcome",
+            issue: [{ severity: "information", code: "duplicate", diagnostics: `Bundle '${bundleId}' already ingested for visit '${visitId}'` }],
+            ingestionLogId: existing.id,
+            status: existing.status,
+          });
+        }
+      }
+
+      const sourceSystem = bundle.meta?.source || bundle.identifier?.system || "unknown-hie";
+      const ingestionLog = await storage.createHieIngestionLog({
+        visitId,
+        memberId: visit.memberId,
+        bundleId,
+        sourceSystem,
+        resourceCount: bundle.entry.length,
+        status: "processing",
+        receivedAt: new Date().toISOString(),
+      });
+
+      const results: Array<{ resourceType: string; action: string; id?: string }> = [];
+      const errors: Array<{ severity: string; code: string; diagnostics: string }> = [];
+      const resourceSummary: Record<string, number> = {};
+
+      for (const entry of bundle.entry) {
+        const resource = entry.resource;
+        if (!resource || !resource.resourceType) {
+          errors.push({ severity: "warning", code: "invalid", diagnostics: "Entry missing resource or resourceType" });
+          continue;
+        }
+
+        resourceSummary[resource.resourceType] = (resourceSummary[resource.resourceType] || 0) + 1;
+
+        try {
+          switch (resource.resourceType) {
+            case "MedicationStatement": {
+              const medName = resource.medicationCodeableConcept?.text
+                || resource.medicationCodeableConcept?.coding?.[0]?.display
+                || resource.medicationReference?.display
+                || "Unknown Medication";
+              const dosageText = resource.dosage?.[0]?.text
+                || (resource.dosage?.[0]?.doseAndRate?.[0]?.doseQuantity
+                  ? `${resource.dosage[0].doseAndRate[0].doseQuantity.value} ${resource.dosage[0].doseAndRate[0].doseQuantity.unit}`
+                  : null);
+              const frequency = resource.dosage?.[0]?.timing?.code?.text
+                || resource.dosage?.[0]?.timing?.repeat?.frequency
+                  ? `${resource.dosage?.[0]?.timing?.repeat?.frequency}x per ${resource.dosage?.[0]?.timing?.repeat?.period} ${resource.dosage?.[0]?.timing?.repeat?.periodUnit}`
+                  : null;
+              const route = resource.dosage?.[0]?.route?.text
+                || resource.dosage?.[0]?.route?.coding?.[0]?.display;
+              const startDate = resource.effectivePeriod?.start
+                || resource.effectiveDateTime
+                || resource.dateAsserted
+                || new Date().toISOString().split("T")[0];
+
+              const existingMedRecon = await storage.getMedReconciliationByVisit(visitId);
+              const isDuplicateMedRecon = existingMedRecon.some(
+                (m) => m.medicationName.toLowerCase() === medName.toLowerCase()
+                  && (m.dosage || "").toLowerCase() === (dosageText || "").toLowerCase()
+                  && m.source === "external"
+              );
+
+              if (!isDuplicateMedRecon) {
+                const medRecon = await storage.createMedReconciliation({
+                  visitId,
+                  memberId: visit.memberId,
+                  medicationName: medName,
+                  dosage: dosageText,
+                  frequency: frequency || undefined,
+                  route: route || undefined,
+                  status: "new",
+                  source: "external",
+                  startDate: startDate,
+                  category: resource.category?.[0]?.coding?.[0]?.code || undefined,
+                  notes: `HIE source: ${sourceSystem}`,
+                });
+                results.push({ resourceType: "MedicationStatement", action: "created_med_reconciliation", id: medRecon.id });
+              } else {
+                results.push({ resourceType: "MedicationStatement", action: "skipped_duplicate" });
+              }
+
+              const existingMedHistory = await storage.getMedicationHistoryByMember(visit.memberId);
+              const isDuplicateHistory = existingMedHistory.some(
+                (m) => m.medicationName.toLowerCase() === medName.toLowerCase()
+                  && (m.dosage || "").toLowerCase() === (dosageText || "").toLowerCase()
+                  && m.source === "hie"
+              );
+
+              if (!isDuplicateHistory) {
+                const medHist = await storage.createMedicationHistory({
+                  memberId: visit.memberId,
+                  medicationName: medName,
+                  dosage: dosageText,
+                  frequency: frequency || undefined,
+                  route: route || undefined,
+                  startDate: startDate,
+                  endDate: resource.effectivePeriod?.end || undefined,
+                  status: resource.status === "stopped" ? "inactive" : "active",
+                  source: "hie",
+                  category: resource.category?.[0]?.coding?.[0]?.code || undefined,
+                  reason: resource.reasonCode?.[0]?.text || resource.reasonCode?.[0]?.coding?.[0]?.display || undefined,
+                });
+                results.push({ resourceType: "MedicationStatement", action: "created_medication_history", id: medHist.id });
+              }
+              break;
+            }
+
+            case "Condition": {
+              const icdCoding = resource.code?.coding?.find(
+                (c: any) => c.system === "http://hl7.org/fhir/sid/icd-10-cm" || c.system?.includes("icd-10")
+              );
+              const icdCode = icdCoding?.code || resource.code?.coding?.[0]?.code;
+              const description = icdCoding?.display || resource.code?.text || resource.code?.coding?.[0]?.display || "Unknown Condition";
+
+              if (!icdCode) {
+                errors.push({ severity: "warning", code: "invalid", diagnostics: "Condition missing ICD-10 code, skipped" });
+                break;
+              }
+
+              const existingCodes = await storage.getCodesByVisit(visitId);
+              const alreadyCoded = existingCodes.some(
+                (c) => c.code.toLowerCase() === icdCode.toLowerCase() && c.codeType === "ICD-10"
+              );
+              if (alreadyCoded) {
+                results.push({ resourceType: "Condition", action: "skipped_already_coded", icdCode } as any);
+                break;
+              }
+
+              const existingSuspected = await storage.getSuspectedConditionByVisitAndCode(visitId, icdCode);
+              if (existingSuspected) {
+                results.push({ resourceType: "Condition", action: "skipped_duplicate_suspected", icdCode } as any);
+                break;
+              }
+
+              const confidence = resource.verificationStatus?.coding?.[0]?.code === "confirmed" ? "confirmed"
+                : resource.verificationStatus?.coding?.[0]?.code === "provisional" ? "probable" : "suspected";
+
+              const suspected = await storage.createSuspectedCondition({
+                visitId,
+                memberId: visit.memberId,
+                icdCode,
+                description,
+                hieSource: sourceSystem,
+                confidence,
+                status: "pending",
+                ingestionLogId: ingestionLog.id,
+                createdAt: new Date().toISOString(),
+              });
+              results.push({ resourceType: "Condition", action: "created_suspected_condition", id: suspected.id });
+              break;
+            }
+
+            case "Observation": {
+              const categoryCode = resource.category?.[0]?.coding?.[0]?.code;
+
+              if (categoryCode === "vital-signs") {
+                const measureDate = resource.effectiveDateTime
+                  || resource.effectivePeriod?.start
+                  || new Date().toISOString().split("T")[0];
+
+                const existingVitals = await storage.getVitalsHistoryByMember(visit.memberId);
+                const isDuplicateVital = existingVitals.some(
+                  (v) => v.measureDate === measureDate && v.source === "hie"
+                );
+
+                if (isDuplicateVital) {
+                  results.push({ resourceType: "Observation", action: "skipped_duplicate_vital" });
+                  break;
+                }
+
+                const vitalData: any = {
+                  memberId: visit.memberId,
+                  measureDate,
+                  source: "hie",
+                  notes: `HIE source: ${sourceSystem}`,
+                };
+
+                const loincCode = resource.code?.coding?.find((c: any) => c.system === "http://loinc.org")?.code;
+                if (resource.component) {
+                  for (const comp of resource.component) {
+                    const compCode = comp.code?.coding?.find((c: any) => c.system === "http://loinc.org")?.code;
+                    if (compCode === "8480-6") vitalData.systolic = comp.valueQuantity?.value;
+                    else if (compCode === "8462-4") vitalData.diastolic = comp.valueQuantity?.value;
+                  }
+                } else if (resource.valueQuantity) {
+                  const val = resource.valueQuantity.value;
+                  if (loincCode === "8867-4") vitalData.heartRate = val;
+                  else if (loincCode === "9279-1") vitalData.respiratoryRate = val;
+                  else if (loincCode === "8310-5") vitalData.temperature = val;
+                  else if (loincCode === "2708-6") vitalData.oxygenSaturation = val;
+                  else if (loincCode === "29463-7") vitalData.weight = val;
+                  else if (loincCode === "39156-5") vitalData.bmi = val;
+                  else if (loincCode === "85354-9" && resource.component) {
+                    // handled above
+                  }
+                }
+
+                const vital = await storage.createVitalsHistory(vitalData);
+                results.push({ resourceType: "Observation", action: "created_vitals_history", id: vital.id });
+              } else {
+                const testCode = resource.code?.coding?.[0]?.code || "";
+                const testName = resource.code?.coding?.[0]?.display || resource.code?.text || "Unknown Test";
+                const collectedDate = resource.effectiveDateTime
+                  || resource.effectivePeriod?.start
+                  || new Date().toISOString().split("T")[0];
+
+                const existingLabs = await storage.getLabResultsByMember(visit.memberId);
+                const isDuplicateLab = existingLabs.some(
+                  (l) => l.testCode === testCode && l.collectedDate === collectedDate && l.source === "hie"
+                );
+
+                if (isDuplicateLab) {
+                  results.push({ resourceType: "Observation", action: "skipped_duplicate_lab" });
+                  break;
+                }
+
+                const value = resource.valueQuantity?.value ?? 0;
+                const unit = resource.valueQuantity?.unit || resource.valueQuantity?.code || "";
+                let refMin: number | undefined;
+                let refMax: number | undefined;
+                if (resource.referenceRange?.[0]) {
+                  refMin = resource.referenceRange[0].low?.value;
+                  refMax = resource.referenceRange[0].high?.value;
+                }
+
+                const labStatus = resource.interpretation?.[0]?.coding?.[0]?.code === "H" ? "high"
+                  : resource.interpretation?.[0]?.coding?.[0]?.code === "L" ? "low" : "normal";
+
+                const lab = await storage.createLabResult({
+                  memberId: visit.memberId,
+                  testName,
+                  testCode,
+                  value,
+                  unit,
+                  referenceMin: refMin,
+                  referenceMax: refMax,
+                  status: labStatus,
+                  source: "hie",
+                  collectedDate,
+                  resultDate: resource.issued?.split("T")[0] || collectedDate,
+                  orderingProvider: resource.performer?.[0]?.display || undefined,
+                  category: categoryCode || resource.category?.[0]?.text || "laboratory",
+                  notes: `HIE source: ${sourceSystem}`,
+                });
+                results.push({ resourceType: "Observation", action: "created_lab_result", id: lab.id });
+              }
+              break;
+            }
+
+            case "Procedure": {
+              const cptCoding = resource.code?.coding?.find(
+                (c: any) => c.system === "http://www.ama-assn.org/go/cpt" || c.system?.includes("cpt")
+              );
+              const hcpcsCoding = resource.code?.coding?.find(
+                (c: any) => c.system === "urn:oid:2.16.840.1.113883.6.285" || c.system?.includes("hcpcs")
+              );
+              const coding = cptCoding || hcpcsCoding || resource.code?.coding?.[0];
+              const code = coding?.code;
+              const codeType = cptCoding ? "CPT" : hcpcsCoding ? "HCPCS" : "CPT";
+              const description = coding?.display || resource.code?.text || "Unknown Procedure";
+
+              if (!code) {
+                errors.push({ severity: "warning", code: "invalid", diagnostics: "Procedure missing CPT/HCPCS code, skipped" });
+                break;
+              }
+
+              const existingCodes = await storage.getCodesByVisit(visitId);
+              const isDuplicateCode = existingCodes.some(
+                (c) => c.code.toLowerCase() === code.toLowerCase() && c.source === "hie"
+              );
+
+              if (isDuplicateCode) {
+                results.push({ resourceType: "Procedure", action: "skipped_duplicate" });
+                break;
+              }
+
+              const visitCode = await storage.createVisitCode({
+                visitId,
+                codeType,
+                code,
+                description,
+                source: "hie",
+                autoAssigned: true,
+                verified: false,
+              });
+              results.push({ resourceType: "Procedure", action: "created_visit_code", id: visitCode.id });
+              break;
+            }
+
+            default: {
+              results.push({ resourceType: resource.resourceType, action: "unsupported_skipped" });
+              break;
+            }
+          }
+        } catch (entryErr: any) {
+          errors.push({
+            severity: "error",
+            code: "exception",
+            diagnostics: `Error processing ${resource.resourceType}: ${entryErr.message}`,
+          });
+        }
+      }
+
+      const successCount = results.filter((r) => r.action.startsWith("created_")).length;
+      const skipCount = results.filter((r) => r.action.startsWith("skipped_")).length;
+      const errorCount = errors.filter((e) => e.severity === "error").length;
+
+      const finalStatus = errorCount === 0 ? "completed"
+        : successCount > 0 ? "partial" : "failed";
+
+      await storage.updateHieIngestionLog(ingestionLog.id, {
+        status: finalStatus,
+        resourceSummary,
+        errorDetails: errors.length > 0 ? errors.map((e) => e.diagnostics) : undefined,
+        processedAt: new Date().toISOString(),
+      });
+
+      await storage.createAuditEvent({
+        eventType: "hie_previsit_ingestion",
+        patientId: visit.memberId,
+        details: `HIE PrevisitContext ingested for visit ${visitId}: ${successCount} created, ${skipCount} skipped, ${errorCount} errors (source: ${sourceSystem})`,
+      });
+
+      const httpStatus = finalStatus === "failed" ? 422 : 200;
+      return res.status(httpStatus).json({
+        resourceType: "OperationOutcome",
+        issue: [
+          {
+            severity: finalStatus === "failed" ? "error" : "information",
+            code: finalStatus === "failed" ? "processing" : "informational",
+            diagnostics: `Processed ${bundle.entry.length} resources: ${successCount} created, ${skipCount} skipped, ${errorCount} errors`,
+          },
+          ...errors,
+        ],
+        ingestionLogId: ingestionLog.id,
+        status: finalStatus,
+        summary: { total: bundle.entry.length, created: successCount, skipped: skipCount, errors: errorCount, resourceTypes: resourceSummary },
+      });
+    } catch (err: any) {
+      return res.status(500).json({
+        resourceType: "OperationOutcome",
+        issue: [{ severity: "error", code: "exception", diagnostics: err.message }],
+      });
+    }
+  });
+
   // --- List all members as FHIR Patients ---
   app.get("/api/fhir/Patient", async (_req, res) => {
     try {

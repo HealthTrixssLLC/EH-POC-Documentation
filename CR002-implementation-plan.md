@@ -5,7 +5,7 @@
 **System:** Easy Health Point of Care Application
 **Requestor:** Jay Baker
 **Date:** February 13, 2026
-**Status:** In Progress - Phase 1 Complete
+**Status:** In Progress - Phase 2 Complete
 
 ---
 
@@ -130,38 +130,33 @@ The following tables already have `source` fields that accept "hie":
 
 ### Phase 2: FHIR Ingestion API (CR-002-01)
 
-- [ ] **T2.1** Create `POST /api/fhir/PrevisitContext` endpoint in `server/routes.ts`
+- [x] **T2.1** Create `POST /api/fhir/PrevisitContext` endpoint in `server/routes.ts` *(completed 2026-02-13)*
   - Accept FHIR Bundle with `scheduledEncounterId` parameter
-  - Validate: visit exists, visit is in `scheduled` status, visit is NOT locked (`lockedAt` is null)
+  - Validate: visit exists, visit is NOT locked (`lockedAt` is null)
   - Idempotency: if `bundleId` already exists in `hie_ingestion_log` for this visit, return existing result (skip re-processing)
   - Create `hie_ingestion_log` record with status `processing`
   - Process each resource by type (see T2.2-T2.5); collect per-resource errors
   - Update ingestion log to `completed` (all succeed), `partial` (some fail), or `failed` (all fail)
-  - Return OperationOutcome with processing results
-  - Log audit event via existing `createAuditEvent()`
-- [ ] **T2.2** Implement `MedicationStatement` resource processor
-  - Map FHIR MedicationStatement fields to `med_reconciliation` insert
-  - Set `source = "hie"`, `status = "pending"` (unverified)
-  - Set `memberId` and `visitId` from context
-  - Also create `medication_history` record with `source = "hie"`
-  - Skip duplicates (match on medicationName + dosage)
-- [ ] **T2.3** Implement `Condition` resource processor
-  - Extract ICD code from `Condition.code.coding`
-  - Check if condition already exists in member's known conditions or visit codes
-  - If new: create `suspected_condition` record with `status = "pending"`
-  - If existing: skip (no duplicate)
-  - Link to `ingestionLogId`
-- [ ] **T2.4** Implement `Observation` resource processor
-  - Route by FHIR `Observation.category` coding:
-    - `category.coding[].code === "vital-signs"` → `vitals_history` table
-    - `category.coding[].code === "laboratory"` → `lab_results` table
-    - Fallback (no category or unknown) → `lab_results` table
-  - Map FHIR Observation to `lab_results` or `vitals_history` accordingly
-  - Dedup: skip if matching `testCode + collectedDate + memberId` (labs) or `measureDate + memberId` (vitals) already exists with `source = "hie"`
-  - Set `source = "hie"` on all records
-- [ ] **T2.5** Implement `Procedure` resource processor
-  - Map to `visit_codes` with `codeType = "cpt"` or `"hcpcs"`, `source = "hie"`, `verified = false`
-  - These feed into HEDIS measure evaluation
+  - Return OperationOutcome with processing results + summary (total/created/skipped/errors/resourceTypes)
+  - Log audit event via existing `createAuditEvent()` with event type `hie_previsit_ingestion`
+- [x] **T2.2** Implement `MedicationStatement` resource processor *(completed 2026-02-13)*
+  - Maps FHIR MedicationStatement fields → `med_reconciliation` (source=`external`, status=`new`) + `medication_history` (source=`hie`)
+  - Supports: medicationCodeableConcept (text, coding[0].display), dosage text, route, timing, effectivePeriod
+  - Dedup: match on medicationName + dosage + source per visit (med_reconciliation) and per member (medication_history)
+- [x] **T2.3** Implement `Condition` resource processor *(completed 2026-02-13)*
+  - Extracts ICD-10 code from `Condition.code.coding` (prioritizes icd-10-cm system)
+  - Three-level dedup: (1) already coded as visit_code, (2) already in suspected_conditions, (3) new → create suspected_condition
+  - Maps verificationStatus to confidence (confirmed/provisional→probable/suspected)
+  - Links to `ingestionLogId`
+- [x] **T2.4** Implement `Observation` resource processor *(completed 2026-02-13)*
+  - Routes by `category.coding[0].code`: `vital-signs` → `vitals_history`, `laboratory` (or fallback) → `lab_results`
+  - Vital signs: maps LOINC component codes (8480-6→systolic, 8462-4→diastolic, 8867-4→heartRate, etc.)
+  - Lab results: maps valueQuantity, referenceRange, interpretation (H/L→high/low/normal)
+  - Dedup: testCode + collectedDate + source=hie (labs), measureDate + source=hie (vitals)
+- [x] **T2.5** Implement `Procedure` resource processor *(completed 2026-02-13)*
+  - Maps to `visit_codes` with auto-detected codeType (CPT vs HCPCS based on coding system URI)
+  - source=`hie`, verified=false, autoAssigned=true
+  - Dedup: code + source=hie per visit
 
 ### Phase 3: Provenance Tagging (CR-002-04)
 

@@ -5,7 +5,7 @@
 **System:** Easy Health Point of Care Application
 **Requestor:** Jay Baker
 **Date:** February 13, 2026
-**Status:** In Progress - Phase 5 Complete
+**Status:** In Progress - Phase 6 Complete
 
 ---
 
@@ -205,23 +205,22 @@ The following tables already have `source` fields that accept "hie":
 
 ### Phase 6: Pre-Visit NP Guidance Panel (CR-002-05)
 
-- [ ] **T6.1** Create `GET /api/visits/:id/previsit-summary` endpoint
-  - Aggregate: suspected conditions count, pending med recon count, care gaps from measure definitions, HIE observations summary
-  - Generate `EncounterGuidanceSummary` object with prioritized action items
-  - Return structured guidance for the NP
-- [ ] **T6.2** Build NP Guidance Panel UI component on Intake Dashboard
-  - Position: Top of right panel (above Visit Alerts)
-  - Only visible when HIE data has been ingested for this visit
-  - Sections:
-    - **Suspected Diagnoses** - List with confirm/dismiss actions
-    - **Medication Review** - Count of HIE meds pending verification, link to med recon
-    - **Care Gaps** - HEDIS measures that HIE data can help close
-    - **Preventive Screenings** - Due screenings based on HIE history
-  - Follow existing Card/CardHeader/CardContent/Badge pattern
-  - Use existing color palette (Dark Blue for headers, Orange for action items, Teal for info)
-- [ ] **T6.3** Add ingestion status indicator to visit header
-  - Show "HIE Data Available" badge when ingestion log exists for visit
-  - Show resource count summary on hover/click
+- [x] **T6.1** Create `GET /api/visits/:id/previsit-summary` endpoint *(completed 2026-02-13)*
+  - Fetches suspected conditions, med recon, ingestion logs, measure defs, measure results, and visit codes in parallel
+  - Returns structured response: `hasHieData`, `ingestionSummary` (lastIngested, sourceSystem, totalBundles, totalResources), `suspectedDiagnoses` (total/pending/confirmed/dismissed + items), `medicationReview` (total, pendingVerification), `careGaps` (filtered non-met measures), `actionItems` (prioritized by high/medium/low)
+  - Returns empty shell when no HIE data ingested (hasHieData: false)
+- [x] **T6.2** Build NP Guidance Panel UI component on Intake Dashboard *(completed 2026-02-13)*
+  - Position: Top of right panel (above Visit Alerts), only visible when hasHieData is true
+  - **Suspected Diagnoses**: Lists conditions with inline Confirm/Dismiss actions, pending/confirmed count badges, dismiss dialog with required reason textarea
+  - **Medication Review**: Shows HIE med count with pending verification badge, link to med reconciliation page
+  - **Care Gaps**: HEDIS measures with gap/partial status badges, color-coded dots, limited to 5 with "+N more" overflow
+  - **Ingestion Footer**: Timestamp and source system info
+  - All mutations invalidate both previsit-summary and overview query caches
+  - Uses Easy Health color palette (Dark Blue #2E456B headers, Orange #FEA002 action items, Teal #277493 info)
+- [x] **T6.3** Add ingestion status indicator to visit header *(completed 2026-02-13)*
+  - Blue outline "HIE Data Available" badge with Globe icon in visit header subtitle
+  - Tooltip on hover showing bundle count, resource count, and source system
+  - Only visible when previsitSummary.hasHieData is true
 
 ### Phase 7: Care Gap Prioritization (CR-002-06)
 

@@ -46,6 +46,9 @@ import {
   ChevronDown,
   ChevronUp,
   FileCheck,
+  Globe,
+  Stethoscope,
+  Search,
 } from "lucide-react";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -175,6 +178,53 @@ export default function IntakeDashboard() {
   const { data: visitAlerts = [] } = useQuery<VisitAlert[]>({
     queryKey: ["/api/visits", visitId, "alerts"],
     enabled: !!visitId,
+  });
+
+  const { data: previsitSummary } = useQuery<any>({
+    queryKey: ["/api/visits", visitId, "previsit-summary"],
+    enabled: !!visitId,
+  });
+
+  const confirmConditionMutation = useMutation({
+    mutationFn: async (condId: string) => {
+      await apiRequest("PATCH", `/api/visits/${visitId}/suspected-conditions/${condId}`, {
+        action: "confirm",
+        reviewedBy: user?.id,
+        reviewedByName: user?.fullName,
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/visits", visitId, "previsit-summary"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/visits", visitId, "overview"] });
+      toast({ title: "Diagnosis confirmed and added to visit codes" });
+    },
+    onError: (err: any) => {
+      toast({ title: "Failed to confirm", description: err.message, variant: "destructive" });
+    },
+  });
+
+  const [dismissDialog, setDismissDialog] = useState<{ open: boolean; condId: string; description: string }>({ open: false, condId: "", description: "" });
+  const [dismissReason, setDismissReason] = useState("");
+
+  const dismissConditionMutation = useMutation({
+    mutationFn: async ({ condId, reason }: { condId: string; reason: string }) => {
+      await apiRequest("PATCH", `/api/visits/${visitId}/suspected-conditions/${condId}`, {
+        action: "dismiss",
+        dismissalReason: reason,
+        reviewedBy: user?.id,
+        reviewedByName: user?.fullName,
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/visits", visitId, "previsit-summary"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/visits", visitId, "overview"] });
+      toast({ title: "Diagnosis dismissed" });
+      setDismissDialog({ open: false, condId: "", description: "" });
+      setDismissReason("");
+    },
+    onError: (err: any) => {
+      toast({ title: "Failed to dismiss", description: err.message, variant: "destructive" });
+    },
   });
 
   const { data: noteEdits = [] } = useQuery<any[]>({
@@ -471,6 +521,22 @@ export default function IntakeDashboard() {
                 <Badge variant="destructive" className="text-xs">
                   {allFlags.length} alert{allFlags.length !== 1 ? "s" : ""}
                 </Badge>
+              )}
+              {previsitSummary?.hasHieData && (
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Badge variant="outline" className="text-xs border-blue-500 text-blue-700 dark:text-blue-400 no-default-hover-elevate no-default-active-elevate" data-testid="badge-hie-data-available">
+                      <Globe className="w-3 h-3 mr-1" /> HIE Data Available
+                    </Badge>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p className="text-xs">
+                      {previsitSummary.ingestionSummary?.totalBundles} bundle{previsitSummary.ingestionSummary?.totalBundles !== 1 ? "s" : ""} ingested
+                      {" "}({previsitSummary.ingestionSummary?.totalResources} resources)
+                      {previsitSummary.ingestionSummary?.sourceSystem && ` from ${previsitSummary.ingestionSummary.sourceSystem}`}
+                    </p>
+                  </TooltipContent>
+                </Tooltip>
               )}
             </div>
           </div>
@@ -985,6 +1051,208 @@ export default function IntakeDashboard() {
 
         {/* ====== RIGHT PANEL: ALERTS + CDS + OBJECTIVES + RESULTS ====== */}
         <div className="lg:col-span-7 space-y-4">
+
+          {/* HIE Pre-Visit Guidance Panel */}
+          {previsitSummary?.hasHieData && (
+            <Card data-testid="card-previsit-guidance">
+              <CardHeader className="pb-2">
+                <div className="flex items-center justify-between gap-2 flex-wrap">
+                  <div className="flex items-center gap-2">
+                    <Globe className="w-4 h-4" style={{ color: "#2E456B" }} />
+                    <h2 className="text-sm font-semibold" data-testid="text-guidance-title">Pre-Visit HIE Intelligence</h2>
+                  </div>
+                  {previsitSummary.actionItems?.length > 0 && (
+                    <Badge variant="outline" className="text-xs border-orange-400 text-orange-600 dark:text-orange-400 no-default-hover-elevate no-default-active-elevate" data-testid="badge-action-item-count">
+                      {previsitSummary.actionItems.length} action{previsitSummary.actionItems.length !== 1 ? "s" : ""} needed
+                    </Badge>
+                  )}
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-3 pt-0">
+                {/* Suspected Diagnoses Section */}
+                {previsitSummary.suspectedDiagnoses?.total > 0 && (
+                  <div data-testid="section-suspected-diagnoses">
+                    <div className="flex items-center gap-2 mb-2">
+                      <Stethoscope className="w-3.5 h-3.5" style={{ color: "#2E456B" }} />
+                      <span className="text-xs font-semibold uppercase tracking-wide" style={{ color: "#2E456B" }}>Suspected Diagnoses</span>
+                      <div className="flex items-center gap-1 ml-auto">
+                        {previsitSummary.suspectedDiagnoses.pending > 0 && (
+                          <Badge variant="outline" className="text-[10px] border-orange-400 text-orange-600 dark:text-orange-400 no-default-hover-elevate no-default-active-elevate" data-testid="badge-pending-diagnoses">
+                            {previsitSummary.suspectedDiagnoses.pending} pending
+                          </Badge>
+                        )}
+                        {previsitSummary.suspectedDiagnoses.confirmed > 0 && (
+                          <Badge variant="outline" className="text-[10px] border-green-500 text-green-600 dark:text-green-400 no-default-hover-elevate no-default-active-elevate">
+                            {previsitSummary.suspectedDiagnoses.confirmed} confirmed
+                          </Badge>
+                        )}
+                      </div>
+                    </div>
+                    <div className="space-y-1.5">
+                      {previsitSummary.suspectedDiagnoses.items.map((cond: any) => (
+                        <div
+                          key={cond.id}
+                          className="flex items-center justify-between gap-2 p-2 rounded-md border text-sm"
+                          data-testid={`suspected-condition-${cond.id}`}
+                        >
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <span className="font-medium text-xs" data-testid={`text-condition-code-${cond.id}`}>{cond.icdCode}</span>
+                              <span className="text-xs text-muted-foreground truncate">{cond.description}</span>
+                            </div>
+                            {cond.status === "dismissed" && cond.dismissalReason && (
+                              <p className="text-[10px] text-muted-foreground mt-0.5">Dismissed: {cond.dismissalReason}</p>
+                            )}
+                          </div>
+                          <div className="flex items-center gap-1 flex-shrink-0">
+                            {cond.status === "pending" && (
+                              <>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="h-7 text-xs"
+                                  onClick={() => confirmConditionMutation.mutate(cond.id)}
+                                  disabled={confirmConditionMutation.isPending}
+                                  data-testid={`button-confirm-condition-${cond.id}`}
+                                >
+                                  <Check className="w-3 h-3 mr-1" /> Confirm
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="h-7 text-xs"
+                                  onClick={() => setDismissDialog({ open: true, condId: cond.id, description: `${cond.icdCode} - ${cond.description}` })}
+                                  data-testid={`button-dismiss-condition-${cond.id}`}
+                                >
+                                  <XCircle className="w-3 h-3 mr-1" /> Dismiss
+                                </Button>
+                              </>
+                            )}
+                            {cond.status === "confirmed" && (
+                              <Badge variant="outline" className="text-[10px] border-green-500 text-green-600 dark:text-green-400 no-default-hover-elevate no-default-active-elevate">
+                                <CheckCircle2 className="w-3 h-3 mr-0.5" /> Confirmed
+                              </Badge>
+                            )}
+                            {cond.status === "dismissed" && (
+                              <Badge variant="outline" className="text-[10px] text-muted-foreground no-default-hover-elevate no-default-active-elevate">
+                                Dismissed
+                              </Badge>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Medication Review Section */}
+                {previsitSummary.medicationReview?.total > 0 && (
+                  <div data-testid="section-medication-review">
+                    <div className="flex items-center gap-2 mb-2">
+                      <Pill className="w-3.5 h-3.5" style={{ color: "#277493" }} />
+                      <span className="text-xs font-semibold uppercase tracking-wide" style={{ color: "#277493" }}>Medication Review</span>
+                    </div>
+                    <div className="flex items-center justify-between gap-2 p-2 rounded-md border text-sm">
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs">{previsitSummary.medicationReview.total} HIE medication{previsitSummary.medicationReview.total !== 1 ? "s" : ""} ingested</span>
+                        {previsitSummary.medicationReview.pendingVerification > 0 && (
+                          <Badge variant="outline" className="text-[10px] border-orange-400 text-orange-600 dark:text-orange-400 no-default-hover-elevate no-default-active-elevate" data-testid="badge-pending-meds">
+                            {previsitSummary.medicationReview.pendingVerification} pending verification
+                          </Badge>
+                        )}
+                      </div>
+                      <Link href={`/visits/${visitId}/intake/medications`}>
+                        <Button variant="ghost" size="sm" className="h-7 text-xs" data-testid="button-go-med-recon">
+                          Review <ArrowRight className="w-3 h-3 ml-1" />
+                        </Button>
+                      </Link>
+                    </div>
+                  </div>
+                )}
+
+                {/* Care Gaps Section */}
+                {previsitSummary.careGaps?.length > 0 && (
+                  <div data-testid="section-care-gaps">
+                    <div className="flex items-center gap-2 mb-2">
+                      <Search className="w-3.5 h-3.5" style={{ color: "#277493" }} />
+                      <span className="text-xs font-semibold uppercase tracking-wide" style={{ color: "#277493" }}>Care Gaps</span>
+                      <Badge variant="outline" className="text-[10px] no-default-hover-elevate no-default-active-elevate" data-testid="badge-care-gap-count">
+                        {previsitSummary.careGaps.filter((g: any) => g.status === "gap").length} gap{previsitSummary.careGaps.filter((g: any) => g.status === "gap").length !== 1 ? "s" : ""}
+                        {previsitSummary.careGaps.filter((g: any) => g.status === "partially_met").length > 0 && `, ${previsitSummary.careGaps.filter((g: any) => g.status === "partially_met").length} partial`}
+                      </Badge>
+                    </div>
+                    <div className="space-y-1">
+                      {previsitSummary.careGaps.slice(0, 5).map((gap: any) => (
+                        <div key={gap.measureId} className="flex items-center justify-between gap-2 p-1.5 rounded-md border text-xs" data-testid={`care-gap-${gap.measureId}`}>
+                          <div className="flex items-center gap-2 min-w-0 flex-1">
+                            <span
+                              className="w-2 h-2 rounded-full flex-shrink-0"
+                              style={{ backgroundColor: gap.status === "gap" ? "#FEA002" : "#277493" }}
+                            />
+                            <span className="truncate">{gap.measureName}</span>
+                          </div>
+                          <Badge
+                            variant="outline"
+                            className={`text-[10px] no-default-hover-elevate no-default-active-elevate ${gap.status === "gap" ? "border-orange-400 text-orange-600 dark:text-orange-400" : "border-blue-400 text-blue-600 dark:text-blue-400"}`}
+                          >
+                            {gap.status === "gap" ? "Gap" : "Partial"}
+                          </Badge>
+                        </div>
+                      ))}
+                      {previsitSummary.careGaps.length > 5 && (
+                        <p className="text-[10px] text-muted-foreground pl-1">+{previsitSummary.careGaps.length - 5} more</p>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {/* Ingestion Info Footer */}
+                {previsitSummary.ingestionSummary && (
+                  <div className="flex items-center gap-2 pt-1 border-t text-[10px] text-muted-foreground" data-testid="text-ingestion-info">
+                    <Clock className="w-3 h-3" />
+                    <span>
+                      Last ingested: {new Date(previsitSummary.ingestionSummary.lastIngested).toLocaleString()}
+                      {previsitSummary.ingestionSummary.sourceSystem && ` | Source: ${previsitSummary.ingestionSummary.sourceSystem}`}
+                    </span>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Dismiss Condition Dialog */}
+          <Dialog open={dismissDialog.open} onOpenChange={(o) => { if (!o) { setDismissDialog({ open: false, condId: "", description: "" }); setDismissReason(""); } }}>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Dismiss Suspected Diagnosis</DialogTitle>
+                <DialogDescription>{dismissDialog.description}</DialogDescription>
+              </DialogHeader>
+              <div className="space-y-3">
+                <div>
+                  <Label>Reason for Dismissal</Label>
+                  <Textarea
+                    value={dismissReason}
+                    onChange={(e) => setDismissReason(e.target.value)}
+                    placeholder="Enter clinical reason for dismissing this diagnosis..."
+                    className="mt-1.5"
+                    data-testid="input-dismiss-reason"
+                  />
+                </div>
+                <div className="flex justify-end gap-2">
+                  <Button variant="outline" onClick={() => { setDismissDialog({ open: false, condId: "", description: "" }); setDismissReason(""); }} data-testid="button-cancel-dismiss">
+                    Cancel
+                  </Button>
+                  <Button
+                    onClick={() => dismissConditionMutation.mutate({ condId: dismissDialog.condId, reason: dismissReason })}
+                    disabled={!dismissReason.trim() || dismissConditionMutation.isPending}
+                    data-testid="button-submit-dismiss"
+                  >
+                    Dismiss Diagnosis
+                  </Button>
+                </div>
+              </div>
+            </DialogContent>
+          </Dialog>
 
           {/* Visit Alerts Panel */}
           {(() => {

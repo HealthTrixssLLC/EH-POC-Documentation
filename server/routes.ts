@@ -3779,6 +3779,137 @@ export async function registerRoutes(
     }
   });
 
+  // --- CR-002 Phase 6: Pre-Visit Summary / NP Guidance ---
+
+  app.get("/api/visits/:id/previsit-summary", async (req, res) => {
+    try {
+      const visit = await storage.getVisit(req.params.id);
+      if (!visit) return res.status(404).json({ message: "Visit not found" });
+
+      const [member, suspectedConds, medRecon, ingestionLogs, measureDefs, measureResults, codes] = await Promise.all([
+        storage.getMember(visit.memberId),
+        storage.getSuspectedConditionsByVisit(visit.id),
+        storage.getMedReconciliationByVisit(visit.id),
+        storage.getHieIngestionLogsByVisit(visit.id),
+        storage.getAllMeasureDefinitions(),
+        storage.getMeasureResultsByVisit(visit.id),
+        storage.getCodesByVisit(visit.id),
+      ]);
+
+      const hasHieData = ingestionLogs.length > 0;
+      if (!hasHieData) {
+        return res.json({
+          hasHieData: false,
+          ingestionSummary: null,
+          suspectedDiagnoses: { total: 0, pending: 0, confirmed: 0, dismissed: 0, items: [] },
+          medicationReview: { total: 0, pendingVerification: 0 },
+          careGaps: [],
+          actionItems: [],
+        });
+      }
+
+      const latestLog = ingestionLogs.sort((a, b) => (b.receivedAt || "").localeCompare(a.receivedAt || ""))[0];
+      const ingestionSummary = {
+        lastIngested: latestLog.receivedAt,
+        sourceSystem: latestLog.sourceSystem,
+        totalBundles: ingestionLogs.length,
+        totalResources: ingestionLogs.reduce((sum, l) => {
+          const s = l.summary as any;
+          return sum + (s?.total || 0);
+        }, 0),
+      };
+
+      const pendingConds = suspectedConds.filter(c => c.status === "pending");
+      const confirmedConds = suspectedConds.filter(c => c.status === "confirmed");
+      const dismissedConds = suspectedConds.filter(c => c.status === "dismissed");
+      const suspectedDiagnoses = {
+        total: suspectedConds.length,
+        pending: pendingConds.length,
+        confirmed: confirmedConds.length,
+        dismissed: dismissedConds.length,
+        items: suspectedConds.map(c => ({
+          id: c.id,
+          icdCode: c.icdCode,
+          description: c.description,
+          status: c.status,
+          confidence: c.confidence,
+          hieSource: c.hieSource,
+          reviewedByName: c.reviewedByName,
+          reviewedAt: c.reviewedAt,
+          dismissalReason: c.dismissalReason,
+        })),
+      };
+
+      const hieMeds = medRecon.filter(m => m.source === "external");
+      const pendingMeds = hieMeds.filter(m => m.status === "new");
+      const medicationReview = {
+        total: hieMeds.length,
+        pendingVerification: pendingMeds.length,
+      };
+
+      const resultMap = new Map(measureResults.map(r => [r.measureId, r]));
+      const hieCodeSet = new Set(codes.filter(c => c.source === "hie").map(c => c.code));
+      const careGaps = measureDefs.map(def => {
+        const result = resultMap.get(def.measureId);
+        const hasResult = result && result.status !== "not_started";
+        const hasHieEvidence = hieCodeSet.size > 0;
+        let gapStatus: "met" | "partially_met" | "gap" = "gap";
+        if (hasResult && (result.status === "met" || result.result === "met")) {
+          gapStatus = "met";
+        } else if (hasResult || hasHieEvidence) {
+          gapStatus = "partially_met";
+        }
+        return {
+          measureId: def.measureId,
+          measureName: def.name,
+          category: def.category,
+          status: gapStatus,
+          currentResult: result?.status || "not_started",
+          description: def.description,
+        };
+      }).filter(g => g.status !== "met");
+
+      const actionItems: { priority: "high" | "medium" | "low"; category: string; message: string; link?: string }[] = [];
+
+      if (pendingConds.length > 0) {
+        actionItems.push({
+          priority: "high",
+          category: "suspected_diagnoses",
+          message: `${pendingConds.length} suspected diagnosis${pendingConds.length > 1 ? "es" : ""} from HIE require review`,
+          link: "diagnoses",
+        });
+      }
+      if (pendingMeds.length > 0) {
+        actionItems.push({
+          priority: "high",
+          category: "medication_review",
+          message: `${pendingMeds.length} HIE medication${pendingMeds.length > 1 ? "s" : ""} pending verification`,
+          link: "medications",
+        });
+      }
+      const gapCount = careGaps.filter(g => g.status === "gap").length;
+      if (gapCount > 0) {
+        actionItems.push({
+          priority: "medium",
+          category: "care_gaps",
+          message: `${gapCount} HEDIS care gap${gapCount > 1 ? "s" : ""} identified`,
+          link: "measures",
+        });
+      }
+
+      return res.json({
+        hasHieData: true,
+        ingestionSummary,
+        suspectedDiagnoses,
+        medicationReview,
+        careGaps,
+        actionItems,
+      });
+    } catch (err: any) {
+      return res.status(500).json({ message: err.message });
+    }
+  });
+
   // --- List all members as FHIR Patients ---
   app.get("/api/fhir/Patient", async (_req, res) => {
     try {

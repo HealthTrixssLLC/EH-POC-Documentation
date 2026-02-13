@@ -19,6 +19,14 @@ import {
   Shield,
   Target,
   FileWarning,
+  Activity,
+  Stethoscope,
+  CircleAlert,
+  CheckCircle2,
+  XCircle,
+  Clock,
+  FlaskConical,
+  Syringe,
 } from "lucide-react";
 
 const checklistStatusColors: Record<string, string> = {
@@ -28,12 +36,29 @@ const checklistStatusColors: Record<string, string> = {
   unable_to_assess: "outline",
 };
 
+const conditionStatusConfig: Record<string, { label: string; variant: string; icon: any }> = {
+  pending: { label: "Needs Review", variant: "secondary", icon: Clock },
+  confirmed: { label: "Confirmed", variant: "default", icon: CheckCircle2 },
+  dismissed: { label: "Dismissed", variant: "outline", icon: XCircle },
+};
+
+const priorityColors: Record<string, string> = {
+  high: "#E74C3C",
+  medium: "#FEA002",
+  low: "#277493",
+};
+
 export default function PreVisitSummary() {
   const [, params] = useRoute("/visits/:id/summary");
   const visitId = params?.id;
 
   const { data: bundle, isLoading } = useQuery<any>({
     queryKey: ["/api/visits", visitId, "bundle"],
+    enabled: !!visitId,
+  });
+
+  const { data: hieData, isLoading: hieLoading } = useQuery<any>({
+    queryKey: ["/api/visits", visitId, "previsit-summary"],
     enabled: !!visitId,
   });
 
@@ -51,6 +76,13 @@ export default function PreVisitSummary() {
   const member = bundle?.member;
   const checklist = bundle?.checklist || [];
   const targets = bundle?.targets || [];
+
+  const hasHie = hieData?.hasHieData === true;
+  const actionItems = hieData?.actionItems || [];
+  const suspectedDiagnoses = hieData?.suspectedDiagnoses;
+  const medicationReview = hieData?.medicationReview;
+  const careGaps = hieData?.careGaps || [];
+  const ingestionSummary = hieData?.ingestionSummary;
 
   return (
     <div className="space-y-6">
@@ -111,6 +143,158 @@ export default function PreVisitSummary() {
                 </span>
               )}
             </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {hieLoading && (
+        <Card>
+          <CardContent className="p-4 space-y-3">
+            <Skeleton className="h-4 w-48" />
+            <Skeleton className="h-16 w-full" />
+            <Skeleton className="h-12 w-full" />
+          </CardContent>
+        </Card>
+      )}
+
+      {hasHie && (
+        <Card data-testid="card-hie-intelligence">
+          <CardHeader className="pb-3">
+            <div className="flex items-center justify-between gap-2 flex-wrap">
+              <div className="flex items-center gap-2">
+                <Activity className="w-4 h-4" style={{ color: "#277493" }} />
+                <h3 className="text-sm font-semibold">External Records Review</h3>
+              </div>
+              {ingestionSummary && (
+                <span className="text-xs text-muted-foreground" data-testid="text-hie-source">
+                  Source: {ingestionSummary.sourceSystem} &middot; Received {new Date(ingestionSummary.lastIngested).toLocaleDateString()}
+                </span>
+              )}
+            </div>
+          </CardHeader>
+          <CardContent className="space-y-5">
+            {actionItems.length > 0 && (
+              <div className="rounded-md p-3 space-y-2" style={{ backgroundColor: "#FEA00210", border: "1px solid #FEA00230" }} data-testid="section-action-items">
+                <span className="text-xs font-semibold flex items-center gap-1.5" style={{ color: "#FEA002" }}>
+                  <CircleAlert className="w-3.5 h-3.5" />
+                  Before You Begin
+                </span>
+                {actionItems.map((item: any, i: number) => (
+                  <div key={i} className="flex items-start gap-2 text-sm" data-testid={`action-item-${i}`}>
+                    <div className="w-1.5 h-1.5 rounded-full flex-shrink-0 mt-1.5" style={{ backgroundColor: priorityColors[item.priority] || "#277493" }} />
+                    <span>{item.message}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {suspectedDiagnoses && suspectedDiagnoses.total > 0 && (
+              <div data-testid="section-suspected-diagnoses">
+                <div className="flex items-center justify-between gap-2 mb-2 flex-wrap">
+                  <span className="text-xs font-semibold text-muted-foreground flex items-center gap-1.5">
+                    <Stethoscope className="w-3.5 h-3.5" />
+                    Suspected Diagnoses from External Records
+                  </span>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    {suspectedDiagnoses.pending > 0 && (
+                      <Badge variant="secondary" className="text-xs" data-testid="badge-diagnoses-pending">
+                        {suspectedDiagnoses.pending} needs review
+                      </Badge>
+                    )}
+                    {suspectedDiagnoses.confirmed > 0 && (
+                      <Badge variant="default" className="text-xs" data-testid="badge-diagnoses-confirmed">
+                        {suspectedDiagnoses.confirmed} confirmed
+                      </Badge>
+                    )}
+                    {suspectedDiagnoses.dismissed > 0 && (
+                      <Badge variant="outline" className="text-xs" data-testid="badge-diagnoses-dismissed">
+                        {suspectedDiagnoses.dismissed} dismissed
+                      </Badge>
+                    )}
+                  </div>
+                </div>
+                <div className="space-y-1.5">
+                  {suspectedDiagnoses.items.map((cond: any) => {
+                    const cfg = conditionStatusConfig[cond.status] || conditionStatusConfig.pending;
+                    const StatusIcon = cfg.icon;
+                    return (
+                      <div key={cond.id} className="flex items-center justify-between gap-3 p-2 rounded-md border text-sm flex-wrap" data-testid={`suspected-condition-${cond.icdCode}`}>
+                        <div className="flex items-center gap-2 min-w-0">
+                          <StatusIcon className="w-3.5 h-3.5 flex-shrink-0" style={{ color: cond.status === "confirmed" ? "#277493" : cond.status === "dismissed" ? undefined : "#FEA002" }} />
+                          <span className="font-medium">{cond.description}</span>
+                          <Badge variant="outline" className="text-xs font-mono">{cond.icdCode}</Badge>
+                        </div>
+                        <Badge variant={cfg.variant as any} className="text-xs">
+                          {cfg.label}
+                        </Badge>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            {medicationReview && medicationReview.total > 0 && (
+              <div data-testid="section-hie-medications">
+                <div className="flex items-center justify-between gap-2 mb-2 flex-wrap">
+                  <span className="text-xs font-semibold text-muted-foreground flex items-center gap-1.5">
+                    <Pill className="w-3.5 h-3.5" />
+                    Medications from External Records
+                  </span>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <Badge variant="outline" className="text-xs" data-testid="badge-meds-total">
+                      {medicationReview.total} found
+                    </Badge>
+                    {medicationReview.pendingVerification > 0 && (
+                      <Badge variant="secondary" className="text-xs" data-testid="badge-meds-pending">
+                        {medicationReview.pendingVerification} to verify
+                      </Badge>
+                    )}
+                  </div>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  {medicationReview.pendingVerification > 0
+                    ? `${medicationReview.pendingVerification} medication${medicationReview.pendingVerification > 1 ? "s" : ""} from external records need to be verified with the patient during medication reconciliation.`
+                    : "All external medications have been reviewed."}
+                </p>
+              </div>
+            )}
+
+            {careGaps.length > 0 && (
+              <div data-testid="section-care-gaps">
+                <span className="text-xs font-semibold text-muted-foreground flex items-center gap-1.5 mb-2">
+                  <FlaskConical className="w-3.5 h-3.5" />
+                  Quality Measure Opportunities
+                </span>
+                <div className="space-y-1.5">
+                  {careGaps.slice(0, 5).map((gap: any) => (
+                    <div key={gap.measureId} className="flex items-center justify-between gap-3 p-2 rounded-md border text-sm flex-wrap" data-testid={`care-gap-${gap.measureId}`}>
+                      <div className="flex flex-col gap-0.5 min-w-0">
+                        <span className="font-medium">{gap.measureName}</span>
+                        {gap.recommendation && (
+                          <span className="text-xs text-muted-foreground">{gap.recommendation}</span>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-2 flex-shrink-0 flex-wrap">
+                        {gap.hieEvidence?.length > 0 && (
+                          <Badge variant="outline" className="text-xs" style={{ borderColor: "#27749340", color: "#277493" }}>
+                            HIE evidence
+                          </Badge>
+                        )}
+                        <Badge variant={gap.status === "gap" ? "secondary" : "outline"} className="text-xs capitalize">
+                          {gap.status === "gap" ? "Open" : "Partial"}
+                        </Badge>
+                      </div>
+                    </div>
+                  ))}
+                  {careGaps.length > 5 && (
+                    <p className="text-xs text-muted-foreground text-center pt-1">
+                      +{careGaps.length - 5} more measure{careGaps.length - 5 > 1 ? "s" : ""}
+                    </p>
+                  )}
+                </div>
+              </div>
+            )}
           </CardContent>
         </Card>
       )}

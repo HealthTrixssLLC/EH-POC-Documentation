@@ -56,6 +56,8 @@ import {
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/lib/auth";
+import { usePlatform } from "@/hooks/use-platform";
+import MobileVisitWizard from "@/components/mobile-visit-wizard";
 import type { ReasonCode, VisitAlert } from "@shared/schema";
 
 const taskTypes = [
@@ -95,6 +97,7 @@ export default function IntakeDashboard() {
   const visitId = params?.id;
   const [, setLocation] = useLocation();
   const { toast } = useToast();
+  const { isMobileLayout } = usePlatform();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [exclusionDialog, setExclusionDialog] = useState<{ open: boolean; objectiveKey: string; objectiveLabel: string }>({ open: false, objectiveKey: "", objectiveLabel: "" });
   const [exclusionReason, setExclusionReason] = useState("");
@@ -293,6 +296,10 @@ export default function IntakeDashboard() {
     }
     return map;
   }, [extractedFieldsRaw]);
+
+  if (isMobileLayout && visitId) {
+    return <MobileVisitWizard visitId={visitId} />;
+  }
 
   if (isLoading) {
     return (

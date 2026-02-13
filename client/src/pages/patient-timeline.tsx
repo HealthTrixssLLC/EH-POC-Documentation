@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ArrowLeft, Activity, FlaskConical, Pill, TrendingUp, TrendingDown, Minus, Building2, Globe, ChevronDown, ChevronUp, Filter } from "lucide-react";
+import { usePlatform } from "@/hooks/use-platform";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useState, useMemo, useCallback } from "react";
 import {
@@ -685,6 +686,7 @@ function MedicationGantt({ medications, lookbackYears = 2, onMedClick }: { medic
 }
 
 export default function PatientTimeline() {
+  const { isMobileLayout } = usePlatform();
   const params = useParams<{ id: string }>();
   const visitId = params.id;
   const [labCategory, setLabCategory] = useState<string>("all");
@@ -760,22 +762,26 @@ export default function PatientTimeline() {
   const isLoading = labsLoading || medsLoading || vitalsLoading;
 
   return (
-    <div className="space-y-6 max-w-6xl mx-auto">
-      <div className="flex items-center gap-3 flex-wrap">
-        <Button variant="ghost" size="icon" asChild>
-          <Link href={`/visits/${visitId}/intake`}>
-            <ArrowLeft className="w-4 h-4" />
-          </Link>
-        </Button>
-        <div className="flex-1 min-w-0">
-          <h1 className="text-xl font-semibold" data-testid="text-page-title">Patient Clinical Timeline</h1>
-          {member && (
-            <p className="text-sm text-muted-foreground">
-              {member.firstName} {member.lastName} ({member.memberId}) — {member.dob}
-            </p>
-          )}
+    <div className={`space-y-6 max-w-6xl mx-auto ${isMobileLayout ? "pb-20 px-4" : ""}`}>
+      {isMobileLayout ? (
+        <h1 className="text-lg font-bold pt-2" data-testid="text-page-title">Clinical Timeline</h1>
+      ) : (
+        <div className="flex items-center gap-3 flex-wrap">
+          <Button variant="ghost" size="icon" asChild>
+            <Link href={`/visits/${visitId}/intake`}>
+              <ArrowLeft className="w-4 h-4" />
+            </Link>
+          </Button>
+          <div className="flex-1 min-w-0">
+            <h1 className="text-xl font-semibold" data-testid="text-page-title">Patient Clinical Timeline</h1>
+            {member && (
+              <p className="text-sm text-muted-foreground">
+                {member.firstName} {member.lastName} ({member.memberId}) — {member.dob}
+              </p>
+            )}
+          </div>
         </div>
-      </div>
+      )}
 
       <div className="flex items-center gap-3 flex-wrap">
         <Filter className="w-4 h-4 text-muted-foreground" />

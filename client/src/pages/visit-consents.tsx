@@ -19,6 +19,7 @@ import {
 } from "lucide-react";
 import { apiRequest, queryClient, resolveUrl } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import { usePlatform } from "@/hooks/use-platform";
 
 const noppMethods = [
   { value: "verbal", label: "In-Person" },
@@ -32,6 +33,7 @@ const consentMethods = [
 ];
 
 export default function VisitConsents() {
+  const { isMobileLayout } = usePlatform();
   const [, params] = useRoute("/visits/:id/intake/consents");
   const visitId = params?.id;
   const [, setLocation] = useLocation();
@@ -91,15 +93,19 @@ export default function VisitConsents() {
   const voiceDone = voiceConsent && (voiceConsent.status === "granted" || voiceConsent.status === "declined");
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center gap-3 flex-wrap">
-        <Link href={`/visits/${visitId}/intake`}>
-          <Button variant="ghost" size="sm" data-testid="button-back-intake">
-            <ChevronLeft className="w-4 h-4 mr-1" /> Intake
-          </Button>
-        </Link>
-        <h1 className="text-xl font-bold" data-testid="text-consents-title">Visit Compliance</h1>
-      </div>
+    <div className={`space-y-6 ${isMobileLayout ? "pb-20 px-4" : ""}`}>
+      {isMobileLayout ? (
+        <h1 className="text-lg font-bold pt-2" data-testid="text-consents-title">Visit Consents</h1>
+      ) : (
+        <div className="flex items-center gap-3 flex-wrap">
+          <Link href={`/visits/${visitId}/intake`}>
+            <Button variant="ghost" size="sm" data-testid="button-back-intake">
+              <ChevronLeft className="w-4 h-4 mr-1" /> Intake
+            </Button>
+          </Link>
+          <h1 className="text-xl font-bold" data-testid="text-consents-title">Visit Compliance</h1>
+        </div>
+      )}
 
       <Card>
         <CardHeader className="pb-3">

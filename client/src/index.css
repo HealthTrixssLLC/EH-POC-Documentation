@@ -329,3 +329,13 @@
     overscroll-behavior-y: none;
   }
 }
+
+.mobile-tab-bar {
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+}
+
+.mobile-content-area {
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-y: contain;
+}

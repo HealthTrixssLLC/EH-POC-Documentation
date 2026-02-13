@@ -4,7 +4,9 @@ import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Link } from "wouter";
+import { usePlatform } from "@/hooks/use-platform";
 import {
   ClipboardList,
   CheckCircle2,
@@ -18,6 +20,7 @@ import {
   Shield,
   FileJson,
   FileText,
+  Calendar,
 } from "lucide-react";
 
 function StatCard({ title, value, icon: Icon, color, loading }: {
@@ -46,8 +49,129 @@ function StatCard({ title, value, icon: Icon, color, loading }: {
   );
 }
 
+function formatVisitType(type: string): string {
+  return type
+    .split("_")
+    .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+    .join(" ");
+}
+
+function getInitials(name: string): string {
+  return name
+    .split(" ")
+    .map((p) => p.charAt(0))
+    .join("")
+    .toUpperCase()
+    .slice(0, 2);
+}
+
+function getGreeting(): string {
+  const hour = new Date().getHours();
+  return hour < 12 ? "Good morning" : "Good afternoon";
+}
+
+function formatTodayDate(): string {
+  return new Date().toLocaleDateString("en-US", {
+    weekday: "long",
+    month: "short",
+    day: "numeric",
+  });
+}
+
 function NPDashboard() {
   const { data: stats, isLoading } = useQuery<any>({ queryKey: ["/api/dashboard/np"] });
+  const { isMobileLayout } = usePlatform();
+  const { user } = useAuth();
+
+  if (isMobileLayout) {
+    const firstName = user?.fullName?.split(" ")[0] ?? "";
+
+    if (isLoading) {
+      return (
+        <div className="space-y-4 p-4" data-testid="mobile-dashboard">
+          <div className="space-y-1">
+            <Skeleton className="h-6 w-48" />
+            <Skeleton className="h-4 w-32" />
+          </div>
+          <div className="space-y-3">
+            {Array.from({ length: 3 }).map((_, i) => (
+              <Skeleton key={i} className="h-[72px] w-full rounded-md" />
+            ))}
+          </div>
+        </div>
+      );
+    }
+
+    return (
+      <div className="space-y-4 p-4" data-testid="mobile-dashboard">
+        <div data-testid="mobile-greeting">
+          <div className="flex items-center justify-between gap-3 flex-wrap">
+            <div>
+              <h1 className="text-lg font-semibold">
+                {getGreeting()}, {firstName}
+              </h1>
+              <p className="text-sm text-muted-foreground">{formatTodayDate()}</p>
+            </div>
+            <Badge variant="secondary" className="text-xs">
+              {stats?.todayVisits ?? 0} visits today
+            </Badge>
+          </div>
+        </div>
+
+        <div className="space-y-3">
+          {stats?.upcomingVisits?.length ? (
+            stats.upcomingVisits.map((v: any) => (
+              <Link key={v.id} href={`/visits/${v.id}/summary`}>
+                <Card
+                  className="hover-elevate cursor-pointer"
+                  data-testid={`mobile-visit-card-${v.id}`}
+                >
+                  <CardContent className="p-3">
+                    <div className="flex items-center gap-3" style={{ minHeight: "48px" }}>
+                      <Avatar className="h-10 w-10 flex-shrink-0">
+                        <AvatarFallback className="bg-[#2E456B] text-white text-xs">
+                          {getInitials(v.memberName)}
+                        </AvatarFallback>
+                      </Avatar>
+                      <div className="flex-1 min-w-0">
+                        <p className="font-medium text-sm truncate">{v.memberName}</p>
+                        <p className="text-xs text-muted-foreground">
+                          {v.scheduledDate} {v.scheduledTime}
+                        </p>
+                        <div className="flex items-center gap-2 mt-1 flex-wrap">
+                          {v.visitType && (
+                            <Badge variant="outline" className="text-xs">
+                              {formatVisitType(v.visitType)}
+                            </Badge>
+                          )}
+                          {v.address && (
+                            <span className="text-xs text-muted-foreground truncate">
+                              {v.address}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                      <Badge
+                        variant={v.status === "scheduled" ? "secondary" : "default"}
+                        className="text-xs flex-shrink-0"
+                      >
+                        {v.status}
+                      </Badge>
+                    </div>
+                  </CardContent>
+                </Card>
+              </Link>
+            ))
+          ) : (
+            <div className="flex flex-col items-center py-12 text-muted-foreground">
+              <Calendar className="w-10 h-10 mb-3 opacity-40" />
+              <span className="text-sm">No visits scheduled</span>
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">

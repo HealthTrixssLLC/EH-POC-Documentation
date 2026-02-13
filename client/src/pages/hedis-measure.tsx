@@ -17,6 +17,7 @@ import {
 } from "lucide-react";
 import { apiRequest, queryClient, resolveUrl } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import { usePlatform } from "@/hooks/use-platform";
 
 const captureMethods = [
   { value: "in_home_visit", label: "In-Home Visit Evidence" },
@@ -26,6 +27,7 @@ const captureMethods = [
 ];
 
 export default function HedisMeasure() {
+  const { isMobileLayout } = usePlatform();
   const [, params] = useRoute("/visits/:id/intake/measure/:mid");
   const visitId = params?.id;
   const measureId = params?.mid;
@@ -183,18 +185,21 @@ export default function HedisMeasure() {
   const isAwaitingData = !isComplete && isClinical;
 
   return (
-    <div className="space-y-4">
-      <div className="flex items-center gap-3 flex-wrap">
-        <Link href={`/visits/${visitId}/intake`}>
-          <Button variant="ghost" size="sm" data-testid="button-back-intake">
-            <ChevronLeft className="w-4 h-4 mr-1" /> Intake
-          </Button>
-        </Link>
-        <div>
-          <div className="flex items-center gap-2 flex-wrap">
-            <h1 className="text-xl font-bold" data-testid="text-measure-title">
-              {definition?.name || "HEDIS Measure"}
-            </h1>
+    <div className={`space-y-4 ${isMobileLayout ? "pb-20 px-4" : ""}`}>
+      {isMobileLayout ? (
+        <h1 className="text-lg font-bold px-4 pt-2" data-testid="text-measure-title">{definition?.name || "HEDIS Measure"}</h1>
+      ) : (
+        <div className="flex items-center gap-3 flex-wrap">
+          <Link href={`/visits/${visitId}/intake`}>
+            <Button variant="ghost" size="sm" data-testid="button-back-intake">
+              <ChevronLeft className="w-4 h-4 mr-1" /> Intake
+            </Button>
+          </Link>
+          <div>
+            <div className="flex items-center gap-2 flex-wrap">
+              <h1 className="text-xl font-bold" data-testid="text-measure-title">
+                {definition?.name || "HEDIS Measure"}
+              </h1>
             {isClinical && (
               <Badge variant="secondary" className="text-xs no-default-hover-elevate" style={{ backgroundColor: "#27749320", color: "#277493", border: "none" }} data-testid="badge-clinical-driven">
                 <Zap className="w-3 h-3 mr-1" /> Clinical Data Driven
@@ -211,6 +216,7 @@ export default function HedisMeasure() {
           </p>
         </div>
       </div>
+      )}
 
       {/* Measure Status Banner */}
       {isComplete && (
@@ -481,11 +487,12 @@ export default function HedisMeasure() {
 
           {/* If not complete and vitals exist for CBP, allow manual trigger */}
           {!isComplete && isClinical && (
-            <div className="flex items-center justify-between gap-3 flex-wrap">
-              <Button variant="outline" onClick={() => setShowUnableForm(true)} data-testid="button-unable-to-assess">
+            <div className={`flex ${isMobileLayout ? "flex-col" : "items-center justify-between"} gap-3 flex-wrap`}>
+              <Button className={isMobileLayout ? "w-full" : ""} variant="outline" onClick={() => setShowUnableForm(true)} data-testid="button-unable-to-assess">
                 <Ban className="w-4 h-4 mr-1" /> Unable to Assess
               </Button>
               <Button
+                className={isMobileLayout ? "w-full" : ""}
                 onClick={() => evaluateMutation.mutate()}
                 disabled={evaluateMutation.isPending}
                 data-testid="button-run-evaluation"
@@ -737,11 +744,12 @@ export default function HedisMeasure() {
           )}
 
           {!isComplete && !showUnableForm && (
-            <div className="flex items-center justify-between gap-3 flex-wrap">
-              <Button variant="outline" onClick={() => setShowUnableForm(true)} data-testid="button-unable-to-assess">
+            <div className={`flex ${isMobileLayout ? "flex-col" : "items-center justify-between"} gap-3 flex-wrap`}>
+              <Button className={isMobileLayout ? "w-full" : ""} variant="outline" onClick={() => setShowUnableForm(true)} data-testid="button-unable-to-assess">
                 Unable to Assess
               </Button>
               <Button
+                className={isMobileLayout ? "w-full" : ""}
                 onClick={() => saveMutation.mutate()}
                 disabled={!captureMethod || (isScreeningMeasure && (!screeningType || !screeningDate)) || saveMutation.isPending}
                 data-testid="button-complete-measure"

@@ -9,6 +9,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { ChevronLeft, ShieldCheck, CheckCircle2 } from "lucide-react";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import { usePlatform } from "@/hooks/use-platform";
 
 const verificationMethods = [
   { value: "photo_id", label: "Photo ID (Driver's License, Passport)" },
@@ -18,6 +19,7 @@ const verificationMethods = [
 ];
 
 export default function IdentityVerification() {
+  const { isMobileLayout } = usePlatform();
   const [, params] = useRoute("/visits/:id/intake/identity");
   const visitId = params?.id;
   const [, setLocation] = useLocation();
@@ -53,15 +55,19 @@ export default function IdentityVerification() {
 
   if (visit?.identityVerified) {
     return (
-      <div className="space-y-6">
-        <div className="flex items-center gap-3 flex-wrap">
-          <Link href={`/visits/${visitId}/intake`}>
-            <Button variant="ghost" size="sm" data-testid="button-back-intake">
-              <ChevronLeft className="w-4 h-4 mr-1" /> Intake
-            </Button>
-          </Link>
-          <h1 className="text-xl font-bold">Identity Verification</h1>
-        </div>
+      <div className={`space-y-6 ${isMobileLayout ? "pb-20 px-4" : ""}`}>
+        {isMobileLayout ? (
+          <h1 className="text-lg font-bold px-4 pt-2">Identity Verification</h1>
+        ) : (
+          <div className="flex items-center gap-3 flex-wrap">
+            <Link href={`/visits/${visitId}/intake`}>
+              <Button variant="ghost" size="sm" data-testid="button-back-intake">
+                <ChevronLeft className="w-4 h-4 mr-1" /> Intake
+              </Button>
+            </Link>
+            <h1 className="text-xl font-bold">Identity Verification</h1>
+          </div>
+        )}
 
         <Card>
           <CardContent className="flex flex-col items-center py-12">
@@ -82,15 +88,19 @@ export default function IdentityVerification() {
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center gap-3 flex-wrap">
-        <Link href={`/visits/${visitId}/intake`}>
-          <Button variant="ghost" size="sm" data-testid="button-back-intake">
-            <ChevronLeft className="w-4 h-4 mr-1" /> Intake
-          </Button>
-        </Link>
-        <h1 className="text-xl font-bold">Identity Verification</h1>
-      </div>
+    <div className={`space-y-6 ${isMobileLayout ? "pb-20 px-4" : ""}`}>
+      {isMobileLayout ? (
+        <h1 className="text-lg font-bold px-4 pt-2">Identity Verification</h1>
+      ) : (
+        <div className="flex items-center gap-3 flex-wrap">
+          <Link href={`/visits/${visitId}/intake`}>
+            <Button variant="ghost" size="sm" data-testid="button-back-intake">
+              <ChevronLeft className="w-4 h-4 mr-1" /> Intake
+            </Button>
+          </Link>
+          <h1 className="text-xl font-bold">Identity Verification</h1>
+        </div>
+      )}
 
       <Card>
         <CardHeader className="pb-3">

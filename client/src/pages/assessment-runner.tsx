@@ -25,6 +25,7 @@ import {
 import { apiRequest, queryClient, resolveUrl } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/lib/auth";
+import { usePlatform } from "@/hooks/use-platform";
 
 type ResponseSource = "manual" | "voice";
 
@@ -300,6 +301,7 @@ function SourceIndicator({ source, snippet }: { source: ResponseSource; snippet?
 }
 
 export default function AssessmentRunner() {
+  const { isMobileLayout } = usePlatform();
   const [, params] = useRoute("/visits/:id/intake/assessment/:aid");
   const visitId = params?.id;
   const assessmentId = params?.aid;
@@ -492,18 +494,22 @@ export default function AssessmentRunner() {
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center gap-3 flex-wrap">
-        <Link href={`/visits/${visitId}/intake`}>
-          <Button variant="ghost" size="sm" data-testid="button-back-intake">
-            <ChevronLeft className="w-4 h-4 mr-1" /> Intake
-          </Button>
-        </Link>
-        <div>
-          <h1 className="text-xl font-bold" data-testid="text-assessment-title">{definition.name}</h1>
-          <p className="text-sm text-muted-foreground">Version {definition.version} - {definition.category}</p>
+    <div className={`space-y-6 ${isMobileLayout ? "pb-20 px-4" : ""}`}>
+      {isMobileLayout ? (
+        <h1 className="text-lg font-bold px-4 pt-2" data-testid="text-assessment-title">{definition.name}</h1>
+      ) : (
+        <div className="flex items-center gap-3 flex-wrap">
+          <Link href={`/visits/${visitId}/intake`}>
+            <Button variant="ghost" size="sm" data-testid="button-back-intake">
+              <ChevronLeft className="w-4 h-4 mr-1" /> Intake
+            </Button>
+          </Link>
+          <div>
+            <h1 className="text-xl font-bold" data-testid="text-assessment-title">{definition.name}</h1>
+            <p className="text-sm text-muted-foreground">Version {definition.version} - {definition.category}</p>
+          </div>
         </div>
-      </div>
+      )}
 
       <div className="flex items-center gap-4 flex-wrap">
         <div className="flex-1 min-w-[200px]">
@@ -631,12 +637,13 @@ export default function AssessmentRunner() {
           </CardContent>
         </Card>
       ) : (
-        <div className="flex items-center justify-between gap-3 flex-wrap">
-          <Button variant="outline" onClick={() => setShowUnableForm(true)} data-testid="button-unable-to-assess">
+        <div className={`flex ${isMobileLayout ? "flex-col" : "items-center justify-between"} gap-3 flex-wrap`}>
+          <Button className={isMobileLayout ? "w-full" : ""} variant="outline" onClick={() => setShowUnableForm(true)} data-testid="button-unable-to-assess">
             Unable to Assess
           </Button>
-          <div className="flex gap-2 flex-wrap">
+          <div className={`flex gap-2 ${isMobileLayout ? "flex-col" : "flex-wrap"}`}>
             <Button
+              className={isMobileLayout ? "w-full" : ""}
               variant="outline"
               onClick={() => saveMutation.mutate({ status: "in_progress" })}
               disabled={saveMutation.isPending}
@@ -646,6 +653,7 @@ export default function AssessmentRunner() {
               Save Draft
             </Button>
             <Button
+              className={isMobileLayout ? "w-full" : ""}
               onClick={() => saveMutation.mutate({ status: "complete" })}
               disabled={answeredCount < questions.length || saveMutation.isPending}
               data-testid="button-complete-assessment"

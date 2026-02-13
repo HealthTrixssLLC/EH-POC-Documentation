@@ -1283,6 +1283,68 @@ export async function seedDatabase() {
     updatedAt: new Date().toISOString(),
   });
 
+  const hieLog1 = await storage.createHieIngestionLog({
+    visitId: visit1.id,
+    memberId: member1.id,
+    bundleId: "hie-bundle-dorothy-001",
+    sourceSystem: "Regional HIE Network",
+    resourceCount: 14,
+    resourceSummary: { MedicationStatement: 3, Condition: 4, Observation: 5, Procedure: 2 } as any,
+    status: "completed",
+    receivedAt: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString(),
+    processedAt: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString(),
+    processedBy: "system",
+  });
+
+  await storage.createSuspectedCondition({
+    visitId: visit1.id,
+    memberId: member1.id,
+    icdCode: "E11.40",
+    description: "Type 2 diabetes with diabetic neuropathy, unspecified",
+    hieSource: "Regional HIE Network",
+    confidence: "suspected",
+    status: "pending",
+    ingestionLogId: hieLog1.id,
+    createdAt: new Date().toISOString(),
+  });
+
+  await storage.createSuspectedCondition({
+    visitId: visit1.id,
+    memberId: member1.id,
+    icdCode: "I10",
+    description: "Essential hypertension",
+    hieSource: "Regional HIE Network",
+    confidence: "high",
+    status: "pending",
+    ingestionLogId: hieLog1.id,
+    createdAt: new Date().toISOString(),
+  });
+
+  await storage.createSuspectedCondition({
+    visitId: visit1.id,
+    memberId: member1.id,
+    icdCode: "E78.5",
+    description: "Hyperlipidemia, unspecified",
+    hieSource: "Regional HIE Network",
+    confidence: "moderate",
+    status: "pending",
+    ingestionLogId: hieLog1.id,
+    createdAt: new Date().toISOString(),
+  });
+
+  await storage.createHieIngestionLog({
+    visitId: visit2.id,
+    memberId: member2.id,
+    bundleId: "hie-bundle-harold-001",
+    sourceSystem: "State Health Exchange",
+    resourceCount: 10,
+    resourceSummary: { MedicationStatement: 2, Condition: 3, Observation: 4, Procedure: 1 } as any,
+    status: "completed",
+    receivedAt: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString(),
+    processedAt: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString(),
+    processedBy: "system",
+  });
+
   console.log("Database seeded successfully!");
   console.log(`  - 6 users (2 NPs, 1 supervisor, 1 coordinator, 1 admin, 1 compliance)`);
   console.log(`  - 3 members (patients)`);
@@ -1294,6 +1356,7 @@ export async function seedDatabase() {
   console.log(`  - 8 clinical decision rules`);
   console.log(`  - 60 diagnosis validation rules`);
   console.log(`  - Vitals history, lab results, medication history`);
+  console.log(`  - HIE ingestion logs and suspected conditions`);
   console.log(`  - 1 AI provider configuration (OpenAI default)`);
   console.log(`  - Demo FHIR Bundle available at /api/fhir/demo-bundle for importing 5 additional patients`);
 }

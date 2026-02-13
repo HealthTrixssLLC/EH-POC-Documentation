@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Separator } from "@/components/ui/separator";
+import { usePlatform } from "@/hooks/use-platform";
 import {
   User,
   Phone,
@@ -51,6 +52,7 @@ const priorityColors: Record<string, string> = {
 export default function PreVisitSummary() {
   const [, params] = useRoute("/visits/:id/summary");
   const visitId = params?.id;
+  const { isMobileLayout } = usePlatform();
 
   const { data: bundle, isLoading } = useQuery<any>({
     queryKey: ["/api/visits", visitId, "bundle"],
@@ -85,16 +87,21 @@ export default function PreVisitSummary() {
   const ingestionSummary = hieData?.ingestionSummary;
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center gap-3 flex-wrap">
-        <Link href="/visits">
-          <Button variant="ghost" size="sm" data-testid="button-back-visits">
-            <ChevronLeft className="w-4 h-4 mr-1" /> Visits
-          </Button>
-        </Link>
-        <Separator orientation="vertical" className="h-5" />
-        <h1 className="text-xl font-bold" data-testid="text-previsit-title">Pre-Visit Summary</h1>
-      </div>
+    <div className={`space-y-6 ${isMobileLayout ? "pb-24 px-4" : ""}`}>
+      {!isMobileLayout && (
+        <div className="flex items-center gap-3 flex-wrap">
+          <Link href="/visits">
+            <Button variant="ghost" size="sm" data-testid="button-back-visits">
+              <ChevronLeft className="w-4 h-4 mr-1" /> Visits
+            </Button>
+          </Link>
+          <Separator orientation="vertical" className="h-5" />
+          <h1 className="text-xl font-bold" data-testid="text-previsit-title">Pre-Visit Summary</h1>
+        </div>
+      )}
+      {isMobileLayout && (
+        <h1 className="text-lg font-bold pt-2" data-testid="text-previsit-title-mobile">Pre-Visit Summary</h1>
+      )}
 
       {member && (
         <Card>
@@ -412,13 +419,25 @@ export default function PreVisitSummary() {
         </div>
       </div>
 
-      <div className="flex justify-end">
-        <Link href={`/visits/${visitId}/intake`}>
-          <Button data-testid="button-start-visit">
-            Start Visit <ArrowRight className="w-4 h-4 ml-2" />
-          </Button>
-        </Link>
-      </div>
+      {!isMobileLayout && (
+        <div className="flex justify-end">
+          <Link href={`/visits/${visitId}/intake`}>
+            <Button data-testid="button-start-visit">
+              Start Visit <ArrowRight className="w-4 h-4 ml-2" />
+            </Button>
+          </Link>
+        </div>
+      )}
+
+      {isMobileLayout && (
+        <div className="fixed bottom-16 left-0 right-0 p-4 border-t bg-background" style={{ paddingBottom: "env(safe-area-inset-bottom, 8px)" }}>
+          <Link href={`/visits/${visitId}/intake`}>
+            <Button className="w-full" size="lg" data-testid="button-start-visit-mobile">
+              Start Visit <ArrowRight className="w-4 h-4 ml-2" />
+            </Button>
+          </Link>
+        </div>
+      )}
     </div>
   );
 }

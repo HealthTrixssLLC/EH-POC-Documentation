@@ -1,14 +1,18 @@
-import { Switch, Route, useLocation, Redirect } from "wouter";
+import { Switch, Route, useLocation, Redirect, Link } from "wouter";
 import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
+import { Mic } from "lucide-react";
 import { AuthProvider, useAuth } from "@/lib/auth";
 import { ThemeProvider } from "@/lib/theme";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { AppSidebar } from "@/components/app-sidebar";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { IOSInstallPrompt } from "@/components/ios-install-prompt";
+import { MobileShell } from "@/components/mobile-shell";
+import { MobileHeader } from "@/components/mobile-header";
+import { usePlatform } from "@/hooks/use-platform";
 import NotFound from "@/pages/not-found";
 import LoginPage from "@/pages/login";
 import Dashboard from "@/pages/dashboard";
@@ -115,9 +119,91 @@ function AuthenticatedLayout() {
   );
 }
 
+const pageTitles: Record<string, string> = {
+  "/": "Today",
+  "/visits": "Visits",
+  "/reviews": "Reviews",
+  "/coordination": "Care Coordination",
+  "/admin": "Admin Console",
+  "/audit": "Audit Log",
+  "/help": "Help & Support",
+  "/demo": "Demo Management",
+  "/more": "More",
+};
+
+function getMobileTitle(path: string): string {
+  if (pageTitles[path]) return pageTitles[path];
+  if (path.includes("/intake/identity")) return "Identity";
+  if (path.includes("/intake/vitals")) return "Vitals";
+  if (path.includes("/intake/medications")) return "Medications";
+  if (path.includes("/intake/assessment/")) return "Assessment";
+  if (path.includes("/intake/measure/")) return "Measure";
+  if (path.includes("/intake/voice-capture")) return "Voice Capture";
+  if (path.includes("/intake/timeline")) return "Timeline";
+  if (path.includes("/intake/careplan")) return "Care Plan";
+  if (path.includes("/intake/patient-context")) return "Patient Context";
+  if (path.includes("/intake")) return "Visit";
+  if (path.includes("/finalize")) return "Finalize";
+  if (path.includes("/summary")) return "Pre-Visit";
+  if (path.startsWith("/visits/")) return "Visit";
+  return "Easy Health";
+}
+
+function MobileVoiceFAB({ visitId }: { visitId: string }) {
+  return (
+    <Link href={`/visits/${visitId}/intake/voice-capture`}>
+      <button
+        className="fixed z-50 flex items-center justify-center w-14 h-14 rounded-full shadow-lg"
+        style={{
+          backgroundColor: "#FEA002",
+          bottom: "calc(72px + env(safe-area-inset-bottom, 0px))",
+          right: "16px",
+        }}
+        data-testid="fab-voice-capture"
+      >
+        <Mic className="w-6 h-6 text-white" />
+      </button>
+    </Link>
+  );
+}
+
+function MobileLayout() {
+  const [location] = useLocation();
+  const title = getMobileTitle(location);
+  const isSubpage = location !== "/" && location !== "/visits" && location !== "/more";
+  const isVisitSubpage = location.startsWith("/visits/") && location !== "/visits";
+  const backTarget = isVisitSubpage
+    ? (location.match(/\/visits\/[^/]+\/intake/) ? location.replace(/\/intake\/.*/, "/intake") : "/visits")
+    : "/";
+
+  const isIntakePage = /\/visits\/[^/]+\/intake/.test(location) && !location.includes("/voice-capture");
+  const visitIdMatch = location.match(/\/visits\/([^/]+)/);
+  const currentVisitId = visitIdMatch ? visitIdMatch[1] : null;
+
+  return (
+    <MobileShell
+      header={
+        <>
+          <DemoWatermark />
+          <MobileHeader
+            title={title}
+            backHref={isSubpage ? backTarget : undefined}
+          />
+        </>
+      }
+    >
+      <main className="p-3">
+        <Router />
+      </main>
+      {isIntakePage && currentVisitId && <MobileVoiceFAB visitId={currentVisitId} />}
+    </MobileShell>
+  );
+}
+
 function AppContent() {
   const { isAuthenticated } = useAuth();
   const [location] = useLocation();
+  const { isMobileLayout } = usePlatform();
 
   if (!isAuthenticated) {
     if (location !== "/login") {
@@ -128,6 +214,10 @@ function AppContent() {
 
   if (location === "/login") {
     return <Redirect to="/" />;
+  }
+
+  if (isMobileLayout) {
+    return <MobileLayout />;
   }
 
   return <AuthenticatedLayout />;

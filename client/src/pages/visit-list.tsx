@@ -15,6 +15,7 @@ import {
   Filter,
   ArrowUpDown,
 } from "lucide-react";
+import { usePlatform } from "@/hooks/use-platform";
 
 const statusColors: Record<string, string> = {
   scheduled: "secondary",
@@ -87,6 +88,8 @@ function parseTime(timeStr?: string): number {
 }
 
 function VisitCard({ v }: { v: any }) {
+  const { isMobileLayout } = usePlatform();
+  
   return (
     <Link key={v.id} href={v.status === "scheduled" ? `/visits/${v.id}/summary` : `/visits/${v.id}/intake`}>
       <Card className="hover-elevate cursor-pointer">
@@ -105,7 +108,7 @@ function VisitCard({ v }: { v: any }) {
                     <Calendar className="w-3 h-3" />
                     {v.scheduledDate} {v.scheduledTime || ""}
                   </span>
-                  {v.address && (
+                  {!isMobileLayout && v.address && (
                     <span className="flex items-center gap-1">
                       <MapPin className="w-3 h-3" />
                       {v.address}
@@ -128,6 +131,7 @@ function VisitCard({ v }: { v: any }) {
 }
 
 export default function VisitList() {
+  const { isMobileLayout } = usePlatform();
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [sortBy, setSortBy] = useState<SortOption>("date_asc");
@@ -207,64 +211,74 @@ export default function VisitList() {
   };
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between gap-3 flex-wrap">
-        <div>
-          <h1 className="text-xl font-bold" data-testid="text-visit-list-title">Visits</h1>
-          <p className="text-sm text-muted-foreground mt-1">
-            {isLoading ? "Loading..." : `${filtered.length} visit${filtered.length !== 1 ? "s" : ""}`}
-          </p>
+    <div className={`space-y-6 ${isMobileLayout ? "pb-20" : ""}`}>
+      {!isMobileLayout && (
+        <div className="flex items-center justify-between gap-3 flex-wrap">
+          <div>
+            <h1 className="text-xl font-bold" data-testid="text-visit-list-title">Visits</h1>
+            <p className="text-sm text-muted-foreground mt-1">
+              {isLoading ? "Loading..." : `${filtered.length} visit${filtered.length !== 1 ? "s" : ""}`}
+            </p>
+          </div>
         </div>
-      </div>
+      )}
 
-      <div className="flex items-center gap-3 flex-wrap">
-        <div className="relative flex-1 min-w-[200px]">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-          <Input
-            placeholder="Search by patient name or ID..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="pl-9"
-            data-testid="input-visit-search"
-          />
+      {isMobileLayout && (
+        <div className="pb-2">
+          <h1 className="text-lg font-bold" data-testid="text-visit-list-title">Visits</h1>
         </div>
-        <Select value={statusFilter} onValueChange={setStatusFilter}>
-          <SelectTrigger className="w-[160px]" data-testid="select-visit-status-filter">
-            <Filter className="w-3 h-3 mr-2" />
-            <SelectValue placeholder="Status" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All Statuses</SelectItem>
-            <SelectItem value="scheduled">Scheduled</SelectItem>
-            <SelectItem value="in_progress">In Progress</SelectItem>
-            <SelectItem value="ready_for_review">Ready for Review</SelectItem>
-            <SelectItem value="finalized">Finalized</SelectItem>
-          </SelectContent>
-        </Select>
-        <Select value={sortBy} onValueChange={(v) => setSortBy(v as SortOption)}>
-          <SelectTrigger className="w-[160px]" data-testid="select-visit-sort">
-            <ArrowUpDown className="w-3 h-3 mr-2" />
-            <SelectValue placeholder="Sort" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="date_asc">Date (Earliest)</SelectItem>
-            <SelectItem value="date_desc">Date (Latest)</SelectItem>
-            <SelectItem value="name_asc">Name (A-Z)</SelectItem>
-            <SelectItem value="name_desc">Name (Z-A)</SelectItem>
-          </SelectContent>
-        </Select>
-        <Select value={groupBy} onValueChange={(v) => setGroupBy(v as GroupOption)}>
-          <SelectTrigger className="w-[160px]" data-testid="select-visit-group">
-            <Calendar className="w-3 h-3 mr-2" />
-            <SelectValue placeholder="Group" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="date">Group by Date</SelectItem>
-            <SelectItem value="status">Group by Status</SelectItem>
-            <SelectItem value="none">No Grouping</SelectItem>
-          </SelectContent>
-        </Select>
-      </div>
+      )}
+
+      {!isMobileLayout && (
+        <div className="flex items-center gap-3 flex-wrap">
+          <div className="relative flex-1 min-w-[200px]">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+            <Input
+              placeholder="Search by patient name or ID..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="pl-9"
+              data-testid="input-visit-search"
+            />
+          </div>
+          <Select value={statusFilter} onValueChange={setStatusFilter}>
+            <SelectTrigger className="w-[160px]" data-testid="select-visit-status-filter">
+              <Filter className="w-3 h-3 mr-2" />
+              <SelectValue placeholder="Status" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Statuses</SelectItem>
+              <SelectItem value="scheduled">Scheduled</SelectItem>
+              <SelectItem value="in_progress">In Progress</SelectItem>
+              <SelectItem value="ready_for_review">Ready for Review</SelectItem>
+              <SelectItem value="finalized">Finalized</SelectItem>
+            </SelectContent>
+          </Select>
+          <Select value={sortBy} onValueChange={(v) => setSortBy(v as SortOption)}>
+            <SelectTrigger className="w-[160px]" data-testid="select-visit-sort">
+              <ArrowUpDown className="w-3 h-3 mr-2" />
+              <SelectValue placeholder="Sort" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="date_asc">Date (Earliest)</SelectItem>
+              <SelectItem value="date_desc">Date (Latest)</SelectItem>
+              <SelectItem value="name_asc">Name (A-Z)</SelectItem>
+              <SelectItem value="name_desc">Name (Z-A)</SelectItem>
+            </SelectContent>
+          </Select>
+          <Select value={groupBy} onValueChange={(v) => setGroupBy(v as GroupOption)}>
+            <SelectTrigger className="w-[160px]" data-testid="select-visit-group">
+              <Calendar className="w-3 h-3 mr-2" />
+              <SelectValue placeholder="Group" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="date">Group by Date</SelectItem>
+              <SelectItem value="status">Group by Status</SelectItem>
+              <SelectItem value="none">No Grouping</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+      )}
 
       <div className="space-y-6">
         {isLoading ? (

@@ -18,8 +18,10 @@ import {
   Activity,
   TrendingUp,
 } from "lucide-react";
+import { usePlatform } from "@/hooks/use-platform";
 
 export default function PatientContext() {
+  const { isMobileLayout } = usePlatform();
   const [, params] = useRoute("/visits/:id/intake/patient-context");
   const visitId = params?.id;
 
@@ -47,17 +49,21 @@ export default function PatientContext() {
   const allFlags = [...vitalsFlags, ...assessmentFlags.map((f: any) => ({ ...f, message: `${f.instrumentId}: Score ${f.score} - ${f.interpretation}`, label: f.instrumentId }))];
 
   return (
-    <div className="space-y-4">
-      <div className="flex items-center gap-3 flex-wrap">
-        <Link href={`/visits/${visitId}/intake`}>
-          <Button variant="ghost" size="sm" data-testid="button-back-intake">
-            <ChevronLeft className="w-4 h-4 mr-1" /> Back to Intake
-          </Button>
-        </Link>
-        <h1 className="text-xl font-bold" data-testid="text-context-title">
-          Patient Context {member ? `- ${member.firstName} ${member.lastName}` : ""}
-        </h1>
-      </div>
+    <div className={`space-y-4 ${isMobileLayout ? "pb-20 px-4" : ""}`}>
+      {isMobileLayout ? (
+        <h1 className="text-lg font-bold pt-2" data-testid="text-context-title">Patient Context</h1>
+      ) : (
+        <div className="flex items-center gap-3 flex-wrap">
+          <Link href={`/visits/${visitId}/intake`}>
+            <Button variant="ghost" size="sm" data-testid="button-back-intake">
+              <ChevronLeft className="w-4 h-4 mr-1" /> Back to Intake
+            </Button>
+          </Link>
+          <h1 className="text-xl font-bold" data-testid="text-context-title">
+            Patient Context {member ? `- ${member.firstName} ${member.lastName}` : ""}
+          </h1>
+        </div>
+      )}
 
       {/* Clinical Alerts */}
       {allFlags.length > 0 && (

@@ -29,8 +29,10 @@ import {
 } from "lucide-react";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import { usePlatform } from "@/hooks/use-platform";
 
 export default function ReviewFinalize() {
+  const { isMobileLayout } = usePlatform();
   const [, params] = useRoute("/visits/:id/finalize");
   const visitId = params?.id;
   const [, setLocation] = useLocation();
@@ -168,13 +170,17 @@ export default function ReviewFinalize() {
 
   if (visit?.status === "finalized" || visit?.status === "ready_for_review") {
     return (
-      <div className="space-y-6">
-        <div className="flex items-center gap-3 flex-wrap">
-          <Link href="/visits">
-            <Button variant="ghost" size="sm"><ChevronLeft className="w-4 h-4 mr-1" /> Visits</Button>
-          </Link>
-          <h1 className="text-xl font-bold">Visit Finalized</h1>
-        </div>
+      <div className={`space-y-6 ${isMobileLayout ? "pb-20 px-4" : ""}`}>
+        {isMobileLayout ? (
+          <h1 className="text-lg font-bold px-4 pt-2">Review & Finalize</h1>
+        ) : (
+          <div className="flex items-center gap-3 flex-wrap">
+            <Link href="/visits">
+              <Button variant="ghost" size="sm"><ChevronLeft className="w-4 h-4 mr-1" /> Visits</Button>
+            </Link>
+            <h1 className="text-xl font-bold">Visit Finalized</h1>
+          </div>
+        )}
         <Card>
           <CardContent className="flex flex-col items-center py-12">
             <CheckCircle2 className="w-12 h-12 mb-3" style={{ color: "#277493" }} />
@@ -187,20 +193,24 @@ export default function ReviewFinalize() {
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center gap-3 flex-wrap">
-        <Link href={`/visits/${visitId}/intake`}>
-          <Button variant="ghost" size="sm" data-testid="button-back-intake">
-            <ChevronLeft className="w-4 h-4 mr-1" /> Intake
-          </Button>
-        </Link>
-        <div>
-          <h1 className="text-xl font-bold" data-testid="text-finalize-title">Review & Finalize</h1>
-          <p className="text-sm text-muted-foreground mt-0.5">
-            {member?.firstName} {member?.lastName} - {visit?.scheduledDate}
-          </p>
+    <div className={`space-y-6 ${isMobileLayout ? "pb-20 px-4" : ""}`}>
+      {isMobileLayout ? (
+        <h1 className="text-lg font-bold px-4 pt-2">Review & Finalize</h1>
+      ) : (
+        <div className="flex items-center gap-3 flex-wrap">
+          <Link href={`/visits/${visitId}/intake`}>
+            <Button variant="ghost" size="sm" data-testid="button-back-intake">
+              <ChevronLeft className="w-4 h-4 mr-1" /> Intake
+            </Button>
+          </Link>
+          <div>
+            <h1 className="text-xl font-bold" data-testid="text-finalize-title">Review & Finalize</h1>
+            <p className="text-sm text-muted-foreground mt-0.5">
+              {member?.firstName} {member?.lastName} - {visit?.scheduledDate}
+            </p>
+          </div>
         </div>
-      </div>
+      )}
 
       {pendingRecs.length > 0 && (
         <Card className="border-amber-300 dark:border-amber-600">

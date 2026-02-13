@@ -41,8 +41,10 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
+import { usePlatform } from "@/hooks/use-platform";
 
 export default function VoiceCapture() {
+  const { isMobileLayout } = usePlatform();
   const params = useParams<{ id: string }>();
   const visitId = params.id!;
   const [, setLocation] = useLocation();
@@ -61,16 +63,20 @@ export default function VoiceCapture() {
   const hasConsent = !!voiceConsent;
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center gap-3 flex-wrap">
-        <Button variant="ghost" size="icon" onClick={() => setLocation(`/visits/${visitId}/intake`)} data-testid="button-back-to-intake">
-          <ArrowLeft className="w-4 h-4" />
-        </Button>
-        <div>
-          <h1 className="text-xl font-bold" data-testid="text-voice-title">Voice Capture</h1>
-          <p className="text-sm text-muted-foreground">Record clinical notes, transcribe, and extract structured data</p>
+    <div className={`space-y-6 ${isMobileLayout ? "pb-20 px-4" : ""}`}>
+      {isMobileLayout ? (
+        <h1 className="text-lg font-bold pt-2" data-testid="text-voice-title">Voice Capture</h1>
+      ) : (
+        <div className="flex items-center gap-3 flex-wrap">
+          <Button variant="ghost" size="icon" onClick={() => setLocation(`/visits/${visitId}/intake`)} data-testid="button-back-to-intake">
+            <ArrowLeft className="w-4 h-4" />
+          </Button>
+          <div>
+            <h1 className="text-xl font-bold" data-testid="text-voice-title">Voice Capture</h1>
+            <p className="text-sm text-muted-foreground">Record clinical notes, transcribe, and extract structured data</p>
+          </div>
         </div>
-      </div>
+      )}
 
       {!hasConsent && (
         <Card>

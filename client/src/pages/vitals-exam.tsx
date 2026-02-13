@@ -44,9 +44,11 @@ import {
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/lib/auth";
+import { usePlatform } from "@/hooks/use-platform";
 import { VALIDATION_OVERRIDE_REASONS, RECOMMENDATION_DISMISS_REASONS } from "@shared/schema";
 
 export default function VitalsExam() {
+  const { isMobileLayout } = usePlatform();
   const [, params] = useRoute("/visits/:id/intake/vitals");
   const visitId = params?.id;
   const [, setLocation] = useLocation();
@@ -264,15 +266,19 @@ export default function VitalsExam() {
   const pendingRecs = recommendations.filter((r: any) => r.status === "pending");
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center gap-3 flex-wrap">
-        <Link href={`/visits/${visitId}/intake`}>
-          <Button variant="ghost" size="sm" data-testid="button-back-intake">
-            <ChevronLeft className="w-4 h-4 mr-1" /> Intake
-          </Button>
-        </Link>
-        <h1 className="text-xl font-bold">Vitals & Exam</h1>
-      </div>
+    <div className={`space-y-6 ${isMobileLayout ? "pb-20 px-4" : ""}`}>
+      {isMobileLayout ? (
+        <h1 className="text-lg font-bold px-4 pt-2">Vitals & Physical Exam</h1>
+      ) : (
+        <div className="flex items-center gap-3 flex-wrap">
+          <Link href={`/visits/${visitId}/intake`}>
+            <Button variant="ghost" size="sm" data-testid="button-back-intake">
+              <ChevronLeft className="w-4 h-4 mr-1" /> Intake
+            </Button>
+          </Link>
+          <h1 className="text-xl font-bold">Vitals & Exam</h1>
+        </div>
+      )}
 
       {alerts.length > 0 && (
         <AlertPanel
@@ -474,8 +480,9 @@ export default function VitalsExam() {
         </Card>
       )}
 
-      <div className="flex justify-end gap-3 flex-wrap">
+      <div className={`flex ${isMobileLayout ? "flex-col" : "justify-end"} gap-3 flex-wrap`}>
         <Button
+          className={isMobileLayout ? "w-full" : ""}
           variant="outline"
           onClick={() => {
             const data: any = {};
@@ -496,6 +503,7 @@ export default function VitalsExam() {
           Validate
         </Button>
         <Button
+          className={isMobileLayout ? "w-full" : ""}
           onClick={handleValidateAndSave}
           disabled={saveMutation.isPending || (!allWarningsResolved && warnings.length > 0)}
           data-testid="button-save-vitals"

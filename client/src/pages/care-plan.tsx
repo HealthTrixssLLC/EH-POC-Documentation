@@ -13,6 +13,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { ChevronLeft, FileText, Plus, CheckCircle2, Circle, Clock } from "lucide-react";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import { usePlatform } from "@/hooks/use-platform";
 
 const taskTypes = [
   { value: "referral", label: "Referral" },
@@ -37,6 +38,7 @@ const statusIcons: Record<string, any> = {
 };
 
 export default function CarePlan() {
+  const { isMobileLayout } = usePlatform();
   const [, params] = useRoute("/visits/:id/intake/careplan");
   const visitId = params?.id;
   const { toast } = useToast();
@@ -82,98 +84,109 @@ export default function CarePlan() {
   if (isLoading) return <Skeleton className="h-48 w-full" />;
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center gap-3 flex-wrap">
-        <Link href={`/visits/${visitId}/intake`}>
-          <Button variant="ghost" size="sm" data-testid="button-back-intake">
-            <ChevronLeft className="w-4 h-4 mr-1" /> Intake
-          </Button>
-        </Link>
-        <div className="flex-1">
-          <h1 className="text-xl font-bold">Care Plan & Tasks</h1>
-          <p className="text-sm text-muted-foreground mt-0.5">
-            {bundle?.member?.firstName} {bundle?.member?.lastName}
-          </p>
-        </div>
-        <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-          <DialogTrigger asChild>
-            <Button data-testid="button-add-task">
-              <Plus className="w-4 h-4 mr-2" /> Add Task
-            </Button>
-          </DialogTrigger>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Create Care Plan Task</DialogTitle>
-            </DialogHeader>
-            <div className="space-y-4 pt-2">
+    <div className={`space-y-6 ${isMobileLayout ? "pb-20 px-4" : ""}`}>
+      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+        {isMobileLayout ? (
+          <div className="flex items-center justify-between gap-3 pt-2">
+            <h1 className="text-lg font-bold">Care Plan</h1>
+            <DialogTrigger asChild>
+              <Button data-testid="button-add-task">
+                <Plus className="w-4 h-4 mr-2" /> Add Task
+              </Button>
+            </DialogTrigger>
+          </div>
+        ) : (
+          <div className="flex items-center gap-3 flex-wrap">
+            <Link href={`/visits/${visitId}/intake`}>
+              <Button variant="ghost" size="sm" data-testid="button-back-intake">
+                <ChevronLeft className="w-4 h-4 mr-1" /> Intake
+              </Button>
+            </Link>
+            <div className="flex-1">
+              <h1 className="text-xl font-bold">Care Plan & Tasks</h1>
+              <p className="text-sm text-muted-foreground mt-0.5">
+                {bundle?.member?.firstName} {bundle?.member?.lastName}
+              </p>
+            </div>
+            <DialogTrigger asChild>
+              <Button data-testid="button-add-task">
+                <Plus className="w-4 h-4 mr-2" /> Add Task
+              </Button>
+            </DialogTrigger>
+          </div>
+        )}
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Create Care Plan Task</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 pt-2">
+            <div className="space-y-2">
+              <Label>Task Type</Label>
+              <Select value={newTask.taskType} onValueChange={(v) => setNewTask((p) => ({ ...p, taskType: v }))}>
+                <SelectTrigger data-testid="select-task-type">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {taskTypes.map((t) => (
+                    <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label>Title</Label>
+              <Input
+                value={newTask.title}
+                onChange={(e) => setNewTask((p) => ({ ...p, title: e.target.value }))}
+                placeholder="Task title"
+                data-testid="input-task-title"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Description</Label>
+              <Textarea
+                value={newTask.description}
+                onChange={(e) => setNewTask((p) => ({ ...p, description: e.target.value }))}
+                placeholder="Details about this task..."
+                data-testid="input-task-description"
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-3">
               <div className="space-y-2">
-                <Label>Task Type</Label>
-                <Select value={newTask.taskType} onValueChange={(v) => setNewTask((p) => ({ ...p, taskType: v }))}>
-                  <SelectTrigger data-testid="select-task-type">
+                <Label>Priority</Label>
+                <Select value={newTask.priority} onValueChange={(v) => setNewTask((p) => ({ ...p, priority: v }))}>
+                  <SelectTrigger data-testid="select-task-priority">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    {taskTypes.map((t) => (
-                      <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>
-                    ))}
+                    <SelectItem value="low">Low</SelectItem>
+                    <SelectItem value="medium">Medium</SelectItem>
+                    <SelectItem value="high">High</SelectItem>
+                    <SelectItem value="urgent">Urgent</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
               <div className="space-y-2">
-                <Label>Title</Label>
+                <Label>Due Date</Label>
                 <Input
-                  value={newTask.title}
-                  onChange={(e) => setNewTask((p) => ({ ...p, title: e.target.value }))}
-                  placeholder="Task title"
-                  data-testid="input-task-title"
+                  type="date"
+                  value={newTask.dueDate}
+                  onChange={(e) => setNewTask((p) => ({ ...p, dueDate: e.target.value }))}
+                  data-testid="input-task-due-date"
                 />
               </div>
-              <div className="space-y-2">
-                <Label>Description</Label>
-                <Textarea
-                  value={newTask.description}
-                  onChange={(e) => setNewTask((p) => ({ ...p, description: e.target.value }))}
-                  placeholder="Details about this task..."
-                  data-testid="input-task-description"
-                />
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-2">
-                  <Label>Priority</Label>
-                  <Select value={newTask.priority} onValueChange={(v) => setNewTask((p) => ({ ...p, priority: v }))}>
-                    <SelectTrigger data-testid="select-task-priority">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="low">Low</SelectItem>
-                      <SelectItem value="medium">Medium</SelectItem>
-                      <SelectItem value="high">High</SelectItem>
-                      <SelectItem value="urgent">Urgent</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-2">
-                  <Label>Due Date</Label>
-                  <Input
-                    type="date"
-                    value={newTask.dueDate}
-                    onChange={(e) => setNewTask((p) => ({ ...p, dueDate: e.target.value }))}
-                    data-testid="input-task-due-date"
-                  />
-                </div>
-              </div>
-              <Button
-                className="w-full"
-                onClick={() => createMutation.mutate()}
-                disabled={!newTask.title || createMutation.isPending}
-                data-testid="button-create-task"
-              >
-                {createMutation.isPending ? "Creating..." : "Create Task"}
-              </Button>
             </div>
-          </DialogContent>
-        </Dialog>
-      </div>
+            <Button
+              className="w-full"
+              onClick={() => createMutation.mutate()}
+              disabled={!newTask.title || createMutation.isPending}
+              data-testid="button-create-task"
+            >
+              {createMutation.isPending ? "Creating..." : "Create Task"}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       <div className="space-y-3">
         {loadingTasks ? (

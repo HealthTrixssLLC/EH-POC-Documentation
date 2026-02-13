@@ -1,6 +1,7 @@
 import { useState, useMemo } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useRoute, Link } from "wouter";
+import { usePlatform } from "@/hooks/use-platform";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -260,6 +261,7 @@ function checkInteractions(meds: MedReconciliation[]): Array<{ med1: string; med
 }
 
 export default function MedReconciliation() {
+  const { isMobileLayout } = usePlatform();
   const [, params] = useRoute("/visits/:id/intake/medications");
   const visitId = params?.id;
   const { toast } = useToast();
@@ -466,20 +468,26 @@ export default function MedReconciliation() {
   const totalWarnings = beersWarnings.length + interactions.length;
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center gap-3 flex-wrap">
-        <Link href={`/visits/${visitId}/intake`}>
-          <Button variant="ghost" size="sm" data-testid="button-back-intake">
-            <ChevronLeft className="w-4 h-4 mr-1" /> Intake
-          </Button>
-        </Link>
-        <div className="flex-1 min-w-0">
-          <h1 className="text-xl font-bold" data-testid="text-page-title">
-            Medication Reconciliation
-            {member && <span className="font-normal text-muted-foreground"> - {member.firstName} {member.lastName}</span>}
-          </h1>
+    <div className={`space-y-6 ${isMobileLayout ? "pb-20 px-4" : ""}`}>
+      {!isMobileLayout && (
+        <div className="flex items-center gap-3 flex-wrap">
+          <Link href={`/visits/${visitId}/intake`}>
+            <Button variant="ghost" size="sm" data-testid="button-back-intake">
+              <ChevronLeft className="w-4 h-4 mr-1" /> Intake
+            </Button>
+          </Link>
+          <div className="flex-1 min-w-0">
+            <h1 className="text-xl font-bold" data-testid="text-page-title">
+              Medication Reconciliation
+              {member && <span className="font-normal text-muted-foreground"> - {member.firstName} {member.lastName}</span>}
+            </h1>
+          </div>
         </div>
-      </div>
+      )}
+
+      {isMobileLayout && (
+        <h1 className="text-lg font-bold px-4 pt-2">Medication Reconciliation</h1>
+      )}
 
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
         <Card>
@@ -672,7 +680,7 @@ export default function MedReconciliation() {
         <div className="space-y-4">
           <Card>
             <CardHeader className="pb-3">
-              <div className="flex items-center justify-between gap-3 flex-wrap">
+              <div className={`flex ${isMobileLayout ? "flex-col" : "items-center justify-between"} gap-3 flex-wrap`}>
                 <div className="flex items-center gap-2 flex-wrap">
                   <Activity className="w-5 h-5" style={{ color: "#277493" }} />
                   <h2 className="text-base font-semibold">Reconciliation List</h2>
@@ -682,7 +690,7 @@ export default function MedReconciliation() {
                     </Badge>
                   )}
                 </div>
-                <Button size="sm" onClick={() => setAddDialogOpen(true)} data-testid="button-add-new-med">
+                <Button className={isMobileLayout ? "w-full" : ""} size="sm" onClick={() => setAddDialogOpen(true)} data-testid="button-add-new-med">
                   <Plus className="w-4 h-4 mr-1" /> Add New
                 </Button>
               </div>
@@ -1020,9 +1028,10 @@ export default function MedReconciliation() {
               </Alert>
             )}
           </div>
-          <DialogFooter className="gap-2">
-            <Button variant="outline" onClick={() => setAddDialogOpen(false)} data-testid="button-cancel-add">Cancel</Button>
+          <DialogFooter className={`gap-2 ${isMobileLayout ? "flex-col" : ""}`}>
+            <Button className={isMobileLayout ? "w-full" : ""} variant="outline" onClick={() => setAddDialogOpen(false)} data-testid="button-cancel-add">Cancel</Button>
             <Button
+              className={isMobileLayout ? "w-full" : ""}
               onClick={handleAddNew}
               disabled={!newMedForm.medicationName.trim() || addMutation.isPending}
               data-testid="button-confirm-add"

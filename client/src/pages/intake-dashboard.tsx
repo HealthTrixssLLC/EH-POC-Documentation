@@ -49,6 +49,9 @@ import {
   Globe,
   Stethoscope,
   Search,
+  TrendingUp,
+  TrendingDown,
+  FlaskConical,
 } from "lucide-react";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -1181,26 +1184,75 @@ export default function IntakeDashboard() {
                         {previsitSummary.careGaps.filter((g: any) => g.status === "partially_met").length > 0 && `, ${previsitSummary.careGaps.filter((g: any) => g.status === "partially_met").length} partial`}
                       </Badge>
                     </div>
-                    <div className="space-y-1">
-                      {previsitSummary.careGaps.slice(0, 5).map((gap: any) => (
-                        <div key={gap.measureId} className="flex items-center justify-between gap-2 p-1.5 rounded-md border text-xs" data-testid={`care-gap-${gap.measureId}`}>
-                          <div className="flex items-center gap-2 min-w-0 flex-1">
-                            <span
-                              className="w-2 h-2 rounded-full flex-shrink-0"
-                              style={{ backgroundColor: gap.status === "gap" ? "#FEA002" : "#277493" }}
-                            />
-                            <span className="truncate">{gap.measureName}</span>
+                    <div className="space-y-1.5">
+                      {previsitSummary.careGaps.slice(0, 8).map((gap: any) => (
+                        <div key={gap.measureId} className="rounded-md border text-xs" data-testid={`care-gap-${gap.measureId}`}>
+                          <div className="flex items-center justify-between gap-2 p-1.5">
+                            <div className="flex items-center gap-2 min-w-0 flex-1">
+                              <span
+                                className="w-2 h-2 rounded-full flex-shrink-0"
+                                style={{ backgroundColor: gap.status === "gap" ? "#FEA002" : "#277493" }}
+                              />
+                              <span className="truncate font-medium">{gap.measureName}</span>
+                            </div>
+                            <div className="flex items-center gap-1 flex-shrink-0">
+                              {gap.priority && (
+                                <Badge
+                                  variant="outline"
+                                  className={`text-[10px] no-default-hover-elevate no-default-active-elevate ${
+                                    gap.priority === "high" ? "border-red-400 text-red-600 dark:text-red-400" :
+                                    gap.priority === "medium" ? "border-orange-400 text-orange-600 dark:text-orange-400" :
+                                    "border-muted-foreground/30 text-muted-foreground"
+                                  }`}
+                                  data-testid={`badge-priority-${gap.measureId}`}
+                                >
+                                  {gap.priority === "high" ? "High" : gap.priority === "medium" ? "Med" : "Low"}
+                                </Badge>
+                              )}
+                              <Badge
+                                variant="outline"
+                                className={`text-[10px] no-default-hover-elevate no-default-active-elevate ${gap.status === "gap" ? "border-orange-400 text-orange-600 dark:text-orange-400" : "border-blue-400 text-blue-600 dark:text-blue-400"}`}
+                              >
+                                {gap.status === "gap" ? "Gap" : "Partial"}
+                              </Badge>
+                            </div>
                           </div>
-                          <Badge
-                            variant="outline"
-                            className={`text-[10px] no-default-hover-elevate no-default-active-elevate ${gap.status === "gap" ? "border-orange-400 text-orange-600 dark:text-orange-400" : "border-blue-400 text-blue-600 dark:text-blue-400"}`}
-                          >
-                            {gap.status === "gap" ? "Gap" : "Partial"}
-                          </Badge>
+                          {gap.hieEvidence?.length > 0 && (
+                            <div className="px-2 pb-1.5 space-y-0.5" data-testid={`evidence-${gap.measureId}`}>
+                              {gap.hieEvidence.slice(0, 3).map((ev: any, idx: number) => (
+                                <div key={idx} className="flex items-center gap-1.5 text-[10px] text-muted-foreground">
+                                  {ev.type === "lab_result" ? (
+                                    <FlaskConical className="w-2.5 h-2.5 flex-shrink-0" style={{ color: "#277493" }} />
+                                  ) : ev.type === "lab_trend" ? (
+                                    ev.value === "improving" ? (
+                                      <TrendingDown className="w-2.5 h-2.5 flex-shrink-0 text-green-500" />
+                                    ) : ev.value === "worsening" ? (
+                                      <TrendingUp className="w-2.5 h-2.5 flex-shrink-0 text-red-500" />
+                                    ) : (
+                                      <Activity className="w-2.5 h-2.5 flex-shrink-0 text-muted-foreground" />
+                                    )
+                                  ) : ev.type === "vitals" ? (
+                                    <HeartPulse className="w-2.5 h-2.5 flex-shrink-0" style={{ color: "#277493" }} />
+                                  ) : (
+                                    <FileCheck className="w-2.5 h-2.5 flex-shrink-0" style={{ color: "#277493" }} />
+                                  )}
+                                  <span className="truncate">{ev.detail}</span>
+                                </div>
+                              ))}
+                              {gap.hieEvidence.length > 3 && (
+                                <span className="text-[10px] text-muted-foreground pl-4">+{gap.hieEvidence.length - 3} more</span>
+                              )}
+                            </div>
+                          )}
+                          {gap.recommendation && (
+                            <div className="px-2 pb-1.5 text-[10px] text-muted-foreground italic" data-testid={`recommendation-${gap.measureId}`}>
+                              {gap.recommendation}
+                            </div>
+                          )}
                         </div>
                       ))}
-                      {previsitSummary.careGaps.length > 5 && (
-                        <p className="text-[10px] text-muted-foreground pl-1">+{previsitSummary.careGaps.length - 5} more</p>
+                      {previsitSummary.careGaps.length > 8 && (
+                        <p className="text-[10px] text-muted-foreground pl-1">+{previsitSummary.careGaps.length - 8} more</p>
                       )}
                     </div>
                   </div>

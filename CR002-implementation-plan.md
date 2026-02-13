@@ -5,7 +5,7 @@
 **System:** Easy Health Point of Care Application
 **Requestor:** Jay Baker
 **Date:** February 13, 2026
-**Status:** In Progress - Phase 6 Complete
+**Status:** In Progress - Phase 7 Complete
 
 ---
 
@@ -224,13 +224,22 @@ The following tables already have `source` fields that accept "hie":
 
 ### Phase 7: Care Gap Prioritization (CR-002-06)
 
-- [ ] **T7.1** Cross-reference HIE Observations/Procedures against measure definitions
-  - For each active measure definition, check if HIE data satisfies or partially satisfies the measure
-  - Example: HIE has a colonoscopy Procedure → COL measure may be partially met
-  - Generate gap analysis: { measureId, status: "met" | "partially_met" | "gap", hieEvidence: [...] }
-- [ ] **T7.2** Include care gap analysis in previsit-summary response
-  - Prioritize gaps by clinical impact and ease of closure during visit
-  - Surface as actionable items in NP Guidance Panel
+- [x] **T7.1** Cross-reference HIE data against measure definitions with intelligent evidence matching *(completed 2026-02-13)*
+  - Per-measure evidence matching via `findMeasureEvidence()` function:
+    - **Generic**: Matches HIE visit_codes (CPT/ICD) against measure `cptCodes`/`icdCodes`
+    - **CDC-A1C**: Matches HbA1c labs (LOINC 4548-4) with control status (good <7%, moderate 7-9%, poor >9%) + trend analysis (improving/worsening/stable from prior readings)
+    - **CBP**: Matches BP vitals with controlled/uncontrolled classification (systolic <140, diastolic <90)
+    - **BCS**: Mammogram CPT code matching (77065-67)
+    - **COL**: Colonoscopy/screening CPT code matching (45378-85)
+  - Priority scoring: CDC-A1C/CBP = high, BCS/COL = medium, FMC = low
+  - Sort order: gaps before partially_met, then by priority within each group
+  - Each gap now includes: `hieEvidence[]`, `priority`, `sortOrder`, `recommendation` text
+- [x] **T7.2** Enhanced care gap analysis in previsit-summary response and UI *(completed 2026-02-13)*
+  - Action items now split into: high-priority gaps, regular gaps, evidence-ready measures
+  - UI shows priority badges (High/Med/Low) with color coding (red/orange/muted)
+  - Evidence details rendered under each gap with type-specific icons (FlaskConical for labs, HeartPulse for vitals, TrendingUp/Down for trends, FileCheck for codes)
+  - Recommendation text in italic for contextual NP guidance
+  - Display limit increased from 5 to 8 care gaps
 
 ### Phase 8: Completeness Engine Pre-Visit Awareness (CR-002-07)
 

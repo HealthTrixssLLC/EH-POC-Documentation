@@ -3786,7 +3786,7 @@ export async function registerRoutes(
       const visit = await storage.getVisit(req.params.id);
       if (!visit) return res.status(404).json({ message: "Visit not found" });
 
-      const [member, suspectedConds, medRecon, ingestionLogs, measureDefs, measureResults, codes] = await Promise.all([
+      const [member, suspectedConds, medRecon, ingestionLogs, measureDefs, measureResults, codes, hieLabs, hieVitals] = await Promise.all([
         storage.getMember(visit.memberId),
         storage.getSuspectedConditionsByVisit(visit.id),
         storage.getMedReconciliationByVisit(visit.id),
@@ -3794,6 +3794,8 @@ export async function registerRoutes(
         storage.getAllMeasureDefinitions(),
         storage.getMeasureResultsByVisit(visit.id),
         storage.getCodesByVisit(visit.id),
+        storage.getLabResultsByMember(visit.memberId),
+        storage.getVitalsHistoryByMember(visit.memberId),
       ]);
 
       const hasHieData = ingestionLogs.length > 0;
@@ -3848,17 +3850,150 @@ export async function registerRoutes(
       };
 
       const resultMap = new Map(measureResults.map(r => [r.measureId, r]));
-      const hieCodeSet = new Set(codes.filter(c => c.source === "hie").map(c => c.code));
+      const hieCodes = codes.filter(c => c.source === "hie");
+      const hieLabsOnly = hieLabs.filter(l => l.source === "hie");
+      const hieVitalsOnly = hieVitals.filter(v => v.source === "hie");
+
+      const PRIORITY_ORDER: Record<string, number> = {
+        "CDC-A1C": 1, "CBP": 2, "BCS": 3, "COL": 4, "FMC": 5,
+      };
+      const PRIORITY_LEVEL: Record<string, "high" | "medium" | "low"> = {
+        "CDC-A1C": "high", "CBP": "high", "BCS": "medium", "COL": "medium", "FMC": "low",
+      };
+
+      function findMeasureEvidence(def: any): { type: string; source: string; value?: string; date?: string; detail?: string }[] {
+        const evidence: { type: string; source: string; value?: string; date?: string; detail?: string }[] = [];
+        const measureId = def.measureId;
+        const defCptCodes = (def.cptCodes || []) as string[];
+        const defIcdCodes = (def.icdCodes || []) as string[];
+
+        for (const code of hieCodes) {
+          if (defCptCodes.includes(code.code) || defIcdCodes.includes(code.code)) {
+            evidence.push({
+              type: "visit_code",
+              source: "HIE",
+              value: code.code,
+              date: code.dateOfService || undefined,
+              detail: `${code.system === "cpt" ? "CPT" : "ICD-10"} ${code.code}${code.description ? ` - ${code.description}` : ""}`,
+            });
+          }
+        }
+
+        if (measureId === "CDC-A1C") {
+          const a1cLabs = hieLabsOnly
+            .filter(l => l.testCode === "4548-4" || l.testName?.toLowerCase().includes("a1c") || l.testName?.toLowerCase().includes("hemoglobin a1c"))
+            .sort((a, b) => (b.collectedDate || "").localeCompare(a.collectedDate || ""));
+          if (a1cLabs.length > 0) {
+            const latest = a1cLabs[0];
+            const criteria = (def.clinicalCriteria || {}) as any;
+            const threshold = criteria.controlledThreshold || 9;
+            const controlStatus = latest.value < (criteria.goodControlThreshold || 7) ? "good control" :
+              latest.value <= threshold ? "moderate control" : "poor control";
+            evidence.push({
+              type: "lab_result",
+              source: "HIE",
+              value: `${latest.value}% (${controlStatus})`,
+              date: latest.collectedDate,
+              detail: `Latest HbA1c: ${latest.value}% on ${latest.collectedDate}`,
+            });
+            if (a1cLabs.length > 1) {
+              const prev = a1cLabs[1];
+              const trend = latest.value < prev.value ? "improving" : latest.value > prev.value ? "worsening" : "stable";
+              evidence.push({
+                type: "lab_trend",
+                source: "HIE",
+                value: trend,
+                date: prev.collectedDate,
+                detail: `Prior HbA1c: ${prev.value}% on ${prev.collectedDate} (${trend})`,
+              });
+            }
+          }
+        }
+
+        if (measureId === "CBP") {
+          const bpReadings = hieVitalsOnly
+            .filter(v => v.systolic != null && v.diastolic != null)
+            .sort((a, b) => (b.measureDate || "").localeCompare(a.measureDate || ""));
+          if (bpReadings.length > 0) {
+            const latest = bpReadings[0];
+            const criteria = (def.clinicalCriteria || {}) as any;
+            const sMax = criteria.systolicMax || 140;
+            const dMax = criteria.diastolicMax || 90;
+            const controlled = (latest.systolic! < sMax && latest.diastolic! < dMax);
+            evidence.push({
+              type: "vitals",
+              source: "HIE",
+              value: `${latest.systolic}/${latest.diastolic} mmHg`,
+              date: latest.measureDate,
+              detail: `BP: ${latest.systolic}/${latest.diastolic} mmHg (${controlled ? "controlled" : "uncontrolled"})`,
+            });
+          }
+        }
+
+        if (measureId === "BCS") {
+          const mammoCodes = ["77065", "77066", "77067"];
+          const mammoEvidence = hieCodes.filter(c => mammoCodes.includes(c.code));
+          if (mammoEvidence.length > 0 && evidence.filter(e => e.type === "visit_code").length === 0) {
+            for (const mc of mammoEvidence) {
+              evidence.push({
+                type: "visit_code",
+                source: "HIE",
+                value: mc.code,
+                date: mc.dateOfService || undefined,
+                detail: `Mammogram CPT ${mc.code}${mc.dateOfService ? ` on ${mc.dateOfService}` : ""}`,
+              });
+            }
+          }
+        }
+
+        if (measureId === "COL") {
+          const colonCodes = ["45378", "45380", "45381", "45384", "45385"];
+          const colonEvidence = hieCodes.filter(c => colonCodes.includes(c.code));
+          if (colonEvidence.length > 0 && evidence.filter(e => e.type === "visit_code").length === 0) {
+            for (const cc of colonEvidence) {
+              evidence.push({
+                type: "visit_code",
+                source: "HIE",
+                value: cc.code,
+                date: cc.dateOfService || undefined,
+                detail: `Colonoscopy/screening CPT ${cc.code}${cc.dateOfService ? ` on ${cc.dateOfService}` : ""}`,
+              });
+            }
+          }
+        }
+
+        return evidence;
+      }
+
       const careGaps = measureDefs.map(def => {
         const result = resultMap.get(def.measureId);
         const hasResult = result && result.status !== "not_started";
-        const hasHieEvidence = hieCodeSet.size > 0;
+        const evidence = findMeasureEvidence(def);
+        const hasEvidence = evidence.length > 0;
+
         let gapStatus: "met" | "partially_met" | "gap" = "gap";
         if (hasResult && (result.status === "met" || result.result === "met")) {
           gapStatus = "met";
-        } else if (hasResult || hasHieEvidence) {
+        } else if (hasEvidence || hasResult) {
           gapStatus = "partially_met";
         }
+
+        const priority = PRIORITY_LEVEL[def.measureId] || "low";
+        const sortOrder = PRIORITY_ORDER[def.measureId] || 99;
+
+        let recommendation = "";
+        if (gapStatus === "gap") {
+          recommendation = `No HIE evidence found for ${def.name}. Assess during visit.`;
+        } else if (gapStatus === "partially_met") {
+          if (hasEvidence && !hasResult) {
+            recommendation = `HIE evidence available. Review and document to close gap.`;
+          } else if (hasResult && !hasEvidence) {
+            recommendation = `Assessment started but incomplete. Complete during visit.`;
+          } else {
+            recommendation = `Partial evidence from HIE. Verify and finalize documentation.`;
+          }
+        }
+
         return {
           measureId: def.measureId,
           measureName: def.name,
@@ -3866,8 +4001,19 @@ export async function registerRoutes(
           status: gapStatus,
           currentResult: result?.status || "not_started",
           description: def.description,
+          priority,
+          sortOrder,
+          hieEvidence: evidence,
+          recommendation,
         };
-      }).filter(g => g.status !== "met");
+      })
+        .filter(g => g.status !== "met")
+        .sort((a, b) => {
+          const statusOrder = { gap: 0, partially_met: 1 };
+          const sDiff = (statusOrder[a.status as keyof typeof statusOrder] ?? 2) - (statusOrder[b.status as keyof typeof statusOrder] ?? 2);
+          if (sDiff !== 0) return sDiff;
+          return a.sortOrder - b.sortOrder;
+        });
 
       const actionItems: { priority: "high" | "medium" | "low"; category: string; message: string; link?: string }[] = [];
 
@@ -3887,12 +4033,30 @@ export async function registerRoutes(
           link: "medications",
         });
       }
-      const gapCount = careGaps.filter(g => g.status === "gap").length;
-      if (gapCount > 0) {
+      const highPriorityGaps = careGaps.filter(g => g.priority === "high" && g.status === "gap");
+      const otherGaps = careGaps.filter(g => g.status === "gap" && g.priority !== "high");
+      const evidenceGaps = careGaps.filter(g => g.status === "partially_met" && g.hieEvidence.length > 0);
+      if (highPriorityGaps.length > 0) {
+        actionItems.push({
+          priority: "high",
+          category: "care_gaps",
+          message: `${highPriorityGaps.length} high-priority care gap${highPriorityGaps.length > 1 ? "s" : ""}: ${highPriorityGaps.map(g => g.measureName).join(", ")}`,
+          link: "measures",
+        });
+      }
+      if (otherGaps.length > 0) {
         actionItems.push({
           priority: "medium",
           category: "care_gaps",
-          message: `${gapCount} HEDIS care gap${gapCount > 1 ? "s" : ""} identified`,
+          message: `${otherGaps.length} HEDIS care gap${otherGaps.length > 1 ? "s" : ""} identified`,
+          link: "measures",
+        });
+      }
+      if (evidenceGaps.length > 0) {
+        actionItems.push({
+          priority: "low",
+          category: "care_gaps",
+          message: `${evidenceGaps.length} measure${evidenceGaps.length > 1 ? "s" : ""} with HIE evidence ready to review`,
           link: "measures",
         });
       }

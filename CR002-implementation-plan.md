@@ -5,7 +5,7 @@
 **System:** Easy Health Point of Care Application
 **Requestor:** Jay Baker
 **Date:** February 13, 2026
-**Status:** In Progress - Phase 2 Complete
+**Status:** In Progress - Phase 3 Complete
 
 ---
 
@@ -160,16 +160,22 @@ The following tables already have `source` fields that accept "hie":
 
 ### Phase 3: Provenance Tagging (CR-002-04)
 
-- [ ] **T3.1** Ensure all resource processors from Phase 2 set provenance fields:
-  - `source = "hie"` on all created records
-  - `ingestionLogId` linkage where applicable
-  - Timestamp via `receivedAt` on ingestion log
-- [ ] **T3.2** Update Patient Clinical Timeline UI to display origin badges
-  - Show "HIE" badge on timeline entries where `source = "hie"`
-  - Use existing timeline rendering, add conditional badge
-- [ ] **T3.3** Update Medication Reconciliation UI to show HIE origin indicator
-  - Show "HIE - Unverified" badge on med recon items where `source = "hie"` and `status = "pending"`
-  - Use existing med recon list rendering, add conditional badge
+- [x] **T3.1** Ensure all resource processors from Phase 2 set provenance fields *(verified 2026-02-13)*
+  - `source = "hie"` on medication_history, lab_results, vitals_history, visit_codes
+  - `source = "external"` on med_reconciliation (per MED_RECON_SOURCES enum)
+  - `ingestionLogId` linkage on suspected_conditions
+  - `hieSource` set on suspected_conditions
+  - `receivedAt` timestamp on ingestion log
+- [x] **T3.2** Patient Clinical Timeline already displays HIE origin badges *(verified 2026-02-13, pre-existing)*
+  - SourceBadge component shows "Practice" (Building2 icon) or "HIE" (Globe icon) on all entries
+  - Source filtering and per-source counts already implemented
+  - Custom chart dot colors distinguish practice vs HIE data points
+- [x] **T3.3** Update Medication Reconciliation UI to show HIE origin indicator *(completed 2026-02-13)*
+  - Added `external` and `patient_report` to SOURCE_COLORS map with distinct color treatments
+  - Added SOURCE_LABELS map to show "HIE" label instead of raw "external" source value
+  - Added "Unverified" outline badge (amber border) on HIE items with status="new"
+  - Added "N from HIE pending review" count badge in Reconciliation List header
+  - All badges have data-testid attributes for test automation
 
 ### Phase 4: Medication Reconciliation Pre-Population (CR-002-02)
 

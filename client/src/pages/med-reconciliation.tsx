@@ -195,6 +195,17 @@ const SOURCE_COLORS: Record<string, string> = {
   home: "bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-300",
   chart: "bg-teal-100 text-teal-800 dark:bg-teal-900/30 dark:text-teal-300",
   practice: "bg-indigo-100 text-indigo-800 dark:bg-indigo-900/30 dark:text-indigo-300",
+  external: "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300",
+  patient_report: "bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300",
+};
+
+const SOURCE_LABELS: Record<string, string> = {
+  history: "History",
+  home: "Home",
+  chart: "Chart",
+  practice: "Practice",
+  external: "HIE",
+  patient_report: "Patient Report",
 };
 
 function normalizeForMatch(name: string): string[] {
@@ -308,6 +319,11 @@ export default function MedReconciliation() {
     }
     return counts;
   }, [reconciledMeds]);
+
+  const hiePendingCount = useMemo(
+    () => reconciledMeds.filter(m => m.source === "external" && m.status === "new").length,
+    [reconciledMeds]
+  );
 
   const chartMeds = useMemo(() => {
     return (member?.medications || []).map(name => ({
@@ -657,9 +673,14 @@ export default function MedReconciliation() {
           <Card>
             <CardHeader className="pb-3">
               <div className="flex items-center justify-between gap-3 flex-wrap">
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 flex-wrap">
                   <Activity className="w-5 h-5" style={{ color: "#277493" }} />
                   <h2 className="text-base font-semibold">Reconciliation List</h2>
+                  {hiePendingCount > 0 && (
+                    <Badge variant="outline" className="text-xs no-default-hover-elevate no-default-active-elevate border-blue-500 text-blue-700 dark:text-blue-400" data-testid="badge-hie-pending-count">
+                      {hiePendingCount} from HIE pending review
+                    </Badge>
+                  )}
                 </div>
                 <Button size="sm" onClick={() => setAddDialogOpen(true)} data-testid="button-add-new-med">
                   <Plus className="w-4 h-4 mr-1" /> Add New
@@ -688,9 +709,14 @@ export default function MedReconciliation() {
                             <Badge className={`text-xs no-default-hover-elevate no-default-active-elevate ${STATUS_COLORS[med.status] || ""}`} variant="secondary">
                               {med.status}
                             </Badge>
-                            <Badge className={`text-xs no-default-hover-elevate no-default-active-elevate ${SOURCE_COLORS[med.source] || SOURCE_COLORS.history}`} variant="secondary">
-                              {med.source}
+                            <Badge className={`text-xs no-default-hover-elevate no-default-active-elevate ${SOURCE_COLORS[med.source] || SOURCE_COLORS.history}`} variant="secondary" data-testid={`badge-source-${med.id}`}>
+                              {SOURCE_LABELS[med.source] || med.source}
                             </Badge>
+                            {med.source === "external" && med.status === "new" && (
+                              <Badge variant="outline" className="text-xs no-default-hover-elevate no-default-active-elevate border-amber-500 text-amber-700 dark:text-amber-400" data-testid={`badge-hie-unverified-${med.id}`}>
+                                Unverified
+                              </Badge>
+                            )}
                           </div>
                           {!isEditing && (
                             <>

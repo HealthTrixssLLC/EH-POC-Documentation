@@ -1297,6 +1297,33 @@ export async function registerRoutes(
     }
   });
 
+  app.post("/api/visits/:id/assessments/revert-decline", async (req, res) => {
+    try {
+      const visit = await storage.getVisit(req.params.id);
+      if (visit?.signedAt) {
+        return res.status(403).json({ message: "Cannot modify a signed visit" });
+      }
+      if (visit?.lockedAt) {
+        return res.status(403).json({ message: "Visit is locked" });
+      }
+      const { instrumentId } = req.body;
+      const checkItem = await storage.getChecklistItemByVisitAndItem(req.params.id, instrumentId);
+      if (checkItem && checkItem.status === "unable_to_assess") {
+        await storage.updateChecklistItem(checkItem.id, {
+          status: "not_started",
+          unableToAssessReason: null,
+          unableToAssessNote: null,
+          completedAt: null,
+          completedBy: null,
+        });
+        return res.json({ success: true });
+      }
+      return res.status(404).json({ message: "Checklist item not found or not declined" });
+    } catch (err: any) {
+      return res.status(500).json({ message: err.message });
+    }
+  });
+
   // Measure definitions
   app.get("/api/measures/definitions/:id", async (req, res) => {
     try {
@@ -1386,6 +1413,33 @@ export async function registerRoutes(
         });
       }
       return res.json({ success: true });
+    } catch (err: any) {
+      return res.status(500).json({ message: err.message });
+    }
+  });
+
+  app.post("/api/visits/:id/measures/revert-decline", async (req, res) => {
+    try {
+      const visit = await storage.getVisit(req.params.id);
+      if (visit?.signedAt) {
+        return res.status(403).json({ message: "Cannot modify a signed visit" });
+      }
+      if (visit?.lockedAt) {
+        return res.status(403).json({ message: "Visit is locked" });
+      }
+      const { measureId } = req.body;
+      const checkItem = await storage.getChecklistItemByVisitAndItem(req.params.id, measureId);
+      if (checkItem && checkItem.status === "unable_to_assess") {
+        await storage.updateChecklistItem(checkItem.id, {
+          status: "not_started",
+          unableToAssessReason: null,
+          unableToAssessNote: null,
+          completedAt: null,
+          completedBy: null,
+        });
+        return res.json({ success: true });
+      }
+      return res.status(404).json({ message: "Checklist item not found or not declined" });
     } catch (err: any) {
       return res.status(500).json({ message: err.message });
     }

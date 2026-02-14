@@ -15,6 +15,7 @@ import {
   Download,
   Clock,
   CheckCircle2,
+  XCircle,
 } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -178,18 +179,39 @@ export default function VisitDetail() {
         <TabsContent value="checklist" className="mt-4 space-y-2">
           {checklist.map((item: any) => (
             <Card key={item.id}>
-              <CardContent className="p-3 flex items-center justify-between gap-3 flex-wrap">
-                <div className="flex items-center gap-2 min-w-0">
-                  {item.status === "complete" || item.status === "unable_to_assess" ? (
-                    <CheckCircle2 className="w-4 h-4 flex-shrink-0" style={{ color: "#277493" }} />
-                  ) : (
-                    <Clock className="w-4 h-4 flex-shrink-0 text-muted-foreground" />
-                  )}
-                  <span className="text-sm truncate">{item.itemName}</span>
+              <CardContent className="p-3 space-y-1">
+                <div className="flex items-center justify-between gap-3 flex-wrap">
+                  <div className="flex items-center gap-2 min-w-0">
+                    {item.status === "complete" ? (
+                      <CheckCircle2 className="w-4 h-4 flex-shrink-0" style={{ color: "#277493" }} />
+                    ) : item.status === "unable_to_assess" ? (
+                      <XCircle className="w-4 h-4 flex-shrink-0" style={{ color: "#E74C3C" }} />
+                    ) : (
+                      <Clock className="w-4 h-4 flex-shrink-0 text-muted-foreground" />
+                    )}
+                    <span className="text-sm truncate">{item.itemName}</span>
+                  </div>
+                  <Badge
+                    variant={item.status === "unable_to_assess" ? "destructive" : "secondary"}
+                    className="text-xs capitalize"
+                  >
+                    {item.status === "unable_to_assess" ? "Declined" : item.status.replace(/_/g, " ")}
+                  </Badge>
                 </div>
-                <Badge variant="secondary" className="text-xs capitalize">
-                  {item.status.replace(/_/g, " ")}
-                </Badge>
+                {item.status === "unable_to_assess" && (item.unableToAssessReason || item.unableToAssessNote) && (
+                  <div className="ml-6 space-y-0.5" data-testid={`decline-detail-${item.id}`}>
+                    {item.unableToAssessReason && (
+                      <p className="text-xs text-muted-foreground">
+                        Reason: {item.unableToAssessReason}
+                      </p>
+                    )}
+                    {item.unableToAssessNote && (
+                      <p className="text-xs text-muted-foreground">
+                        Note: {item.unableToAssessNote}
+                      </p>
+                    )}
+                  </div>
+                )}
               </CardContent>
             </Card>
           ))}

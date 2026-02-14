@@ -420,6 +420,9 @@ export default function IntakeDashboard() {
       href: `/visits/${visitId}/intake/assessment/${a.itemId}`,
       done: a.status === "complete" || a.status === "unable_to_assess",
       status: a.status,
+      declined: a.status === "unable_to_assess",
+      declineReason: a.unableToAssessReason,
+      declineNote: a.unableToAssessNote,
       required: true,
     })),
     ...measureItems.map((m: any) => ({
@@ -428,6 +431,9 @@ export default function IntakeDashboard() {
       href: `/visits/${visitId}/intake/measure/${m.itemId}`,
       done: m.status === "complete" || m.status === "unable_to_assess",
       status: m.status,
+      declined: m.status === "unable_to_assess",
+      declineReason: m.unableToAssessReason,
+      declineNote: m.unableToAssessNote,
       required: true,
     })),
   ];
@@ -435,7 +441,8 @@ export default function IntakeDashboard() {
   const getExclusionForObjective = (objectiveKey: string) =>
     exclusions.find((e: any) => e.objectiveKey === objectiveKey);
 
-  const getObjectiveStatus = (step: any): "completed" | "voice_captured" | "excluded" | "pending" => {
+  const getObjectiveStatus = (step: any): "completed" | "voice_captured" | "excluded" | "declined" | "pending" => {
+    if (step.declined) return "declined";
     if (step.done) {
       if (isVoiceCapturedOnly(step.id)) return "voice_captured";
       return "completed";
@@ -447,9 +454,10 @@ export default function IntakeDashboard() {
   const voiceCapturedCount = objectiveSteps.filter(s => getObjectiveStatus(s) === "voice_captured").length;
   const completedCount = objectiveSteps.filter(s => getObjectiveStatus(s) === "completed").length;
   const excludedCount = objectiveSteps.filter(s => getObjectiveStatus(s) === "excluded").length;
+  const declinedCount = objectiveSteps.filter(s => getObjectiveStatus(s) === "declined").length;
   const pendingCount = objectiveSteps.filter(s => getObjectiveStatus(s) === "pending").length;
   const totalSteps = objectiveSteps.length;
-  const resolvedCount = completedCount + excludedCount + voiceCapturedCount;
+  const resolvedCount = completedCount + excludedCount + voiceCapturedCount + declinedCount;
   const progressPct = totalSteps > 0 ? Math.round((resolvedCount / totalSteps) * 100) : 0;
   const gateReady = pendingCount === 0 && voiceCapturedCount === 0 && totalSteps > 0;
 
@@ -499,6 +507,7 @@ export default function IntakeDashboard() {
     completed: { bg: "#27749315", border: "#277493", text: "#277493", icon: CheckCircle2 },
     voice_captured: { bg: "#7c3aed15", border: "#7c3aed", text: "#7c3aed", icon: Mic },
     excluded: { bg: "#FEA00215", border: "#FEA002", text: "#9a6700", icon: Ban },
+    declined: { bg: "#E74C3C12", border: "#E74C3C", text: "#E74C3C", icon: XCircle },
     pending: { bg: "#2E456B08", border: "transparent", text: "#64748b", icon: Circle },
   };
 
@@ -525,7 +534,7 @@ export default function IntakeDashboard() {
             </h1>
             <div className="flex items-center gap-3 mt-0.5 flex-wrap">
               <span className="text-sm text-muted-foreground">
-                {completedCount} done, {excludedCount > 0 ? `${excludedCount} excluded, ` : ""}{pendingCount} pending
+                {completedCount} done{declinedCount > 0 ? `, ${declinedCount} declined` : ""}{excludedCount > 0 ? `, ${excludedCount} excluded` : ""}, {pendingCount} pending
               </span>
               {allFlags.length > 0 && (
                 <Badge variant="destructive" className="text-xs">
@@ -662,13 +671,14 @@ export default function IntakeDashboard() {
                 const isDone = objStatus === "completed";
                 const isVoiceCaptured = objStatus === "voice_captured";
                 const isExcluded = objStatus === "excluded";
+                const isDeclined = objStatus === "declined";
 
                 return (
                   <div key={step.id} className="group" data-testid={`task-${step.id}`}>
                     <div className="flex items-center gap-3 p-2.5 rounded-md border" style={{
-                      borderColor: isDone ? "#27749340" : isVoiceCaptured ? "#7c3aed40" : isExcluded ? "#FEA00240" : undefined,
-                      backgroundColor: isDone ? "#27749308" : isVoiceCaptured ? "#7c3aed08" : isExcluded ? "#FEA00208" : undefined,
-                      opacity: isDone ? 0.7 : isExcluded ? 0.6 : 1,
+                      borderColor: isDone ? "#27749340" : isVoiceCaptured ? "#7c3aed40" : isExcluded ? "#FEA00240" : isDeclined ? "#E74C3C30" : undefined,
+                      backgroundColor: isDone ? "#27749308" : isVoiceCaptured ? "#7c3aed08" : isExcluded ? "#FEA00208" : isDeclined ? "#E74C3C08" : undefined,
+                      opacity: isDone ? 0.7 : isExcluded ? 0.6 : isDeclined ? 0.8 : 1,
                     }}>
                       <div className="flex items-center justify-center w-7 h-7 rounded-md flex-shrink-0" style={{
                         backgroundColor: statusColors[objStatus]?.bg
@@ -676,7 +686,7 @@ export default function IntakeDashboard() {
                         <Icon className="w-3.5 h-3.5" style={{ color: statusColors[objStatus]?.text }} />
                       </div>
                       <div className="flex-1 min-w-0">
-                        <span className={`text-sm ${isDone ? "line-through text-muted-foreground" : isExcluded ? "line-through text-muted-foreground" : ""}`}>
+                        <span className={`text-sm ${isDone ? "line-through text-muted-foreground" : isExcluded ? "line-through text-muted-foreground" : isDeclined ? "text-muted-foreground" : ""}`}>
                           {step.label}
                         </span>
                         {isVoiceCaptured && (
@@ -696,6 +706,21 @@ export default function IntakeDashboard() {
                           <p className="text-[11px] mt-0.5" style={{ color: "#9a6700" }}>
                             Excluded: {exclusion.reason}
                           </p>
+                        )}
+                        {isDeclined && (
+                          <div className="mt-0.5">
+                            <div className="flex items-center gap-1">
+                              <XCircle className="w-3 h-3" style={{ color: "#E74C3C" }} />
+                              <span className="text-[11px]" style={{ color: "#E74C3C" }}>
+                                Declined: {step.declineReason || "No reason provided"}
+                              </span>
+                            </div>
+                            {step.declineNote && (
+                              <p className="text-[11px] text-muted-foreground ml-4 mt-0.5" data-testid={`text-decline-note-${step.id}`}>
+                                {step.declineNote}
+                              </p>
+                            )}
+                          </div>
                         )}
                       </div>
                       <div className="flex items-center gap-1 flex-shrink-0">
@@ -731,7 +756,21 @@ export default function IntakeDashboard() {
                             <TooltipContent>Excluded: {exclusion?.reason}</TooltipContent>
                           </Tooltip>
                         )}
-                        {!isDone && !isExcluded && !isVoiceCaptured && (
+                        {isDeclined && (
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <XCircle className="w-4 h-4" style={{ color: "#E74C3C" }} data-testid={`status-declined-${step.id}`} />
+                            </TooltipTrigger>
+                            <TooltipContent>
+                              <div className="space-y-1">
+                                <p className="font-medium">Declined</p>
+                                <p className="text-xs">{step.declineReason || "No reason provided"}</p>
+                                {step.declineNote && <p className="text-xs">{step.declineNote}</p>}
+                              </div>
+                            </TooltipContent>
+                          </Tooltip>
+                        )}
+                        {!isDone && !isExcluded && !isVoiceCaptured && !isDeclined && (
                           <div className="flex items-center gap-1">
                             <Link href={step.href}>
                               <Button variant="ghost" size="sm" className="h-7 px-2 text-xs" data-testid={`button-start-${step.id}`}>
@@ -763,6 +802,13 @@ export default function IntakeDashboard() {
                           <Link href={step.href}>
                             <Button variant="outline" size="sm" className="h-7 px-2 text-xs" style={{ borderColor: "#7c3aed40", color: "#7c3aed" }} data-testid={`button-review-${step.id}`}>
                               Review <ArrowRight className="w-3 h-3 ml-1" />
+                            </Button>
+                          </Link>
+                        )}
+                        {isDeclined && !visit?.signedAt && (
+                          <Link href={step.href}>
+                            <Button variant="outline" size="sm" className="h-7 px-2 text-xs" data-testid={`button-change-${step.id}`}>
+                              Change <ArrowRight className="w-3 h-3 ml-1" />
                             </Button>
                           </Link>
                         )}

@@ -318,6 +318,20 @@ export default function AssessmentRunner() {
     enabled: !!visitId && !!assessmentId,
   });
 
+  const { data: visitData } = useQuery<any>({
+    queryKey: ["/api/visits", visitId, "overview"],
+    enabled: !!visitId,
+  });
+
+  const checklistItem = useMemo(() => {
+    const checklist = visitData?.checklist || [];
+    return checklist.find((c: any) => c.itemId === assessmentId);
+  }, [visitData, assessmentId]);
+
+  const isDeclined = checklistItem?.status === "unable_to_assess";
+  const visitSigned = !!visitData?.visit?.signedAt;
+  const visitLocked = !!visitData?.visit?.lockedAt;
+
   const { data: reasonCodes } = useQuery<any[]>({
     queryKey: ["/api/reason-codes", { category: "unable_to_assess" }],
     queryFn: async () => {
@@ -468,6 +482,22 @@ export default function AssessmentRunner() {
     },
   });
 
+  const revertDeclineMutation = useMutation({
+    mutationFn: async () => {
+      await apiRequest("POST", `/api/visits/${visitId}/assessments/revert-decline`, {
+        instrumentId: assessmentId,
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/visits", visitId] });
+      queryClient.invalidateQueries({ queryKey: ["/api/visits", visitId, "overview"] });
+      toast({ title: "Decline reverted - you can now complete this assessment" });
+    },
+    onError: (err: any) => {
+      toast({ title: "Failed to revert", description: err.message, variant: "destructive" });
+    },
+  });
+
   if (loadingDef) {
     return (
       <div className="space-y-6">
@@ -509,6 +539,54 @@ export default function AssessmentRunner() {
             <p className="text-sm text-muted-foreground">Version {definition.version} - {definition.category}</p>
           </div>
         </div>
+      )}
+
+      {isDeclined && (
+        <Card data-testid="card-decline-info">
+          <CardContent className="p-4 space-y-2">
+            <div className="flex items-center justify-between gap-3 flex-wrap">
+              <div className="flex items-center gap-2">
+                <AlertTriangle className="w-4 h-4" style={{ color: "#E74C3C" }} />
+                <span className="text-sm font-semibold" style={{ color: "#E74C3C" }}>
+                  Assessment Declined
+                </span>
+              </div>
+              {!visitSigned && !visitLocked && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => revertDeclineMutation.mutate()}
+                  disabled={revertDeclineMutation.isPending}
+                  data-testid="button-revert-decline"
+                >
+                  {revertDeclineMutation.isPending ? "Reverting..." : "Revert & Complete Assessment"}
+                </Button>
+              )}
+            </div>
+            <div className="space-y-1 ml-6">
+              {checklistItem?.unableToAssessReason && (
+                <p className="text-sm" data-testid="text-decline-reason">
+                  <span className="text-muted-foreground">Reason:</span> {checklistItem.unableToAssessReason}
+                </p>
+              )}
+              {checklistItem?.unableToAssessNote && (
+                <p className="text-sm" data-testid="text-decline-note">
+                  <span className="text-muted-foreground">Notes:</span> {checklistItem.unableToAssessNote}
+                </p>
+              )}
+              {checklistItem?.completedAt && (
+                <p className="text-xs text-muted-foreground" data-testid="text-decline-date">
+                  Declined on {new Date(checklistItem.completedAt).toLocaleDateString()}
+                </p>
+              )}
+            </div>
+            {visitSigned && (
+              <p className="text-xs text-muted-foreground ml-6">
+                This visit has been signed. Decline cannot be changed.
+              </p>
+            )}
+          </CardContent>
+        </Card>
       )}
 
       <div className="flex items-center gap-4 flex-wrap">

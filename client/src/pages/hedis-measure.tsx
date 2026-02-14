@@ -64,6 +64,15 @@ export default function HedisMeasure() {
     },
   });
 
+  const measureChecklistItem = useMemo(() => {
+    const checklist = overview?.checklist || [];
+    return checklist.find((c: any) => c.itemId === measureId);
+  }, [overview, measureId]);
+
+  const isMeasureDeclined = measureChecklistItem?.status === "unable_to_assess";
+  const visitSigned = !!overview?.visit?.signedAt;
+  const visitLocked = !!overview?.visit?.lockedAt;
+
   const [captureMethod, setCaptureMethod] = useState("");
   const [notes, setNotes] = useState("");
   const [unableReason, setUnableReason] = useState("");
@@ -179,6 +188,22 @@ export default function HedisMeasure() {
     },
   });
 
+  const revertDeclineMutation = useMutation({
+    mutationFn: async () => {
+      await apiRequest("POST", `/api/visits/${visitId}/measures/revert-decline`, {
+        measureId,
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/visits", visitId] });
+      queryClient.invalidateQueries({ queryKey: ["/api/visits", visitId, "overview"] });
+      toast({ title: "Decline reverted - you can now complete this measure" });
+    },
+    onError: (err: any) => {
+      toast({ title: "Failed to revert", description: err.message, variant: "destructive" });
+    },
+  });
+
   if (isLoading) return <Skeleton className="h-48 w-full" />;
 
   const isComplete = existingResult?.status === "complete";
@@ -216,6 +241,54 @@ export default function HedisMeasure() {
           </p>
         </div>
       </div>
+      )}
+
+      {isMeasureDeclined && (
+        <Card data-testid="card-measure-decline-info">
+          <CardContent className="p-4 space-y-2">
+            <div className="flex items-center justify-between gap-3 flex-wrap">
+              <div className="flex items-center gap-2">
+                <AlertTriangle className="w-4 h-4" style={{ color: "#E74C3C" }} />
+                <span className="text-sm font-semibold" style={{ color: "#E74C3C" }}>
+                  Measure Declined
+                </span>
+              </div>
+              {!visitSigned && !visitLocked && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => revertDeclineMutation.mutate()}
+                  disabled={revertDeclineMutation.isPending}
+                  data-testid="button-revert-measure-decline"
+                >
+                  {revertDeclineMutation.isPending ? "Reverting..." : "Revert & Complete Measure"}
+                </Button>
+              )}
+            </div>
+            <div className="space-y-1 ml-6">
+              {measureChecklistItem?.unableToAssessReason && (
+                <p className="text-sm" data-testid="text-measure-decline-reason">
+                  <span className="text-muted-foreground">Reason:</span> {measureChecklistItem.unableToAssessReason}
+                </p>
+              )}
+              {measureChecklistItem?.unableToAssessNote && (
+                <p className="text-sm" data-testid="text-measure-decline-note">
+                  <span className="text-muted-foreground">Notes:</span> {measureChecklistItem.unableToAssessNote}
+                </p>
+              )}
+              {measureChecklistItem?.completedAt && (
+                <p className="text-xs text-muted-foreground" data-testid="text-measure-decline-date">
+                  Declined on {new Date(measureChecklistItem.completedAt).toLocaleDateString()}
+                </p>
+              )}
+            </div>
+            {visitSigned && (
+              <p className="text-xs text-muted-foreground ml-6">
+                This visit has been signed. Decline cannot be changed.
+              </p>
+            )}
+          </CardContent>
+        </Card>
       )}
 
       {/* Measure Status Banner */}

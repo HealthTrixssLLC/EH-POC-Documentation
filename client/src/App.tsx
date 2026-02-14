@@ -40,6 +40,7 @@ import TechDocs from "@/pages/tech-docs";
 import VisitConsents from "@/pages/visit-consents";
 import VoiceCapture from "@/pages/voice-capture";
 import AuditQueue from "@/pages/audit-queue";
+import VisitActive from "@/pages/visit-active";
 import { useQuery as useQueryHook } from "@tanstack/react-query";
 
 function DemoWatermark() {
@@ -65,6 +66,8 @@ function Router() {
   return (
     <Switch>
       <Route path="/" component={Dashboard} />
+      <Route path="/visits/active" component={VisitActive} />
+      <Route path="/visits/history" component={VisitList} />
       <Route path="/visits" component={VisitList} />
       <Route path="/visits/:id/summary" component={PreVisitSummary} />
       <Route path="/visits/:id/intake" component={IntakeDashboard} />
@@ -122,6 +125,8 @@ function AuthenticatedLayout() {
 const pageTitles: Record<string, string> = {
   "/": "Today",
   "/visits": "Visits",
+  "/visits/active": "Active Visits",
+  "/visits/history": "Visit History",
   "/reviews": "Reviews",
   "/coordination": "Care Coordination",
   "/admin": "Admin Console",
@@ -170,8 +175,8 @@ function MobileVoiceFAB({ visitId }: { visitId: string }) {
 function MobileLayout() {
   const [location] = useLocation();
   const title = getMobileTitle(location);
-  const isSubpage = location !== "/" && location !== "/visits" && location !== "/more";
-  const isVisitSubpage = location.startsWith("/visits/") && location !== "/visits";
+  const isSubpage = location !== "/" && location !== "/visits" && location !== "/visits/active" && location !== "/visits/history" && location !== "/more";
+  const isVisitSubpage = location.startsWith("/visits/") && location !== "/visits" && location !== "/visits/active" && location !== "/visits/history";
   const backTarget = isVisitSubpage
     ? (location.match(/\/visits\/[^/]+\/intake/) ? location.replace(/\/intake\/.*/, "/intake") : "/visits")
     : "/";

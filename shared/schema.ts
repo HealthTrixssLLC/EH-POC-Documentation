@@ -10,6 +10,9 @@ export const users = pgTable("users", {
   fullName: text("full_name").notNull(),
   role: text("role").notNull().default("np"),
   email: text("email"),
+  phone: text("phone"),
+  mfaEnabled: boolean("mfa_enabled").default(false),
+  biometricEnabled: boolean("biometric_enabled").default(false),
   active: boolean("active").notNull().default(true),
 });
 
@@ -937,6 +940,36 @@ export const suspectedConditions = pgTable("suspected_conditions", {
 export const insertSuspectedConditionSchema = createInsertSchema(suspectedConditions).omit({ id: true });
 export type InsertSuspectedCondition = z.infer<typeof insertSuspectedConditionSchema>;
 export type SuspectedCondition = typeof suspectedConditions.$inferSelect;
+
+export const securitySettings = pgTable("security_settings", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  mfaRequired: boolean("mfa_required").default(false),
+  biometricRequired: boolean("biometric_required").default(false),
+  sessionTimeoutMinutes: integer("session_timeout_minutes").default(30),
+  mfaCodeTtlSeconds: integer("mfa_code_ttl_seconds").default(300),
+  maxMfaAttempts: integer("max_mfa_attempts").default(5),
+  bypassRoles: jsonb("bypass_roles").$type<string[]>(),
+  updatedAt: text("updated_at"),
+  updatedBy: varchar("updated_by"),
+});
+
+export const insertSecuritySettingsSchema = createInsertSchema(securitySettings).omit({ id: true });
+export type InsertSecuritySettings = z.infer<typeof insertSecuritySettingsSchema>;
+export type SecuritySettings = typeof securitySettings.$inferSelect;
+
+export const mfaCodes = pgTable("mfa_codes", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull(),
+  code: text("code").notNull(),
+  expiresAt: text("expires_at").notNull(),
+  attempts: integer("attempts").default(0),
+  verified: boolean("verified").default(false),
+  createdAt: text("created_at").notNull(),
+});
+
+export const insertMfaCodeSchema = createInsertSchema(mfaCodes).omit({ id: true });
+export type InsertMfaCode = z.infer<typeof insertMfaCodeSchema>;
+export type MfaCode = typeof mfaCodes.$inferSelect;
 
 export const AUDIT_FINDING_CATEGORIES = [
   { code: "documentation_quality", label: "Documentation Quality", description: "Completeness and accuracy of clinical documentation" },

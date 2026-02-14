@@ -63,6 +63,10 @@ import {
   type HieIngestionLog, type InsertHieIngestionLog,
   suspectedConditions,
   type SuspectedCondition, type InsertSuspectedCondition,
+  securitySettings,
+  type SecuritySettings, type InsertSecuritySettings,
+  mfaCodes,
+  type MfaCode, type InsertMfaCode,
 } from "@shared/schema";
 
 export interface IStorage {
@@ -261,6 +265,13 @@ export interface IStorage {
   getSuspectedCondition(id: string): Promise<SuspectedCondition | undefined>;
   getSuspectedConditionByVisitAndCode(visitId: string, icdCode: string): Promise<SuspectedCondition | undefined>;
   updateSuspectedCondition(id: string, updates: Partial<SuspectedCondition>): Promise<SuspectedCondition | undefined>;
+
+  getSecuritySettings(): Promise<SecuritySettings | undefined>;
+  upsertSecuritySettings(settings: Partial<SecuritySettings>): Promise<SecuritySettings>;
+  createMfaCode(entry: InsertMfaCode): Promise<MfaCode>;
+  getLatestMfaCode(userId: string): Promise<MfaCode | undefined>;
+  updateMfaCode(id: string, updates: Partial<MfaCode>): Promise<MfaCode | undefined>;
+  updateUser(id: string, updates: Partial<User>): Promise<User | undefined>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -959,7 +970,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createAuditOutcome(outcome: InsertAuditOutcome) {
-    const [created] = await db.insert(auditOutcomes).values(outcome).returning();
+    const [created] = await db.insert(auditOutcomes).values([outcome]).returning();
     return created;
   }
 
@@ -1009,6 +1020,44 @@ export class DatabaseStorage implements IStorage {
 
   async updateSuspectedCondition(id: string, updates: Partial<SuspectedCondition>) {
     const [updated] = await db.update(suspectedConditions).set(updates).where(eq(suspectedConditions.id, id)).returning();
+    return updated;
+  }
+
+  async getSecuritySettings() {
+    const [settings] = await db.select().from(securitySettings);
+    return settings;
+  }
+
+  async upsertSecuritySettings(settings: Partial<SecuritySettings>) {
+    const existing = await this.getSecuritySettings();
+    if (existing) {
+      const [updated] = await db.update(securitySettings).set(settings).where(eq(securitySettings.id, existing.id)).returning();
+      return updated;
+    }
+    const [created] = await db.insert(securitySettings).values([settings as InsertSecuritySettings]).returning();
+    return created;
+  }
+
+  async createMfaCode(entry: InsertMfaCode) {
+    const [created] = await db.insert(mfaCodes).values(entry).returning();
+    return created;
+  }
+
+  async getLatestMfaCode(userId: string) {
+    const [code] = await db.select().from(mfaCodes)
+      .where(eq(mfaCodes.userId, userId))
+      .orderBy(desc(mfaCodes.createdAt))
+      .limit(1);
+    return code;
+  }
+
+  async updateMfaCode(id: string, updates: Partial<MfaCode>) {
+    const [updated] = await db.update(mfaCodes).set(updates).where(eq(mfaCodes.id, id)).returning();
+    return updated;
+  }
+
+  async updateUser(id: string, updates: Partial<User>) {
+    const [updated] = await db.update(users).set(updates).where(eq(users.id, id)).returning();
     return updated;
   }
 }

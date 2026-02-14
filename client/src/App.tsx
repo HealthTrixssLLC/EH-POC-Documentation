@@ -18,6 +18,8 @@ import { MobileHeader } from "@/components/mobile-header";
 import { usePlatform } from "@/hooks/use-platform";
 import { NetworkProvider } from "@/lib/network-context";
 import { OfflineBanner } from "@/components/offline-banner";
+import { SessionLockScreen } from "@/components/session-lock-screen";
+import { BiometricGate } from "@/components/biometric-gate";
 import NotFound from "@/pages/not-found";
 import LoginPage from "@/pages/login";
 import Dashboard from "@/pages/dashboard";
@@ -216,7 +218,7 @@ function MobileLayout() {
 }
 
 function AppContent() {
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, sessionLocked } = useAuth();
   const [location] = useLocation();
   const { isMobileLayout } = usePlatform();
 
@@ -227,15 +229,17 @@ function AppContent() {
     return <LoginPage />;
   }
 
+  if (sessionLocked) {
+    return <SessionLockScreen />;
+  }
+
   if (location === "/login") {
     return <Redirect to="/" />;
   }
 
-  if (isMobileLayout) {
-    return <MobileLayout />;
-  }
+  const layout = isMobileLayout ? <MobileLayout /> : <AuthenticatedLayout />;
 
-  return <AuthenticatedLayout />;
+  return <BiometricGate>{layout}</BiometricGate>;
 }
 
 function App() {

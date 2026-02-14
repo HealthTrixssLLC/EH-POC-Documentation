@@ -57,6 +57,46 @@ export async function registerRoutes(
       if (!user || user.password !== password) {
         return res.status(401).json({ message: "Invalid credentials" });
       }
+
+      const secSettings = await storage.getSecuritySettings();
+      const mfaRequired = secSettings?.mfaRequired ?? false;
+      const bypassRoles = (secSettings?.bypassRoles as string[]) || [];
+      const needsMfa = mfaRequired && !bypassRoles.includes(user.role);
+
+      if (needsMfa) {
+        const code = String(Math.floor(100000 + Math.random() * 900000));
+        const ttl = secSettings?.mfaCodeTtlSeconds ?? 300;
+        const expiresAt = new Date(Date.now() + ttl * 1000).toISOString();
+
+        await storage.createMfaCode({
+          userId: user.id,
+          code,
+          expiresAt,
+          createdAt: new Date().toISOString(),
+        });
+
+        await storage.createAuditEvent({
+          eventType: "login",
+          userId: user.id,
+          userName: user.fullName,
+          userRole: user.role,
+          details: `MFA code sent to user ${user.fullName}`,
+        });
+
+        const maskedPhone = user.phone
+          ? `***${user.phone.slice(-4)}`
+          : "no phone on file";
+
+        console.log(`[MFA] Code for ${user.username}: ${code}`);
+
+        return res.json({
+          mfaRequired: true,
+          userId: user.id,
+          maskedPhone,
+          message: `Verification code sent to ${maskedPhone}`,
+        });
+      }
+
       await storage.createAuditEvent({
         eventType: "login",
         userId: user.id,
@@ -65,6 +105,179 @@ export async function registerRoutes(
         details: `User ${user.fullName} logged in`,
       });
       const { password: _, ...safeUser } = user;
+      return res.json(safeUser);
+    } catch (err: any) {
+      return res.status(500).json({ message: err.message });
+    }
+  });
+
+  app.post("/api/auth/verify-mfa", async (req, res) => {
+    try {
+      const { userId, code } = req.body;
+      if (!userId || !code) {
+        return res.status(400).json({ message: "User ID and code are required" });
+      }
+
+      const mfaEntry = await storage.getLatestMfaCode(userId);
+      if (!mfaEntry) {
+        return res.status(400).json({ message: "No verification code found. Please request a new one." });
+      }
+
+      if (mfaEntry.verified) {
+        return res.status(400).json({ message: "Code already used. Please request a new one." });
+      }
+
+      const secSettings = await storage.getSecuritySettings();
+      const maxAttempts = secSettings?.maxMfaAttempts ?? 5;
+
+      if ((mfaEntry.attempts || 0) >= maxAttempts) {
+        return res.status(429).json({ message: "Too many attempts. Please request a new code." });
+      }
+
+      await storage.updateMfaCode(mfaEntry.id, {
+        attempts: (mfaEntry.attempts || 0) + 1,
+      });
+
+      if (new Date(mfaEntry.expiresAt) < new Date()) {
+        return res.status(400).json({ message: "Verification code has expired. Please request a new one." });
+      }
+
+      if (mfaEntry.code !== code) {
+        await storage.createAuditEvent({
+          eventType: "login",
+          userId,
+          userName: "",
+          userRole: "",
+          details: `Failed MFA attempt for user ${userId}`,
+        });
+        return res.status(401).json({ message: "Invalid verification code" });
+      }
+
+      await storage.updateMfaCode(mfaEntry.id, { verified: true });
+
+      const user = await storage.getUser(userId);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      await storage.createAuditEvent({
+        eventType: "login",
+        userId: user.id,
+        userName: user.fullName,
+        userRole: user.role,
+        details: `User ${user.fullName} logged in with MFA verification`,
+      });
+
+      const { password: _, ...safeUser } = user;
+      return res.json(safeUser);
+    } catch (err: any) {
+      return res.status(500).json({ message: err.message });
+    }
+  });
+
+  app.post("/api/auth/resend-mfa", async (req, res) => {
+    try {
+      const { userId } = req.body;
+      if (!userId) {
+        return res.status(400).json({ message: "User ID is required" });
+      }
+
+      const user = await storage.getUser(userId);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      const secSettings = await storage.getSecuritySettings();
+      const ttl = secSettings?.mfaCodeTtlSeconds ?? 300;
+      const code = String(Math.floor(100000 + Math.random() * 900000));
+      const expiresAt = new Date(Date.now() + ttl * 1000).toISOString();
+
+      await storage.createMfaCode({
+        userId: user.id,
+        code,
+        expiresAt,
+        createdAt: new Date().toISOString(),
+      });
+
+      const maskedPhone = user.phone
+        ? `***${user.phone.slice(-4)}`
+        : "no phone on file";
+
+      console.log(`[MFA] Resent code for ${user.username}: ${code}`);
+
+      await storage.createAuditEvent({
+        eventType: "login",
+        userId: user.id,
+        userName: user.fullName,
+        userRole: user.role,
+        details: `MFA code resent to user ${user.fullName}`,
+      });
+
+      return res.json({
+        message: `New verification code sent to ${maskedPhone}`,
+        maskedPhone,
+      });
+    } catch (err: any) {
+      return res.status(500).json({ message: err.message });
+    }
+  });
+
+  app.post("/api/auth/unlock", async (req, res) => {
+    try {
+      const { username, password } = req.body;
+      const user = await storage.getUserByUsername(username);
+      if (!user || user.password !== password) {
+        return res.status(401).json({ message: "Invalid password" });
+      }
+      const { password: _, ...safeUser } = user;
+      return res.json(safeUser);
+    } catch (err: any) {
+      return res.status(500).json({ message: err.message });
+    }
+  });
+
+  app.get("/api/security-settings", async (_req, res) => {
+    try {
+      const settings = await storage.getSecuritySettings();
+      return res.json(settings || {
+        mfaRequired: false,
+        biometricRequired: false,
+        sessionTimeoutMinutes: 30,
+        mfaCodeTtlSeconds: 300,
+        maxMfaAttempts: 5,
+        bypassRoles: [],
+      });
+    } catch (err: any) {
+      return res.status(500).json({ message: err.message });
+    }
+  });
+
+  app.put("/api/security-settings", requireRole(["admin"]), async (req, res) => {
+    try {
+      const updated = await storage.upsertSecuritySettings({
+        ...req.body,
+        updatedAt: new Date().toISOString(),
+        updatedBy: req.headers["x-user-id"] as string,
+      });
+      await storage.createAuditEvent({
+        eventType: "demo_config_updated",
+        userId: req.headers["x-user-id"] as string,
+        userName: req.headers["x-user-name"] as string,
+        userRole: req.headers["x-user-role"] as string,
+        details: `Security settings updated: mfaRequired=${req.body.mfaRequired}, biometricRequired=${req.body.biometricRequired}, sessionTimeout=${req.body.sessionTimeoutMinutes}min`,
+      });
+      return res.json(updated);
+    } catch (err: any) {
+      return res.status(500).json({ message: err.message });
+    }
+  });
+
+  app.patch("/api/users/:id/phone", async (req, res) => {
+    try {
+      const { phone } = req.body;
+      const updated = await storage.updateUser(req.params.id, { phone });
+      if (!updated) return res.status(404).json({ message: "User not found" });
+      const { password: _, ...safeUser } = updated;
       return res.json(safeUser);
     } catch (err: any) {
       return res.status(500).json({ message: err.message });

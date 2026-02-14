@@ -38,6 +38,10 @@ import {
   CheckCircle2,
   Users,
   Trash2,
+  ShieldCheck,
+  Clock,
+  Smartphone,
+  Fingerprint,
 } from "lucide-react";
 
 const SEVERITY_COLORS: Record<string, string> = {
@@ -70,6 +74,7 @@ export default function AdminConsole() {
           <TabsTrigger value="members" data-testid="tab-members"><Users className="w-3 h-3 mr-1" /> Members</TabsTrigger>
           <TabsTrigger value="demo" data-testid="tab-demo-config"><Settings2 className="w-3 h-3 mr-1" /> Demo Mode</TabsTrigger>
           <TabsTrigger value="access-log" data-testid="tab-access-log"><Shield className="w-3 h-3 mr-1" /> Access Log</TabsTrigger>
+          <TabsTrigger value="security" data-testid="tab-security"><ShieldCheck className="w-3 h-3 mr-1" /> Security</TabsTrigger>
         </TabsList>
 
         <TabsContent value="packs" className="mt-4 space-y-3">
@@ -167,6 +172,10 @@ export default function AdminConsole() {
 
         <TabsContent value="access-log" className="mt-4">
           <AccessLogPanel />
+        </TabsContent>
+
+        <TabsContent value="security" className="mt-4">
+          <SecurityPanel />
         </TabsContent>
       </Tabs>
     </div>
@@ -1464,6 +1473,221 @@ function AccessLogPanel() {
           </CardContent>
         </Card>
       )}
+    </div>
+  );
+}
+
+function SecurityPanel() {
+  const { toast } = useToast();
+  const { data: settings, isLoading } = useQuery<any>({ queryKey: ["/api/security-settings"] });
+
+  const [mfaRequired, setMfaRequired] = useState(false);
+  const [biometricRequired, setBiometricRequired] = useState(false);
+  const [sessionTimeout, setSessionTimeout] = useState("30");
+  const [mfaCodeTtl, setMfaCodeTtl] = useState("300");
+  const [maxMfaAttempts, setMaxMfaAttempts] = useState("5");
+  const [bypassRoles, setBypassRoles] = useState<string[]>([]);
+  const [dirty, setDirty] = useState(false);
+
+  useEffect(() => {
+    if (settings) {
+      setMfaRequired(settings.mfaRequired ?? false);
+      setBiometricRequired(settings.biometricRequired ?? false);
+      setSessionTimeout(String(settings.sessionTimeoutMinutes ?? 30));
+      setMfaCodeTtl(String(settings.mfaCodeTtlSeconds ?? 300));
+      setMaxMfaAttempts(String(settings.maxMfaAttempts ?? 5));
+      setBypassRoles(settings.bypassRoles ?? []);
+      setDirty(false);
+    }
+  }, [settings]);
+
+  const saveMutation = useMutation({
+    mutationFn: async (payload: any) => {
+      const res = await apiRequest("PUT", "/api/security-settings", payload);
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/security-settings"] });
+      toast({ title: "Security settings saved" });
+      setDirty(false);
+    },
+    onError: (err: any) => {
+      toast({ title: "Failed to save", description: err.message, variant: "destructive" });
+    },
+  });
+
+  const handleSave = () => {
+    saveMutation.mutate({
+      mfaRequired,
+      biometricRequired,
+      sessionTimeoutMinutes: parseInt(sessionTimeout) || 30,
+      mfaCodeTtlSeconds: parseInt(mfaCodeTtl) || 300,
+      maxMfaAttempts: parseInt(maxMfaAttempts) || 5,
+      bypassRoles,
+    });
+  };
+
+  const toggleBypassRole = (role: string) => {
+    setBypassRoles(prev => prev.includes(role) ? prev.filter(r => r !== role) : [...prev, role]);
+    setDirty(true);
+  };
+
+  if (isLoading) return <Skeleton className="h-60 w-full" />;
+
+  const allRoles = ["np", "supervisor", "care_coordinator", "admin", "compliance"];
+  const roleLabels: Record<string, string> = {
+    np: "Nurse Practitioner",
+    supervisor: "Supervisor",
+    care_coordinator: "Care Coordinator",
+    admin: "Administrator",
+    compliance: "Compliance",
+  };
+
+  return (
+    <div className="space-y-4">
+      <Card>
+        <CardContent className="p-4 space-y-5">
+          <div className="flex items-center gap-2">
+            <ShieldCheck className="w-5 h-5" style={{ color: "#277493" }} />
+            <h3 className="font-semibold">Authentication & Access Control</h3>
+          </div>
+
+          <div className="space-y-4">
+            <div className="flex items-center justify-between gap-3 flex-wrap">
+              <div className="space-y-0.5">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <Smartphone className="w-4 h-4 text-muted-foreground" />
+                  <Label className="font-medium">Require Multi-Factor Authentication</Label>
+                </div>
+                <p className="text-xs text-muted-foreground pl-6">
+                  Users must verify with a code sent to their phone after password login
+                </p>
+              </div>
+              <Switch
+                checked={mfaRequired}
+                onCheckedChange={(val) => { setMfaRequired(val); setDirty(true); }}
+                data-testid="switch-mfa-required"
+              />
+            </div>
+
+            <Separator />
+
+            <div className="flex items-center justify-between gap-3 flex-wrap">
+              <div className="space-y-0.5">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <Fingerprint className="w-4 h-4 text-muted-foreground" />
+                  <Label className="font-medium">Require Biometric Authentication (iOS)</Label>
+                </div>
+                <p className="text-xs text-muted-foreground pl-6">
+                  Face ID or Touch ID required on iOS devices (via Capacitor native integration)
+                </p>
+              </div>
+              <Switch
+                checked={biometricRequired}
+                onCheckedChange={(val) => { setBiometricRequired(val); setDirty(true); }}
+                data-testid="switch-biometric-required"
+              />
+            </div>
+
+            <Separator />
+
+            <div className="flex items-center justify-between gap-3 flex-wrap">
+              <div className="space-y-0.5">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <Clock className="w-4 h-4 text-muted-foreground" />
+                  <Label className="font-medium">Session Timeout (minutes)</Label>
+                </div>
+                <p className="text-xs text-muted-foreground pl-6">
+                  Automatically lock the session after this period of inactivity
+                </p>
+              </div>
+              <Input
+                type="number"
+                min="5"
+                max="480"
+                value={sessionTimeout}
+                onChange={(e) => { setSessionTimeout(e.target.value); setDirty(true); }}
+                className="w-20"
+                data-testid="input-session-timeout"
+              />
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {mfaRequired && (
+        <Card>
+          <CardContent className="p-4 space-y-4">
+            <div className="flex items-center gap-2">
+              <Smartphone className="w-5 h-5" style={{ color: "#277493" }} />
+              <h3 className="font-semibold">MFA Configuration</h3>
+            </div>
+
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="space-y-1.5">
+                <Label className="text-sm">Code Expiration (seconds)</Label>
+                <Input
+                  type="number"
+                  min="60"
+                  max="900"
+                  value={mfaCodeTtl}
+                  onChange={(e) => { setMfaCodeTtl(e.target.value); setDirty(true); }}
+                  data-testid="input-mfa-ttl"
+                />
+                <p className="text-xs text-muted-foreground">How long a verification code stays valid</p>
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-sm">Max Verification Attempts</Label>
+                <Input
+                  type="number"
+                  min="3"
+                  max="10"
+                  value={maxMfaAttempts}
+                  onChange={(e) => { setMaxMfaAttempts(e.target.value); setDirty(true); }}
+                  data-testid="input-max-mfa-attempts"
+                />
+                <p className="text-xs text-muted-foreground">Lock account after this many failed attempts</p>
+              </div>
+            </div>
+
+            <Separator />
+
+            <div className="space-y-2">
+              <Label className="text-sm font-medium">MFA Bypass Roles</Label>
+              <p className="text-xs text-muted-foreground">
+                Selected roles skip MFA verification (use with caution)
+              </p>
+              <div className="flex gap-2 flex-wrap mt-1">
+                {allRoles.map(role => (
+                  <Badge
+                    key={role}
+                    variant={bypassRoles.includes(role) ? "default" : "outline"}
+                    className="cursor-pointer toggle-elevate"
+                    onClick={() => toggleBypassRole(role)}
+                    data-testid={`badge-bypass-${role}`}
+                  >
+                    {roleLabels[role]}
+                  </Badge>
+                ))}
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      <div className="flex items-center justify-between gap-3 flex-wrap">
+        <p className="text-xs text-muted-foreground">
+          Changes take effect immediately for all new login sessions.
+        </p>
+        <Button
+          onClick={handleSave}
+          disabled={!dirty || saveMutation.isPending}
+          data-testid="button-save-security"
+        >
+          <Save className="w-4 h-4 mr-2" />
+          {saveMutation.isPending ? "Saving..." : "Save Security Settings"}
+        </Button>
+      </div>
     </div>
   );
 }

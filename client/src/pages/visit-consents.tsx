@@ -65,6 +65,7 @@ export default function VisitConsents() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/visits", visitId, "consents"] });
+      queryClient.invalidateQueries({ queryKey: [`/api/visits/${visitId}/consents`] });
       queryClient.invalidateQueries({ queryKey: ["/api/visits", visitId, "overview"] });
       toast({ title: "Consent recorded" });
       setShowException(false);

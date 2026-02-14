@@ -1,6 +1,6 @@
 import { useState, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Link } from "wouter";
+import { Link, useLocation } from "wouter";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -130,16 +130,21 @@ function VisitCard({ v }: { v: any }) {
   );
 }
 
+const completedStatuses = new Set(["finalized", "synced", "emr_submitted", "export_generated", "ready_for_review"]);
+
 export default function VisitList() {
   const { isMobileLayout } = usePlatform();
+  const [location] = useLocation();
+  const isHistoryView = location === "/visits/history";
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
-  const [sortBy, setSortBy] = useState<SortOption>("date_asc");
+  const [sortBy, setSortBy] = useState<SortOption>(isHistoryView ? "date_desc" : "date_asc");
   const [groupBy, setGroupBy] = useState<GroupOption>("date");
   const { data: visits, isLoading } = useQuery<any[]>({ queryKey: ["/api/visits"] });
 
   const filtered = useMemo(() => {
     return (visits || []).filter((v: any) => {
+      if (isHistoryView && !completedStatuses.has(v.status)) return false;
       const matchSearch =
         !search ||
         v.memberName?.toLowerCase().includes(search.toLowerCase()) ||
@@ -147,7 +152,7 @@ export default function VisitList() {
       const matchStatus = statusFilter === "all" || v.status === statusFilter;
       return matchSearch && matchStatus;
     });
-  }, [visits, search, statusFilter]);
+  }, [visits, search, statusFilter, isHistoryView]);
 
   const sorted = useMemo(() => {
     const arr = [...filtered];
@@ -215,7 +220,7 @@ export default function VisitList() {
       {!isMobileLayout && (
         <div className="flex items-center justify-between gap-3 flex-wrap">
           <div>
-            <h1 className="text-xl font-bold" data-testid="text-visit-list-title">Visits</h1>
+            <h1 className="text-xl font-bold" data-testid="text-visit-list-title">{isHistoryView ? "Visit History" : "Visits"}</h1>
             <p className="text-sm text-muted-foreground mt-1">
               {isLoading ? "Loading..." : `${filtered.length} visit${filtered.length !== 1 ? "s" : ""}`}
             </p>
@@ -225,7 +230,10 @@ export default function VisitList() {
 
       {isMobileLayout && (
         <div className="pb-2">
-          <h1 className="text-lg font-bold" data-testid="text-visit-list-title">Visits</h1>
+          <h1 className="text-lg font-bold" data-testid="text-visit-list-title">{isHistoryView ? "Visit History" : "Visits"}</h1>
+          <p className="text-sm text-muted-foreground mt-0.5">
+            {isLoading ? "Loading..." : `${filtered.length} completed visit${filtered.length !== 1 ? "s" : ""}`}
+          </p>
         </div>
       )}
 
@@ -289,7 +297,14 @@ export default function VisitList() {
           <Card>
             <CardContent className="flex flex-col items-center py-12">
               <ClipboardList className="w-10 h-10 mb-3 text-muted-foreground opacity-40" />
-              <span className="text-sm text-muted-foreground">No visits found</span>
+              <span className="text-sm text-muted-foreground">
+                {isHistoryView ? "No completed visits yet" : "No visits found"}
+              </span>
+              {isHistoryView && (
+                <span className="text-xs text-muted-foreground mt-1">
+                  Completed visits will appear here
+                </span>
+              )}
             </CardContent>
           </Card>
         ) : (

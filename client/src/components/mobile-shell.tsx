@@ -15,8 +15,9 @@ interface MobileShellProps {
 function getActiveTab(path: string): string {
   if (path === "/" || path === "") return "today";
   if (path === "/visits/active") return "visit";
+  if (path === "/visits/history") return "history";
+  if (path === "/visits") return "history";
   if (/^\/visits\/[^/]+/.test(path)) return "visit";
-  if (path === "/visits" || path === "/visits/history") return "history";
   if (path === "/more" || path === "/help" || path === "/demo") return "more";
   return "today";
 }
@@ -74,11 +75,58 @@ function MorePage() {
   );
 }
 
-function VisitTabButton({ isActive }: { isActive: boolean }) {
-  const [, setLocation] = useLocation();
+const ACTIVE_COLOR = "#FEA002";
+const INACTIVE_COLOR = "#8E8E93";
+
+interface TabButtonProps {
+  icon: typeof Calendar;
+  label: string;
+  isActive: boolean;
+  testId: string;
+  onClick?: () => void;
+}
+
+function TabButton({ icon: Icon, label, isActive, testId, onClick }: TabButtonProps) {
+  return (
+    <button
+      onClick={onClick}
+      className="relative flex flex-col items-center justify-center gap-0.5 flex-1 h-full min-w-[64px]"
+      data-testid={testId}
+      role="tab"
+      aria-selected={isActive}
+    >
+      {isActive && (
+        <span
+          className="absolute top-0 left-1/2 -translate-x-1/2 w-8 h-[3px] rounded-b-full"
+          style={{ backgroundColor: ACTIVE_COLOR }}
+        />
+      )}
+      <Icon
+        className="w-[22px] h-[22px]"
+        style={{ color: isActive ? ACTIVE_COLOR : INACTIVE_COLOR }}
+        strokeWidth={isActive ? 2.2 : 1.8}
+      />
+      <span
+        className="text-[10px] leading-tight"
+        style={{
+          color: isActive ? ACTIVE_COLOR : INACTIVE_COLOR,
+          fontWeight: isActive ? 600 : 500,
+        }}
+      >
+        {label}
+      </span>
+    </button>
+  );
+}
+
+export function MobileShell({ children, activeTab: activeTabProp, header }: MobileShellProps) {
+  const [location, setLocation] = useLocation();
+  const currentTab = activeTabProp || getActiveTab(location);
+  const showMore = currentTab === "more" && (location === "/more" || location === "/help" || location === "/demo");
+
   const { data: visits } = useQuery<any[]>({ queryKey: ["/api/visits"] });
 
-  const handleClick = () => {
+  const handleVisitTab = () => {
     const activeVisit = (visits || []).find(
       (v: any) => v.status === "in_progress"
     );
@@ -88,37 +136,6 @@ function VisitTabButton({ isActive }: { isActive: boolean }) {
       setLocation("/visits/active");
     }
   };
-
-  return (
-    <button
-      onClick={handleClick}
-      className="flex flex-col items-center justify-center gap-0.5 w-16 h-full"
-      data-testid="tab-visit"
-    >
-      <ClipboardList
-        className="w-5 h-5"
-        style={{ color: isActive ? "#FEA002" : undefined }}
-      />
-      <span
-        className="text-[10px] font-medium"
-        style={{ color: isActive ? "#FEA002" : undefined }}
-      >
-        Visit
-      </span>
-    </button>
-  );
-}
-
-const staticTabs = [
-  { id: "today", label: "Today", icon: Calendar, href: "/" },
-  { id: "history", label: "History", icon: Clock, href: "/visits/history" },
-  { id: "more", label: "More", icon: Menu, href: "/more" },
-] as const;
-
-export function MobileShell({ children, activeTab: activeTabProp, header }: MobileShellProps) {
-  const [location] = useLocation();
-  const currentTab = activeTabProp || getActiveTab(location);
-  const showMore = currentTab === "more" && (location === "/more" || location === "/help" || location === "/demo");
 
   return (
     <div className="flex flex-col h-screen" data-testid="mobile-shell">
@@ -137,67 +154,40 @@ export function MobileShell({ children, activeTab: activeTabProp, header }: Mobi
         className="fixed bottom-0 left-0 right-0 z-[100] bg-card border-t mobile-tab-bar"
         data-testid="mobile-tab-bar"
         style={{ paddingBottom: "env(safe-area-inset-bottom, 0px)" }}
+        role="tablist"
       >
-        <div className="flex items-center justify-around h-[56px]">
-          {/* Today tab */}
-          <Link href="/">
-            <button
-              className="flex flex-col items-center justify-center gap-0.5 w-16 h-full"
-              data-testid="tab-today"
-            >
-              <Calendar
-                className="w-5 h-5"
-                style={{ color: currentTab === "today" ? "#FEA002" : undefined }}
-              />
-              <span
-                className="text-[10px] font-medium"
-                style={{ color: currentTab === "today" ? "#FEA002" : undefined }}
-              >
-                Today
-              </span>
-            </button>
-          </Link>
+        <div className="flex items-stretch h-[56px]">
+          <TabButton
+            icon={Calendar}
+            label="Today"
+            isActive={currentTab === "today"}
+            testId="tab-today"
+            onClick={() => setLocation("/")}
+          />
 
-          {/* Visit tab - smart navigation */}
-          <VisitTabButton isActive={currentTab === "visit"} />
+          <TabButton
+            icon={ClipboardList}
+            label="Visit"
+            isActive={currentTab === "visit"}
+            testId="tab-visit"
+            onClick={handleVisitTab}
+          />
 
-          {/* History tab */}
-          <Link href="/visits/history">
-            <button
-              className="flex flex-col items-center justify-center gap-0.5 w-16 h-full"
-              data-testid="tab-history"
-            >
-              <Clock
-                className="w-5 h-5"
-                style={{ color: currentTab === "history" ? "#FEA002" : undefined }}
-              />
-              <span
-                className="text-[10px] font-medium"
-                style={{ color: currentTab === "history" ? "#FEA002" : undefined }}
-              >
-                History
-              </span>
-            </button>
-          </Link>
+          <TabButton
+            icon={Clock}
+            label="History"
+            isActive={currentTab === "history"}
+            testId="tab-history"
+            onClick={() => setLocation("/visits/history")}
+          />
 
-          {/* More tab */}
-          <Link href="/more">
-            <button
-              className="flex flex-col items-center justify-center gap-0.5 w-16 h-full"
-              data-testid="tab-more"
-            >
-              <Menu
-                className="w-5 h-5"
-                style={{ color: currentTab === "more" ? "#FEA002" : undefined }}
-              />
-              <span
-                className="text-[10px] font-medium"
-                style={{ color: currentTab === "more" ? "#FEA002" : undefined }}
-              >
-                More
-              </span>
-            </button>
-          </Link>
+          <TabButton
+            icon={Menu}
+            label="More"
+            isActive={currentTab === "more"}
+            testId="tab-more"
+            onClick={() => setLocation("/more")}
+          />
         </div>
       </div>
     </div>

@@ -695,6 +695,8 @@ function ProviderCard({ provider, onUpdate, onDelete, isPending, isDeleting }: {
     extractionModel: provider.extractionModel,
     speechRegion: provider.speechRegion || "",
     speechEndpoint: provider.speechEndpoint || "",
+    azureOpenAiEndpoint: provider.azureOpenAiEndpoint || "",
+    azureOpenAiKeySecretName: provider.azureOpenAiKeySecretName || "",
     active: provider.active,
   });
 
@@ -818,6 +820,31 @@ function ProviderCard({ provider, onUpdate, onDelete, isPending, isDeleting }: {
               <span className="text-xs text-muted-foreground block">Extraction Model</span>
               <span className="text-xs font-mono">{provider.extractionModel}</span>
             </div>
+            {provider.providerType === "azure_speech" && (provider.azureOpenAiEndpoint || provider.azureOpenAiKeySecretName) && (
+              <>
+                <div className="sm:col-span-2 border-t pt-1 mt-1">
+                  <span className="text-xs font-semibold text-muted-foreground">Azure OpenAI (Extraction / Suggestions)</span>
+                </div>
+                {provider.azureOpenAiEndpoint && (
+                  <div className="flex items-start gap-1.5">
+                    <Globe className="w-3 h-3 mt-0.5 text-muted-foreground" />
+                    <div>
+                      <span className="text-xs text-muted-foreground block">Azure OpenAI Endpoint</span>
+                      <span className="text-xs font-mono">{provider.azureOpenAiEndpoint}</span>
+                    </div>
+                  </div>
+                )}
+                {provider.azureOpenAiKeySecretName && (
+                  <div className="flex items-start gap-1.5">
+                    <Key className="w-3 h-3 mt-0.5 text-muted-foreground" />
+                    <div>
+                      <span className="text-xs text-muted-foreground block">Azure OpenAI Key Secret</span>
+                      <span className="text-xs font-mono">{provider.azureOpenAiKeySecretName}</span>
+                    </div>
+                  </div>
+                )}
+              </>
+            )}
             <div className="sm:col-span-2">
               <span className="text-xs text-muted-foreground block mb-1">Feature Flags</span>
               <div className="flex flex-wrap gap-1">
@@ -950,6 +977,29 @@ function ProviderCard({ provider, onUpdate, onDelete, isPending, isDeleting }: {
                       data-testid="input-speech-endpoint"
                     />
                   </div>
+                  <div className="sm:col-span-2 border-t pt-2 mt-1">
+                    <span className="text-xs font-semibold text-muted-foreground">Azure OpenAI (Extraction / Clinical Suggestions)</span>
+                  </div>
+                  <div>
+                    <Label className="text-xs">Azure OpenAI Endpoint</Label>
+                    <Input
+                      value={form.azureOpenAiEndpoint}
+                      onChange={(e) => setForm({ ...form, azureOpenAiEndpoint: e.target.value })}
+                      placeholder="https://your-resource.openai.azure.com"
+                      className="mt-1 font-mono text-xs"
+                      data-testid="input-azure-openai-endpoint"
+                    />
+                  </div>
+                  <div>
+                    <Label className="text-xs">Azure OpenAI Key Secret Name</Label>
+                    <Input
+                      value={form.azureOpenAiKeySecretName}
+                      onChange={(e) => setForm({ ...form, azureOpenAiKeySecretName: e.target.value })}
+                      placeholder="AZURE_OPENAI_API_KEY"
+                      className="mt-1 font-mono text-xs"
+                      data-testid="input-azure-openai-key-name"
+                    />
+                  </div>
                 </>
               ) : (
                 <div>
@@ -1019,6 +1069,8 @@ function AddProviderForm({ onSubmit, onCancel, isPending }: { onSubmit: (d: any)
     extractionModel: "gpt-4o-mini",
     speechRegion: "",
     speechEndpoint: "",
+    azureOpenAiEndpoint: "",
+    azureOpenAiKeySecretName: "",
     active: false,
     featureFlags: { transcription: true, extraction: true, clinicalSuggestions: false },
   });
@@ -1082,6 +1134,29 @@ function AddProviderForm({ onSubmit, onCancel, isPending }: { onSubmit: (d: any)
                   placeholder="https://eastus.api.cognitive.microsoft.com"
                   className="mt-1 font-mono text-xs"
                   data-testid="input-new-speech-endpoint"
+                />
+              </div>
+              <div className="sm:col-span-2 border-t pt-2 mt-1">
+                <span className="text-xs font-semibold text-muted-foreground">Azure OpenAI (Extraction / Clinical Suggestions)</span>
+              </div>
+              <div>
+                <Label className="text-xs">Azure OpenAI Endpoint</Label>
+                <Input
+                  value={form.azureOpenAiEndpoint}
+                  onChange={(e) => setForm({ ...form, azureOpenAiEndpoint: e.target.value })}
+                  placeholder="https://your-resource.openai.azure.com"
+                  className="mt-1 font-mono text-xs"
+                  data-testid="input-new-azure-openai-endpoint"
+                />
+              </div>
+              <div>
+                <Label className="text-xs">Azure OpenAI Key Secret Name</Label>
+                <Input
+                  value={form.azureOpenAiKeySecretName}
+                  onChange={(e) => setForm({ ...form, azureOpenAiKeySecretName: e.target.value })}
+                  placeholder="AZURE_OPENAI_API_KEY"
+                  className="mt-1 font-mono text-xs"
+                  data-testid="input-new-azure-openai-key-name"
                 />
               </div>
             </>

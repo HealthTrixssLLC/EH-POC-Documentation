@@ -4442,16 +4442,15 @@ export async function registerRoutes(
       if (extractionModel) {
         const extractionStart = Date.now();
         try {
-          const azureOpenAiKey = process.env["AZURE_OPENAI_API_KEY"];
-          const azureOpenAiEndpoint = process.env["AZURE_OPENAI_ENDPOINT"] || config.baseUrl;
+          const azureOpenAiEndpoint = config.azureOpenAiEndpoint || process.env["AZURE_OPENAI_ENDPOINT"];
+          const azureOpenAiKeyName = config.azureOpenAiKeySecretName || "AZURE_OPENAI_API_KEY";
+          const azureOpenAiKey = process.env[azureOpenAiKeyName];
           const useAzureOpenAiForExtraction = providerType === "azure_speech" && azureOpenAiKey && azureOpenAiEndpoint;
 
           const extractionKey = providerType === "azure_speech"
             ? (azureOpenAiKey || process.env["OPENAI_API_KEY"] || apiKey)
-            : (process.env["OPENAI_API_KEY"] || apiKey);
-          const extractionBaseUrl = providerType === "azure_speech"
-            ? "https://api.openai.com/v1"
-            : (config.baseUrl || (providerType === "anthropic" ? "https://api.anthropic.com" : "https://api.openai.com/v1"));
+            : apiKey;
+          const extractionBaseUrl = config.baseUrl || (providerType === "anthropic" ? "https://api.anthropic.com" : "https://api.openai.com/v1");
 
           let response: Response;
           if (providerType === "anthropic") {
@@ -4923,13 +4922,16 @@ export async function registerRoutes(
       const apiKey = process.env[aiConfig.apiKeySecretName];
       if (!apiKey) return res.status(400).json({ message: `AI API key '${aiConfig.apiKeySecretName}' not found` });
 
+      const azureOpenAiEndpoint = aiConfig.azureOpenAiEndpoint || process.env["AZURE_OPENAI_ENDPOINT"];
+      const azureOpenAiKeyName = aiConfig.azureOpenAiKeySecretName || "AZURE_OPENAI_API_KEY";
+      const azureOpenAiKey = process.env[azureOpenAiKeyName];
+      const useAzureOpenAiForExtraction = providerType === "azure_speech" && azureOpenAiKey && azureOpenAiEndpoint;
+
       const extractionKey = providerType === "azure_speech"
-        ? (process.env["AZURE_OPENAI_API_KEY"] || process.env["OPENAI_API_KEY"] || apiKey)
+        ? (azureOpenAiKey || process.env["OPENAI_API_KEY"] || apiKey)
         : apiKey;
 
-      const extractionBaseUrl = providerType === "azure_speech"
-        ? (aiConfig.baseUrl || "https://api.openai.com/v1")
-        : (aiConfig.baseUrl || (providerType === "anthropic" ? "https://api.anthropic.com" : "https://api.openai.com/v1"));
+      const extractionBaseUrl = aiConfig.baseUrl || (providerType === "anthropic" ? "https://api.anthropic.com" : "https://api.openai.com/v1");
 
       try {
         const extractionModel = aiConfig.extractionModel || "gpt-4o-mini";
@@ -4951,14 +4953,15 @@ Transcript:
 ${transcript.text}`;
 
         let result: any;
-        if (providerType === "azure_openai") {
-          const azureBase = (aiConfig.baseUrl || "").replace(/\/+$/, "");
+        if (providerType === "azure_openai" || useAzureOpenAiForExtraction) {
+          const azureBase = (useAzureOpenAiForExtraction ? azureOpenAiEndpoint! : (aiConfig.baseUrl || "")).replace(/\/+$/, "");
+          const azureKey = useAzureOpenAiForExtraction ? azureOpenAiKey! : apiKey;
           const apiVersion = "2025-03-01-preview";
           const response = await fetch(`${azureBase}/openai/deployments/${extractionModel}/chat/completions?api-version=${apiVersion}`, {
             method: "POST",
             headers: {
               "Content-Type": "application/json",
-              "Authorization": `Bearer ${apiKey}`,
+              "api-key": azureKey,
             },
             body: JSON.stringify({
               messages: [{ role: "user", content: extractionPrompt }],

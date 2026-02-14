@@ -4442,11 +4442,15 @@ export async function registerRoutes(
       if (extractionModel) {
         const extractionStart = Date.now();
         try {
+          const azureOpenAiKey = process.env["AZURE_OPENAI_API_KEY"];
+          const azureOpenAiEndpoint = process.env["AZURE_OPENAI_ENDPOINT"] || config.baseUrl;
+          const useAzureOpenAiForExtraction = providerType === "azure_speech" && azureOpenAiKey && azureOpenAiEndpoint;
+
           const extractionKey = providerType === "azure_speech"
-            ? (process.env["AZURE_OPENAI_API_KEY"] || process.env["OPENAI_API_KEY"] || apiKey)
+            ? (azureOpenAiKey || process.env["OPENAI_API_KEY"] || apiKey)
             : (process.env["OPENAI_API_KEY"] || apiKey);
           const extractionBaseUrl = providerType === "azure_speech"
-            ? (config.baseUrl || "https://api.openai.com/v1")
+            ? "https://api.openai.com/v1"
             : (config.baseUrl || (providerType === "anthropic" ? "https://api.anthropic.com" : "https://api.openai.com/v1"));
 
           let response: Response;
@@ -4464,14 +4468,15 @@ export async function registerRoutes(
                 messages: [{ role: "user", content: "Reply with exactly: OK" }],
               }),
             });
-          } else if (providerType === "azure_openai") {
-            const azureBase = (config.baseUrl || "").replace(/\/+$/, "");
+          } else if (providerType === "azure_openai" || useAzureOpenAiForExtraction) {
+            const azureBase = (useAzureOpenAiForExtraction ? azureOpenAiEndpoint! : (config.baseUrl || "")).replace(/\/+$/, "");
+            const azureKey = useAzureOpenAiForExtraction ? azureOpenAiKey! : apiKey;
             const apiVersion = "2025-03-01-preview";
             response = await fetch(`${azureBase}/openai/deployments/${extractionModel}/chat/completions?api-version=${apiVersion}`, {
               method: "POST",
               headers: {
                 "Content-Type": "application/json",
-                "Authorization": `Bearer ${apiKey}`,
+                "api-key": azureKey,
               },
               body: JSON.stringify({
                 max_tokens: 20,

@@ -762,7 +762,7 @@ export default function PatientTimeline() {
   const isLoading = labsLoading || medsLoading || vitalsLoading;
 
   return (
-    <div className={`space-y-6 max-w-6xl mx-auto ${isMobileLayout ? "pb-20 px-4" : ""}`}>
+    <div className={`space-y-6 max-w-6xl mx-auto ${isMobileLayout ? "pb-20" : ""}`}>
       {isMobileLayout ? (
         <h1 className="text-lg font-bold pt-2" data-testid="text-page-title">Clinical Timeline</h1>
       ) : (

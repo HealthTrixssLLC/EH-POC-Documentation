@@ -178,15 +178,13 @@ function MobileLayout() {
   return (
     <MobileShell
       header={
-        <>
-          <DemoWatermark />
-          <MobileHeader
-            title={title}
-            backHref={isSubpage ? backTarget : undefined}
-          />
-        </>
+        <MobileHeader
+          title={title}
+          backHref={isSubpage ? backTarget : undefined}
+        />
       }
     >
+      <DemoWatermark />
       <main className="p-3">
         <Router />
       </main>
@@ -199,7 +197,7 @@ function MobileLayout() {
             style={{
               backgroundColor: "#FEA002",
               borderColor: "#FEA002",
-              bottom: "calc(72px + env(safe-area-inset-bottom, 0px))",
+              bottom: "calc(130px + env(safe-area-inset-bottom, 0px))",
               right: "16px",
             }}
             data-testid="fab-voice-capture"

@@ -160,7 +160,7 @@ export default function MobileVisitWizard({ visitId }: { visitId: string }) {
   const memberName = member ? `${member.firstName} ${member.lastName}` : "";
 
   return (
-    <div className="pb-20" data-testid="mobile-visit-wizard">
+    <div className="pb-32" data-testid="mobile-visit-wizard">
       <div className="p-4 space-y-4">
         <div className="flex items-center gap-3">
           <Avatar className="h-10 w-10 flex-shrink-0">
@@ -245,7 +245,12 @@ export default function MobileVisitWizard({ visitId }: { visitId: string }) {
         ))}
       </div>
 
-      <div className="fixed bottom-16 left-0 right-0 p-4 border-t bg-background" style={{ paddingBottom: "env(safe-area-inset-bottom, 8px)" }}>
+      <div
+        className="fixed left-0 right-0 p-4 border-t bg-background"
+        style={{
+          bottom: "calc(60px + env(safe-area-inset-bottom, 0px))",
+        }}
+      >
         <Link href={`/visits/${visitId}/finalize`}>
           <Button className="w-full" size="lg" disabled={!allDone} data-testid="button-mobile-finalize">
             {allDone ? "Review & Finalize" : `${totalSteps - resolvedCount} Steps Remaining`}

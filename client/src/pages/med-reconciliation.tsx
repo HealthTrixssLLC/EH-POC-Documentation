@@ -468,7 +468,7 @@ export default function MedReconciliation() {
   const totalWarnings = beersWarnings.length + interactions.length;
 
   return (
-    <div className={`space-y-6 ${isMobileLayout ? "pb-20 px-4" : ""}`}>
+    <div className={`space-y-6 ${isMobileLayout ? "pb-20" : ""}`}>
       {!isMobileLayout && (
         <div className="flex items-center gap-3 flex-wrap">
           <Link href={`/visits/${visitId}/intake`}>
@@ -486,7 +486,7 @@ export default function MedReconciliation() {
       )}
 
       {isMobileLayout && (
-        <h1 className="text-lg font-bold px-4 pt-2">Medication Reconciliation</h1>
+        <h1 className="text-lg font-bold pt-2">Medication Reconciliation</h1>
       )}
 
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">

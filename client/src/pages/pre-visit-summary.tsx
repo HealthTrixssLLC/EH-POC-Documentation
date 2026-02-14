@@ -87,7 +87,7 @@ export default function PreVisitSummary() {
   const ingestionSummary = hieData?.ingestionSummary;
 
   return (
-    <div className={`space-y-6 ${isMobileLayout ? "pb-24 px-4" : ""}`}>
+    <div className={`space-y-6 ${isMobileLayout ? "pb-32" : ""}`}>
       {!isMobileLayout && (
         <div className="flex items-center gap-3 flex-wrap">
           <Link href="/visits">
@@ -106,28 +106,24 @@ export default function PreVisitSummary() {
       {member && (
         <Card>
           <CardContent className="p-4">
-            <div className="flex items-start justify-between gap-4 flex-wrap">
-              <div className="flex items-center gap-4 flex-wrap">
-                <div className="flex items-center justify-center w-12 h-12 rounded-md flex-shrink-0" style={{ backgroundColor: "#2E456B15" }}>
-                  <User className="w-6 h-6" style={{ color: "#2E456B" }} />
-                </div>
-                <div className="flex flex-col gap-1">
-                  <h2 className="text-lg font-bold" data-testid="text-member-name">
-                    {member.firstName} {member.lastName}
-                  </h2>
-                  <div className="flex items-center gap-4 text-xs text-muted-foreground flex-wrap">
-                    <span>DOB: {member.dob}</span>
-                    <span>ID: {member.memberId}</span>
-                    {member.gender && <span>Gender: {member.gender}</span>}
-                  </div>
-                </div>
+            <div className="flex items-start gap-3">
+              <div className="flex items-center justify-center w-12 h-12 rounded-md flex-shrink-0" style={{ backgroundColor: "#2E456B15" }}>
+                <User className="w-6 h-6" style={{ color: "#2E456B" }} />
               </div>
-              <div className="flex flex-col gap-1 text-xs text-muted-foreground">
+              <div className="flex flex-col gap-1 min-w-0 flex-1">
+                <h2 className="text-lg font-bold truncate" data-testid="text-member-name">
+                  {member.firstName} {member.lastName}
+                </h2>
+                <div className="flex items-center gap-3 text-xs text-muted-foreground flex-wrap">
+                  <span>DOB: {member.dob}</span>
+                  <span>ID: {member.memberId}</span>
+                  {member.gender && <span>Gender: {member.gender}</span>}
+                </div>
                 {member.phone && (
-                  <span className="flex items-center gap-1"><Phone className="w-3 h-3" /> {member.phone}</span>
+                  <span className="flex items-center gap-1 text-xs text-muted-foreground mt-1"><Phone className="w-3 h-3 flex-shrink-0" /> {member.phone}</span>
                 )}
                 {member.address && (
-                  <span className="flex items-center gap-1"><MapPin className="w-3 h-3" /> {member.address}, {member.city}, {member.state} {member.zip}</span>
+                  <span className="flex items-center gap-1 text-xs text-muted-foreground truncate"><MapPin className="w-3 h-3 flex-shrink-0" /> {member.address}, {member.city}, {member.state} {member.zip}</span>
                 )}
               </div>
             </div>
@@ -138,18 +134,20 @@ export default function PreVisitSummary() {
       {visit && (
         <Card>
           <CardContent className="p-4">
-            <div className="flex items-center gap-4 text-sm flex-wrap">
+            <div className="flex items-center gap-3 text-sm flex-wrap">
               <span className="flex items-center gap-1 text-muted-foreground">
-                <Calendar className="w-4 h-4" /> {visit.scheduledDate} {visit.scheduledTime || ""}
+                <Calendar className="w-4 h-4 flex-shrink-0" /> {visit.scheduledDate} {visit.scheduledTime || ""}
               </span>
               <Badge variant="secondary">{visit.visitType?.replace(/_/g, " ")}</Badge>
-              {visit.travelNotes && <span className="text-muted-foreground">Travel: {visit.travelNotes}</span>}
-              {visit.safetyNotes && (
-                <span className="flex items-center gap-1 text-destructive">
-                  <AlertTriangle className="w-3 h-3" /> {visit.safetyNotes}
-                </span>
-              )}
             </div>
+            {visit.travelNotes && (
+              <p className="text-xs text-muted-foreground mt-2 truncate">Travel: {visit.travelNotes}</p>
+            )}
+            {visit.safetyNotes && (
+              <p className="flex items-center gap-1 text-xs text-destructive mt-1">
+                <AlertTriangle className="w-3 h-3 flex-shrink-0" /> {visit.safetyNotes}
+              </p>
+            )}
           </CardContent>
         </Card>
       )}
@@ -430,7 +428,12 @@ export default function PreVisitSummary() {
       )}
 
       {isMobileLayout && (
-        <div className="fixed bottom-16 left-0 right-0 p-4 border-t bg-background" style={{ paddingBottom: "env(safe-area-inset-bottom, 8px)" }}>
+        <div
+          className="fixed left-0 right-0 p-4 border-t bg-background"
+          style={{
+            bottom: "calc(60px + env(safe-area-inset-bottom, 0px))",
+          }}
+        >
           <Link href={`/visits/${visitId}/intake`}>
             <Button className="w-full" size="lg" data-testid="button-start-visit-mobile">
               Start Visit <ArrowRight className="w-4 h-4 ml-2" />

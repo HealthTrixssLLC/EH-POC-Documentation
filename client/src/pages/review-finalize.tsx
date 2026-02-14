@@ -170,9 +170,9 @@ export default function ReviewFinalize() {
 
   if (visit?.status === "finalized" || visit?.status === "ready_for_review") {
     return (
-      <div className={`space-y-6 ${isMobileLayout ? "pb-20 px-4" : ""}`}>
+      <div className={`space-y-6 ${isMobileLayout ? "pb-20" : ""}`}>
         {isMobileLayout ? (
-          <h1 className="text-lg font-bold px-4 pt-2">Review & Finalize</h1>
+          <h1 className="text-lg font-bold pt-2">Review & Finalize</h1>
         ) : (
           <div className="flex items-center gap-3 flex-wrap">
             <Link href="/visits">
@@ -193,9 +193,9 @@ export default function ReviewFinalize() {
   }
 
   return (
-    <div className={`space-y-6 ${isMobileLayout ? "pb-20 px-4" : ""}`}>
+    <div className={`space-y-6 ${isMobileLayout ? "pb-20" : ""}`}>
       {isMobileLayout ? (
-        <h1 className="text-lg font-bold px-4 pt-2">Review & Finalize</h1>
+        <h1 className="text-lg font-bold pt-2">Review & Finalize</h1>
       ) : (
         <div className="flex items-center gap-3 flex-wrap">
           <Link href={`/visits/${visitId}/intake`}>

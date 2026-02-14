@@ -49,7 +49,7 @@ export default function PatientContext() {
   const allFlags = [...vitalsFlags, ...assessmentFlags.map((f: any) => ({ ...f, message: `${f.instrumentId}: Score ${f.score} - ${f.interpretation}`, label: f.instrumentId }))];
 
   return (
-    <div className={`space-y-4 ${isMobileLayout ? "pb-20 px-4" : ""}`}>
+    <div className={`space-y-4 ${isMobileLayout ? "pb-20" : ""}`}>
       {isMobileLayout ? (
         <h1 className="text-lg font-bold pt-2" data-testid="text-context-title">Patient Context</h1>
       ) : (

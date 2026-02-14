@@ -84,7 +84,7 @@ export default function CarePlan() {
   if (isLoading) return <Skeleton className="h-48 w-full" />;
 
   return (
-    <div className={`space-y-6 ${isMobileLayout ? "pb-20 px-4" : ""}`}>
+    <div className={`space-y-6 ${isMobileLayout ? "pb-20" : ""}`}>
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         {isMobileLayout ? (
           <div className="flex items-center justify-between gap-3 pt-2">

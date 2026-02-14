@@ -210,9 +210,9 @@ export default function HedisMeasure() {
   const isAwaitingData = !isComplete && isClinical;
 
   return (
-    <div className={`space-y-4 ${isMobileLayout ? "pb-20 px-4" : ""}`}>
+    <div className={`space-y-4 ${isMobileLayout ? "pb-20" : ""}`}>
       {isMobileLayout ? (
-        <h1 className="text-lg font-bold px-4 pt-2" data-testid="text-measure-title">{definition?.name || "HEDIS Measure"}</h1>
+        <h1 className="text-lg font-bold pt-2" data-testid="text-measure-title">{definition?.name || "HEDIS Measure"}</h1>
       ) : (
         <div className="flex items-center gap-3 flex-wrap">
           <Link href={`/visits/${visitId}/intake`}>

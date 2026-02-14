@@ -17,13 +17,11 @@ import { usePlatform } from "@/hooks/use-platform";
 const statusColors: Record<string, string> = {
   scheduled: "secondary",
   in_progress: "default",
-  ready_for_review: "outline",
 };
 
 const statusLabels: Record<string, string> = {
   scheduled: "Scheduled",
   in_progress: "In Progress",
-  ready_for_review: "Ready for Review",
 };
 
 function getInitials(name: string): string {
@@ -102,12 +100,10 @@ export default function VisitActive() {
   });
 
   const activeVisits = useMemo(() => {
-    const today = new Date().toISOString().split("T")[0];
     return (visits || []).filter(
       (v: any) =>
         v.status === "in_progress" ||
-        v.status === "scheduled" ||
-        v.status === "ready_for_review"
+        v.status === "scheduled"
     );
   }, [visits]);
 
@@ -116,9 +112,6 @@ export default function VisitActive() {
   );
   const scheduledVisits = activeVisits.filter(
     (v: any) => v.status === "scheduled"
-  );
-  const reviewVisits = activeVisits.filter(
-    (v: any) => v.status === "ready_for_review"
   );
 
   return (
@@ -133,7 +126,7 @@ export default function VisitActive() {
         <p className="text-sm text-muted-foreground mt-0.5">
           {isLoading
             ? "Loading..."
-            : `${activeVisits.length} active visit${activeVisits.length !== 1 ? "s" : ""}`}
+            : `${activeVisits.length} visit${activeVisits.length !== 1 ? "s" : ""} needing action`}
         </p>
       </div>
 
@@ -146,10 +139,10 @@ export default function VisitActive() {
           <CardContent className="flex flex-col items-center py-12">
             <ClipboardList className="w-10 h-10 mb-3 text-muted-foreground opacity-40" />
             <span className="text-sm text-muted-foreground">
-              No active visits
+              No visits need action
             </span>
             <span className="text-xs text-muted-foreground mt-1">
-              Check History for past visits
+              All visits are completed or pending review
             </span>
           </CardContent>
         </Card>
@@ -199,27 +192,6 @@ export default function VisitActive() {
             </div>
           )}
 
-          {reviewVisits.length > 0 && (
-            <div className="space-y-2">
-              <div className="flex items-center gap-2 pb-1">
-                <ClipboardList className="w-4 h-4 text-muted-foreground" />
-                <h2 className="text-sm font-semibold text-muted-foreground">
-                  Ready for Review
-                </h2>
-                <Badge
-                  variant="secondary"
-                  className="text-xs no-default-active-elevate"
-                >
-                  {reviewVisits.length}
-                </Badge>
-              </div>
-              <div className="space-y-2">
-                {reviewVisits.map((v: any) => (
-                  <ActiveVisitCard key={v.id} v={v} />
-                ))}
-              </div>
-            </div>
-          )}
         </>
       )}
     </div>

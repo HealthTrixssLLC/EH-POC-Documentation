@@ -63,7 +63,7 @@ export default function VoiceCapture() {
   const hasConsent = !!voiceConsent;
 
   return (
-    <div className={`space-y-6 ${isMobileLayout ? "pb-20 px-4" : ""}`}>
+    <div className={`space-y-6 ${isMobileLayout ? "pb-20" : ""}`}>
       {isMobileLayout ? (
         <h1 className="text-lg font-bold pt-2" data-testid="text-voice-title">Voice Capture</h1>
       ) : (

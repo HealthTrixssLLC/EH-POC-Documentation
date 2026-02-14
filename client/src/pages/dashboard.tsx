@@ -119,55 +119,54 @@ function NPDashboard() {
         </div>
 
         <div className="space-y-3">
-          {stats?.upcomingVisits?.length ? (
-            stats.upcomingVisits.map((v: any) => (
-              <Link key={v.id} href={`/visits/${v.id}/summary`}>
-                <Card
-                  className="hover-elevate cursor-pointer"
-                  data-testid={`mobile-visit-card-${v.id}`}
-                >
-                  <CardContent className="p-3">
-                    <div className="flex items-center gap-3" style={{ minHeight: "48px" }}>
-                      <Avatar className="h-10 w-10 flex-shrink-0">
-                        <AvatarFallback className="bg-[#2E456B] text-white text-xs">
-                          {getInitials(v.memberName)}
-                        </AvatarFallback>
-                      </Avatar>
-                      <div className="flex-1 min-w-0">
-                        <p className="font-medium text-sm truncate">{v.memberName}</p>
-                        <p className="text-xs text-muted-foreground">
-                          {v.scheduledDate} {v.scheduledTime}
-                        </p>
-                        <div className="flex items-center gap-2 mt-1 flex-wrap">
+          {(() => {
+            const today = new Date().toISOString().split("T")[0];
+            const todayVisits = (stats?.upcomingVisits || []).filter(
+              (v: any) => v.scheduledDate === today
+            );
+            return todayVisits.length ? (
+              todayVisits.map((v: any) => (
+                <Link key={v.id} href={v.status === "in_progress" ? `/visits/${v.id}/intake` : `/visits/${v.id}/summary`}>
+                  <Card
+                    className="hover-elevate cursor-pointer"
+                    data-testid={`mobile-visit-card-${v.id}`}
+                  >
+                    <CardContent className="p-3">
+                      <div className="flex items-center gap-3" style={{ minHeight: "48px" }}>
+                        <Avatar className="h-10 w-10 flex-shrink-0">
+                          <AvatarFallback className="bg-[#2E456B] text-white text-xs">
+                            {getInitials(v.memberName)}
+                          </AvatarFallback>
+                        </Avatar>
+                        <div className="flex-1 min-w-0">
+                          <p className="font-medium text-sm truncate">{v.memberName}</p>
+                          <p className="text-xs text-muted-foreground">
+                            {v.scheduledTime || "No time set"}
+                          </p>
                           {v.visitType && (
-                            <Badge variant="outline" className="text-xs">
+                            <Badge variant="outline" className="text-xs mt-1">
                               {formatVisitType(v.visitType)}
                             </Badge>
                           )}
-                          {v.address && (
-                            <span className="text-xs text-muted-foreground truncate">
-                              {v.address}
-                            </span>
-                          )}
                         </div>
+                        <Badge
+                          variant={v.status === "scheduled" ? "secondary" : "default"}
+                          className="text-xs flex-shrink-0"
+                        >
+                          {v.status === "in_progress" ? "In Progress" : v.status === "scheduled" ? "Scheduled" : v.status}
+                        </Badge>
                       </div>
-                      <Badge
-                        variant={v.status === "scheduled" ? "secondary" : "default"}
-                        className="text-xs flex-shrink-0"
-                      >
-                        {v.status}
-                      </Badge>
-                    </div>
-                  </CardContent>
-                </Card>
-              </Link>
-            ))
-          ) : (
-            <div className="flex flex-col items-center py-12 text-muted-foreground">
-              <Calendar className="w-10 h-10 mb-3 opacity-40" />
-              <span className="text-sm">No visits scheduled</span>
-            </div>
-          )}
+                    </CardContent>
+                  </Card>
+                </Link>
+              ))
+            ) : (
+              <div className="flex flex-col items-center py-12 text-muted-foreground">
+                <Calendar className="w-10 h-10 mb-3 opacity-40" />
+                <span className="text-sm">No visits scheduled for today</span>
+              </div>
+            );
+          })()}
         </div>
       </div>
     );

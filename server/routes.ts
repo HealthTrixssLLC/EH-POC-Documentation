@@ -4442,9 +4442,11 @@ export async function registerRoutes(
       if (extractionModel) {
         const extractionStart = Date.now();
         try {
-          const extractionKey = process.env["OPENAI_API_KEY"] || apiKey;
+          const extractionKey = providerType === "azure_speech"
+            ? (process.env["AZURE_OPENAI_API_KEY"] || process.env["OPENAI_API_KEY"] || apiKey)
+            : (process.env["OPENAI_API_KEY"] || apiKey);
           const extractionBaseUrl = providerType === "azure_speech"
-            ? "https://api.openai.com/v1"
+            ? (config.baseUrl || "https://api.openai.com/v1")
             : (config.baseUrl || (providerType === "anthropic" ? "https://api.anthropic.com" : "https://api.openai.com/v1"));
 
           let response: Response;
@@ -4912,12 +4914,20 @@ export async function registerRoutes(
 
       const aiConfig = await storage.getActiveAiProvider();
       if (!aiConfig) return res.status(400).json({ message: "No active AI provider configured" });
+      const providerType = aiConfig.providerType;
       const apiKey = process.env[aiConfig.apiKeySecretName];
       if (!apiKey) return res.status(400).json({ message: `AI API key '${aiConfig.apiKeySecretName}' not found` });
 
+      const extractionKey = providerType === "azure_speech"
+        ? (process.env["AZURE_OPENAI_API_KEY"] || process.env["OPENAI_API_KEY"] || apiKey)
+        : apiKey;
+
+      const extractionBaseUrl = providerType === "azure_speech"
+        ? (aiConfig.baseUrl || "https://api.openai.com/v1")
+        : (aiConfig.baseUrl || (providerType === "anthropic" ? "https://api.anthropic.com" : "https://api.openai.com/v1"));
+
       try {
-        const OpenAI = (await import("openai")).default;
-        const openai = new OpenAI({ apiKey, baseURL: aiConfig.baseUrl || undefined });
+        const extractionModel = aiConfig.extractionModel || "gpt-4o-mini";
 
         const extractionPrompt = `You are a clinical data extraction assistant for in-home NP visits. Extract structured clinical data from the following visit transcript.
 
@@ -4935,11 +4945,56 @@ Only extract data that is clearly stated. Do not infer or guess values. Return O
 Transcript:
 ${transcript.text}`;
 
-        const result = await openai.chat.completions.create({
-          model: aiConfig.extractionModel || "gpt-4o-mini",
-          messages: [{ role: "user", content: extractionPrompt }],
-          response_format: { type: "json_object" },
-        });
+        let result: any;
+        if (providerType === "azure_openai") {
+          const azureBase = (aiConfig.baseUrl || "").replace(/\/+$/, "");
+          const apiVersion = "2025-03-01-preview";
+          const response = await fetch(`${azureBase}/openai/deployments/${extractionModel}/chat/completions?api-version=${apiVersion}`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "Authorization": `Bearer ${apiKey}`,
+            },
+            body: JSON.stringify({
+              messages: [{ role: "user", content: extractionPrompt }],
+              response_format: { type: "json_object" },
+            }),
+          });
+          if (!response.ok) {
+            const errBody = await response.text();
+            throw new Error(`Azure OpenAI API returned ${response.status}: ${errBody.slice(0, 300)}`);
+          }
+          result = await response.json();
+          result = { choices: result.choices };
+        } else if (providerType === "anthropic") {
+          const response = await fetch(`${extractionBaseUrl}/v1/messages`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "x-api-key": apiKey,
+              "anthropic-version": "2023-06-01",
+            },
+            body: JSON.stringify({
+              model: extractionModel,
+              max_tokens: 4096,
+              messages: [{ role: "user", content: extractionPrompt }],
+            }),
+          });
+          if (!response.ok) {
+            const errBody = await response.text();
+            throw new Error(`Anthropic API returned ${response.status}: ${errBody.slice(0, 300)}`);
+          }
+          const body = await response.json();
+          result = { choices: [{ message: { content: body.content?.[0]?.text || "{}" } }] };
+        } else {
+          const OpenAI = (await import("openai")).default;
+          const openai = new OpenAI({ apiKey: extractionKey, baseURL: extractionBaseUrl || undefined });
+          result = await openai.chat.completions.create({
+            model: extractionModel,
+            messages: [{ role: "user", content: extractionPrompt }],
+            response_format: { type: "json_object" },
+          });
+        }
 
         let fieldsData: any[] = [];
         try {

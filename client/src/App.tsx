@@ -1,9 +1,12 @@
+import { useState } from "react";
 import { Switch, Route, useLocation, Redirect, Link } from "wouter";
 import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { Mic } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { MobileVoiceOverlay } from "@/components/mobile-voice-overlay";
 import { AuthProvider, useAuth } from "@/lib/auth";
 import { ThemeProvider } from "@/lib/theme";
 import { ThemeToggle } from "@/components/theme-toggle";
@@ -154,26 +157,9 @@ function getMobileTitle(path: string): string {
   return "Easy Health";
 }
 
-function MobileVoiceFAB({ visitId }: { visitId: string }) {
-  return (
-    <Link href={`/visits/${visitId}/intake/voice-capture`}>
-      <button
-        className="fixed z-50 flex items-center justify-center w-14 h-14 rounded-full shadow-lg"
-        style={{
-          backgroundColor: "#FEA002",
-          bottom: "calc(72px + env(safe-area-inset-bottom, 0px))",
-          right: "16px",
-        }}
-        data-testid="fab-voice-capture"
-      >
-        <Mic className="w-6 h-6 text-white" />
-      </button>
-    </Link>
-  );
-}
-
 function MobileLayout() {
   const [location] = useLocation();
+  const [voiceOverlayOpen, setVoiceOverlayOpen] = useState(false);
   const title = getMobileTitle(location);
   const isSubpage = location !== "/" && location !== "/visits" && location !== "/visits/active" && location !== "/visits/history" && location !== "/more";
   const isVisitSubpage = location.startsWith("/visits/") && location !== "/visits" && location !== "/visits/active" && location !== "/visits/history";
@@ -200,7 +186,29 @@ function MobileLayout() {
       <main className="p-3">
         <Router />
       </main>
-      {isIntakePage && currentVisitId && <MobileVoiceFAB visitId={currentVisitId} />}
+      {isIntakePage && currentVisitId && (
+        <>
+          <Button
+            size="icon"
+            onClick={() => setVoiceOverlayOpen(true)}
+            className="fixed z-50 rounded-full shadow-lg"
+            style={{
+              backgroundColor: "#FEA002",
+              borderColor: "#FEA002",
+              bottom: "calc(72px + env(safe-area-inset-bottom, 0px))",
+              right: "16px",
+            }}
+            data-testid="fab-voice-capture"
+          >
+            <Mic className="w-5 h-5 text-white" />
+          </Button>
+          <MobileVoiceOverlay
+            visitId={currentVisitId}
+            open={voiceOverlayOpen}
+            onClose={() => setVoiceOverlayOpen(false)}
+          />
+        </>
+      )}
     </MobileShell>
   );
 }

@@ -29,7 +29,7 @@ Easy Health employs a modern web architecture:
     -   **Completeness Engine**: Evaluates and reports on visit data completeness based on configurable rules.
     -   **Diagnosis Validation**: Rules-based validation for diagnoses.
     -   **Enhanced Supervisor Sign-off**: Adjudication scorecard, structured return reasons, and encounter locking.
-    -   **AI & Voice Capture**: Workflow for recording, transcribing (OpenAI Whisper), and extracting structured fields (GPT-4o) from clinical voice notes, with a consent gate.
+    -   **AI & Voice Capture**: Workflow for recording, transcribing, and extracting structured fields from clinical voice notes, with a consent gate. Supports multiple transcription providers: OpenAI Whisper and Azure Cognitive Services Speech SDK. Provider selection is admin-configurable with Azure Speech-specific fields (speechRegion, speechEndpoint). Audio is automatically converted to 16kHz mono WAV via ffmpeg for Azure Speech compatibility.
     -   **Demo Mode & Access Governance**: Server-side RBAC, demo configuration, and access audit logging.
     -   **Human Audit Workflow**: Random sampling and audit queue for compliance review with structured outcome capture.
     -   **Supervisor Review Queue**: Enhanced UX with metrics, filters, rework tracking, and structured return reasons.
@@ -38,7 +38,7 @@ Easy Health employs a modern web architecture:
 
 ## External Dependencies
 -   **Database**: PostgreSQL
--   **API Integration**: OpenAI (Whisper for transcription, GPT-4o for field extraction)
+-   **API Integration**: OpenAI (Whisper for transcription, GPT-4o for field extraction), Azure Cognitive Services (Speech SDK for transcription)
 -   **Frontend Libraries**: React, Vite, Wouter, TanStack Query, Shadcn UI
 -   **Backend Libraries**: Express.js, Drizzle ORM
 -   **Platform Features**: FHIR R4 standard for data interoperability

@@ -4301,6 +4301,86 @@ export async function registerRoutes(
       const startTime = Date.now();
 
       try {
+        if (providerType === "azure_speech") {
+          const sdk = await import("microsoft-cognitiveservices-speech-sdk");
+          const region = config.speechRegion || "eastus";
+          const speechConfig = config.speechEndpoint
+            ? sdk.SpeechConfig.fromEndpoint(new URL(config.speechEndpoint), apiKey)
+            : sdk.SpeechConfig.fromSubscription(apiKey, region);
+          speechConfig.speechRecognitionLanguage = "en-US";
+
+          const silentWav = Buffer.alloc(44 + 3200);
+          const header = silentWav;
+          header.write("RIFF", 0);
+          header.writeUInt32LE(36 + 3200, 4);
+          header.write("WAVE", 8);
+          header.write("fmt ", 12);
+          header.writeUInt32LE(16, 16);
+          header.writeUInt16LE(1, 20);
+          header.writeUInt16LE(1, 22);
+          header.writeUInt32LE(16000, 24);
+          header.writeUInt32LE(32000, 28);
+          header.writeUInt16LE(2, 32);
+          header.writeUInt16LE(16, 34);
+          header.write("data", 36);
+          header.writeUInt32LE(3200, 40);
+
+          const pushStream = sdk.AudioInputStream.createPushStream(
+            sdk.AudioStreamFormat.getWaveFormatPCM(16000, 16, 1)
+          );
+          pushStream.write(silentWav.buffer.slice(silentWav.byteOffset, silentWav.byteOffset + silentWav.byteLength));
+          pushStream.close();
+          const audioConfig = sdk.AudioConfig.fromStreamInput(pushStream);
+          const recognizer = new sdk.SpeechRecognizer(speechConfig, audioConfig);
+
+          try {
+            const result: string = await new Promise((resolve, reject) => {
+              const timer = setTimeout(() => {
+                recognizer.stopContinuousRecognitionAsync();
+                resolve("connected");
+              }, 8000);
+              recognizer.recognized = () => {
+                clearTimeout(timer);
+                recognizer.stopContinuousRecognitionAsync();
+                resolve("connected");
+              };
+              recognizer.canceled = (_s: any, e: any) => {
+                clearTimeout(timer);
+                recognizer.stopContinuousRecognitionAsync();
+                if (e.reason === sdk.CancellationReason.Error) {
+                  reject(new Error(e.errorDetails));
+                } else {
+                  resolve("connected");
+                }
+              };
+              recognizer.sessionStarted = () => {
+                clearTimeout(timer);
+                recognizer.stopContinuousRecognitionAsync();
+                resolve("connected");
+              };
+              recognizer.startContinuousRecognitionAsync(
+                () => {},
+                (err: string) => { clearTimeout(timer); reject(new Error(err)); }
+              );
+            });
+
+            const latencyMs = Date.now() - startTime;
+            return res.json({
+              success: true,
+              reply: "Azure Speech service connection verified",
+              model: `Azure Speech (${region})`,
+              latencyMs,
+            });
+          } catch (azureErr: any) {
+            const latencyMs = Date.now() - startTime;
+            return res.json({
+              success: false,
+              error: `Azure Speech test failed: ${azureErr.message}`,
+              latencyMs,
+            });
+          }
+        }
+
         let response: Response;
 
         if (providerType === "anthropic") {
@@ -4464,23 +4544,98 @@ export async function registerRoutes(
       });
 
       try {
-        const OpenAI = (await import("openai")).default;
-        const openai = new OpenAI({
-          apiKey,
-          baseURL: aiConfig.baseUrl || undefined,
-        });
+        let transcribedText = "";
 
-        const audioBuffer = Buffer.from(recording.audioData, "base64");
-        const audioFile = new File([audioBuffer], "recording.webm", { type: recording.mimeType });
+        if (aiConfig.providerType === "azure_speech") {
+          const sdk = await import("microsoft-cognitiveservices-speech-sdk");
+          const { execSync } = await import("child_process");
+          const fs = await import("fs");
+          const os = await import("os");
+          const path = await import("path");
 
-        const result = await openai.audio.transcriptions.create({
-          file: audioFile,
-          model: aiConfig.modelName || "whisper-1",
-          response_format: "json",
-        });
+          const region = aiConfig.speechRegion || "eastus";
+          const speechConfig = aiConfig.speechEndpoint
+            ? sdk.SpeechConfig.fromEndpoint(new URL(aiConfig.speechEndpoint), apiKey)
+            : sdk.SpeechConfig.fromSubscription(apiKey, region);
+          speechConfig.speechRecognitionLanguage = "en-US";
+
+          const audioBuffer = Buffer.from(recording.audioData, "base64");
+          const tmpDir = os.tmpdir();
+          const inputPath = path.join(tmpDir, `speech_in_${Date.now()}.webm`);
+          const outputPath = path.join(tmpDir, `speech_out_${Date.now()}.wav`);
+          fs.writeFileSync(inputPath, audioBuffer);
+          try {
+            execSync(`ffmpeg -y -i "${inputPath}" -ar 16000 -ac 1 -f wav "${outputPath}"`, { timeout: 30000 });
+          } catch (convErr: any) {
+            fs.unlinkSync(inputPath);
+            throw new Error(`Audio conversion failed: ${convErr.message}`);
+          }
+          fs.unlinkSync(inputPath);
+
+          const wavBuffer = fs.readFileSync(outputPath);
+          fs.unlinkSync(outputPath);
+
+          const pushStream = sdk.AudioInputStream.createPushStream(
+            sdk.AudioStreamFormat.getWaveFormatPCM(16000, 16, 1)
+          );
+          pushStream.write(wavBuffer.buffer.slice(wavBuffer.byteOffset, wavBuffer.byteOffset + wavBuffer.byteLength));
+          pushStream.close();
+          const audioConfig = sdk.AudioConfig.fromStreamInput(pushStream);
+
+          const recognizer = new sdk.SpeechRecognizer(speechConfig, audioConfig);
+          const segments: string[] = [];
+          const TIMEOUT_MS = 120000;
+
+          transcribedText = await new Promise<string>((resolve, reject) => {
+            const timeout = setTimeout(() => {
+              recognizer.stopContinuousRecognitionAsync();
+              resolve(segments.join(" ") || "(no speech detected)");
+            }, TIMEOUT_MS);
+
+            recognizer.recognized = (_s: any, e: any) => {
+              if (e.result.reason === sdk.ResultReason.RecognizedSpeech) {
+                segments.push(e.result.text);
+              }
+            };
+            recognizer.canceled = (_s: any, e: any) => {
+              clearTimeout(timeout);
+              recognizer.stopContinuousRecognitionAsync();
+              if (e.reason === sdk.CancellationReason.Error) {
+                reject(new Error(`Azure Speech error: ${e.errorDetails}`));
+              } else {
+                resolve(segments.join(" "));
+              }
+            };
+            recognizer.sessionStopped = () => {
+              clearTimeout(timeout);
+              recognizer.stopContinuousRecognitionAsync();
+              resolve(segments.join(" "));
+            };
+            recognizer.startContinuousRecognitionAsync(
+              () => {},
+              (err: string) => { clearTimeout(timeout); reject(new Error(err)); }
+            );
+          });
+        } else {
+          const OpenAI = (await import("openai")).default;
+          const openai = new OpenAI({
+            apiKey,
+            baseURL: aiConfig.baseUrl || undefined,
+          });
+
+          const audioBuffer = Buffer.from(recording.audioData, "base64");
+          const audioFile = new File([audioBuffer], "recording.webm", { type: recording.mimeType });
+
+          const result = await openai.audio.transcriptions.create({
+            file: audioFile,
+            model: aiConfig.modelName || "whisper-1",
+            response_format: "json",
+          });
+          transcribedText = result.text;
+        }
 
         await storage.updateTranscript(transcript.id, {
-          text: result.text,
+          text: transcribedText,
           status: "completed",
           updatedAt: new Date().toISOString(),
         });
@@ -4497,7 +4652,7 @@ export async function registerRoutes(
           resourceId: transcript.id,
         });
 
-        return res.json({ ...transcript, text: result.text, status: "completed" });
+        return res.json({ ...transcript, text: transcribedText, status: "completed" });
       } catch (aiErr: any) {
         await storage.updateTranscript(transcript.id, {
           status: "error",

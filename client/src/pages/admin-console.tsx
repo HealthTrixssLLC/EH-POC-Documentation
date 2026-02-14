@@ -675,6 +675,8 @@ function ProviderCard({ provider, onUpdate, isPending }: { provider: any; onUpda
     baseUrl: provider.baseUrl || "",
     modelName: provider.modelName,
     extractionModel: provider.extractionModel,
+    speechRegion: provider.speechRegion || "",
+    speechEndpoint: provider.speechEndpoint || "",
     active: provider.active,
   });
 
@@ -732,13 +734,34 @@ function ProviderCard({ provider, onUpdate, isPending }: { provider: any; onUpda
                 <span className="text-xs font-mono">{provider.apiKeySecretName}</span>
               </div>
             </div>
-            <div className="flex items-start gap-1.5">
-              <Globe className="w-3 h-3 mt-0.5 text-muted-foreground" />
-              <div>
-                <span className="text-xs text-muted-foreground block">Base URL</span>
-                <span className="text-xs font-mono">{provider.baseUrl || "Default"}</span>
+            {provider.providerType === "azure_speech" ? (
+              <>
+                <div className="flex items-start gap-1.5">
+                  <Globe className="w-3 h-3 mt-0.5 text-muted-foreground" />
+                  <div>
+                    <span className="text-xs text-muted-foreground block">Speech Region</span>
+                    <span className="text-xs font-mono">{provider.speechRegion || "eastus"}</span>
+                  </div>
+                </div>
+                {provider.speechEndpoint && (
+                  <div className="flex items-start gap-1.5">
+                    <Globe className="w-3 h-3 mt-0.5 text-muted-foreground" />
+                    <div>
+                      <span className="text-xs text-muted-foreground block">Speech Endpoint</span>
+                      <span className="text-xs font-mono">{provider.speechEndpoint}</span>
+                    </div>
+                  </div>
+                )}
+              </>
+            ) : (
+              <div className="flex items-start gap-1.5">
+                <Globe className="w-3 h-3 mt-0.5 text-muted-foreground" />
+                <div>
+                  <span className="text-xs text-muted-foreground block">Base URL</span>
+                  <span className="text-xs font-mono">{provider.baseUrl || "Default"}</span>
+                </div>
               </div>
-            </div>
+            )}
             <div>
               <span className="text-xs text-muted-foreground block">Transcription Model</span>
               <span className="text-xs font-mono">{provider.modelName}</span>
@@ -825,33 +848,61 @@ function ProviderCard({ provider, onUpdate, isPending }: { provider: any; onUpda
                     <SelectItem value="openai">OpenAI</SelectItem>
                     <SelectItem value="anthropic">Anthropic</SelectItem>
                     <SelectItem value="azure_openai">Azure OpenAI</SelectItem>
+                    <SelectItem value="azure_speech">Azure Speech</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
               <div>
-                <Label className="text-xs">API Key Secret Name</Label>
+                <Label className="text-xs">{form.providerType === "azure_speech" ? "Speech Key Secret Name" : "API Key Secret Name"}</Label>
                 <Input
                   value={form.apiKeySecretName}
                   onChange={(e) => setForm({ ...form, apiKeySecretName: e.target.value })}
+                  placeholder={form.providerType === "azure_speech" ? "AZURE_SPEECH_KEY" : "OPENAI_API_KEY"}
                   className="mt-1 font-mono text-xs"
                   data-testid="input-secret-name"
                 />
               </div>
-              <div>
-                <Label className="text-xs">Base URL (optional)</Label>
-                <Input
-                  value={form.baseUrl}
-                  onChange={(e) => setForm({ ...form, baseUrl: e.target.value })}
-                  placeholder="https://api.openai.com/v1"
-                  className="mt-1 font-mono text-xs"
-                  data-testid="input-base-url"
-                />
-              </div>
+              {form.providerType === "azure_speech" ? (
+                <>
+                  <div>
+                    <Label className="text-xs">Speech Region</Label>
+                    <Input
+                      value={form.speechRegion}
+                      onChange={(e) => setForm({ ...form, speechRegion: e.target.value })}
+                      placeholder="eastus"
+                      className="mt-1 font-mono text-xs"
+                      data-testid="input-speech-region"
+                    />
+                  </div>
+                  <div>
+                    <Label className="text-xs">Speech Endpoint (optional)</Label>
+                    <Input
+                      value={form.speechEndpoint}
+                      onChange={(e) => setForm({ ...form, speechEndpoint: e.target.value })}
+                      placeholder="https://eastus.api.cognitive.microsoft.com"
+                      className="mt-1 font-mono text-xs"
+                      data-testid="input-speech-endpoint"
+                    />
+                  </div>
+                </>
+              ) : (
+                <div>
+                  <Label className="text-xs">Base URL (optional)</Label>
+                  <Input
+                    value={form.baseUrl}
+                    onChange={(e) => setForm({ ...form, baseUrl: e.target.value })}
+                    placeholder="https://api.openai.com/v1"
+                    className="mt-1 font-mono text-xs"
+                    data-testid="input-base-url"
+                  />
+                </div>
+              )}
               <div>
                 <Label className="text-xs">Transcription Model</Label>
                 <Input
                   value={form.modelName}
                   onChange={(e) => setForm({ ...form, modelName: e.target.value })}
+                  placeholder={form.providerType === "azure_speech" ? "azure-speech-to-text" : "whisper-1"}
                   className="mt-1 font-mono text-xs"
                   data-testid="input-model-name"
                 />
@@ -900,6 +951,8 @@ function AddProviderForm({ onSubmit, onCancel, isPending }: { onSubmit: (d: any)
     baseUrl: "",
     modelName: "gpt-4o-mini-transcribe",
     extractionModel: "gpt-4o-mini",
+    speechRegion: "",
+    speechEndpoint: "",
     active: false,
     featureFlags: { transcription: true, extraction: true, clinicalSuggestions: false },
   });
@@ -929,33 +982,61 @@ function AddProviderForm({ onSubmit, onCancel, isPending }: { onSubmit: (d: any)
                 <SelectItem value="openai">OpenAI</SelectItem>
                 <SelectItem value="anthropic">Anthropic</SelectItem>
                 <SelectItem value="azure_openai">Azure OpenAI</SelectItem>
+                <SelectItem value="azure_speech">Azure Speech</SelectItem>
               </SelectContent>
             </Select>
           </div>
           <div>
-            <Label className="text-xs">API Key Secret Name</Label>
+            <Label className="text-xs">{form.providerType === "azure_speech" ? "Speech Key Secret Name" : "API Key Secret Name"}</Label>
             <Input
               value={form.apiKeySecretName}
               onChange={(e) => setForm({ ...form, apiKeySecretName: e.target.value })}
+              placeholder={form.providerType === "azure_speech" ? "AZURE_SPEECH_KEY" : "OPENAI_API_KEY"}
               className="mt-1 font-mono text-xs"
               data-testid="input-new-secret-name"
             />
           </div>
-          <div>
-            <Label className="text-xs">Base URL (optional)</Label>
-            <Input
-              value={form.baseUrl}
-              onChange={(e) => setForm({ ...form, baseUrl: e.target.value })}
-              placeholder="https://api.openai.com/v1"
-              className="mt-1 font-mono text-xs"
-              data-testid="input-new-base-url"
-            />
-          </div>
+          {form.providerType === "azure_speech" ? (
+            <>
+              <div>
+                <Label className="text-xs">Speech Region</Label>
+                <Input
+                  value={form.speechRegion}
+                  onChange={(e) => setForm({ ...form, speechRegion: e.target.value })}
+                  placeholder="eastus"
+                  className="mt-1 font-mono text-xs"
+                  data-testid="input-new-speech-region"
+                />
+              </div>
+              <div>
+                <Label className="text-xs">Speech Endpoint (optional)</Label>
+                <Input
+                  value={form.speechEndpoint}
+                  onChange={(e) => setForm({ ...form, speechEndpoint: e.target.value })}
+                  placeholder="https://eastus.api.cognitive.microsoft.com"
+                  className="mt-1 font-mono text-xs"
+                  data-testid="input-new-speech-endpoint"
+                />
+              </div>
+            </>
+          ) : (
+            <div>
+              <Label className="text-xs">Base URL (optional)</Label>
+              <Input
+                value={form.baseUrl}
+                onChange={(e) => setForm({ ...form, baseUrl: e.target.value })}
+                placeholder="https://api.openai.com/v1"
+                className="mt-1 font-mono text-xs"
+                data-testid="input-new-base-url"
+              />
+            </div>
+          )}
           <div>
             <Label className="text-xs">Transcription Model</Label>
             <Input
               value={form.modelName}
               onChange={(e) => setForm({ ...form, modelName: e.target.value })}
+              placeholder={form.providerType === "azure_speech" ? "azure-speech-to-text" : "whisper-1"}
               className="mt-1 font-mono text-xs"
               data-testid="input-new-model"
             />

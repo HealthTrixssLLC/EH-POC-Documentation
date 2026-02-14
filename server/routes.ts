@@ -4470,7 +4470,7 @@ export async function registerRoutes(
           } else if (providerType === "azure_openai" || useAzureOpenAiForExtraction) {
             const azureBase = (useAzureOpenAiForExtraction ? azureOpenAiEndpoint! : (config.baseUrl || "")).replace(/\/+$/, "");
             const azureKey = useAzureOpenAiForExtraction ? azureOpenAiKey! : apiKey;
-            const apiVersion = "2025-03-01-preview";
+            const apiVersion = "2024-12-01-preview";
             response = await fetch(`${azureBase}/openai/deployments/${extractionModel}/chat/completions?api-version=${apiVersion}`, {
               method: "POST",
               headers: {
@@ -4504,11 +4504,14 @@ export async function registerRoutes(
             let parsed: any;
             try { parsed = JSON.parse(errBody); } catch { parsed = null; }
             const errMsg = parsed?.error?.message || parsed?.error?.type || errBody.slice(0, 300);
+            const endpointHint = (providerType === "azure_openai" || useAzureOpenAiForExtraction)
+              ? ` (endpoint: ${(useAzureOpenAiForExtraction ? azureOpenAiEndpoint : config.baseUrl) || "unknown"}, key: ${useAzureOpenAiForExtraction ? azureOpenAiKeyName : config.apiKeySecretName})`
+              : "";
             tests.push({
               name: "Field Extraction (LLM)",
               success: false,
               model: extractionModel,
-              error: `API returned ${response.status}: ${errMsg}`,
+              error: `API returned ${response.status}: ${errMsg}${endpointHint}`,
               latencyMs: extractionLatency,
             });
           } else {
@@ -4956,7 +4959,7 @@ ${transcript.text}`;
         if (providerType === "azure_openai" || useAzureOpenAiForExtraction) {
           const azureBase = (useAzureOpenAiForExtraction ? azureOpenAiEndpoint! : (aiConfig.baseUrl || "")).replace(/\/+$/, "");
           const azureKey = useAzureOpenAiForExtraction ? azureOpenAiKey! : apiKey;
-          const apiVersion = "2025-03-01-preview";
+          const apiVersion = "2024-12-01-preview";
           const response = await fetch(`${azureBase}/openai/deployments/${extractionModel}/chat/completions?api-version=${apiVersion}`, {
             method: "POST",
             headers: {

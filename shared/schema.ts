@@ -710,6 +710,8 @@ export const aiProviderConfig = pgTable("ai_provider_config", {
   extractionModel: text("extraction_model").notNull().default("gpt-4o-mini"),
   speechRegion: text("speech_region"),
   speechEndpoint: text("speech_endpoint"),
+  azureOpenAiEndpoint: text("azure_openai_endpoint"),
+  azureOpenAiKeySecretName: text("azure_openai_key_secret_name"),
   active: boolean("active").notNull().default(true),
   featureFlags: jsonb("feature_flags").$type<Record<string, boolean>>(),
   createdAt: text("created_at"),

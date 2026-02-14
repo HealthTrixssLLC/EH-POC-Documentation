@@ -798,31 +798,49 @@ function ProviderCard({ provider, onUpdate, isPending }: { provider: any; onUpda
                   ) : (
                     <Activity className="w-3 h-3 mr-1" />
                   )}
-                  {testMutation.isPending ? "Testing..." : "Test Connection"}
+                  {testMutation.isPending ? "Testing..." : "Test All Connections"}
                 </Button>
                 {testResult && (
                   <div className="flex items-center gap-1.5">
                     {testResult.success ? (
                       <Badge variant="default" className="text-xs" data-testid={`badge-test-success-${provider.id}`}>
-                        <CheckCircle2 className="w-3 h-3 mr-1" /> Passed ({testResult.latencyMs}ms)
+                        <CheckCircle2 className="w-3 h-3 mr-1" /> All Passed ({testResult.latencyMs}ms)
                       </Badge>
                     ) : (
                       <Badge variant="destructive" className="text-xs" data-testid={`badge-test-fail-${provider.id}`}>
-                        <XCircle className="w-3 h-3 mr-1" /> Failed
+                        <XCircle className="w-3 h-3 mr-1" /> {testResult.reply || "Failed"}
                       </Badge>
                     )}
                   </div>
                 )}
               </div>
-              {testResult && !testResult.success && (
-                <p className="text-xs text-destructive mt-1.5" data-testid={`text-test-error-${provider.id}`}>
-                  {testResult.error}
-                </p>
-              )}
-              {testResult?.success && (
-                <p className="text-xs text-muted-foreground mt-1.5" data-testid={`text-test-details-${provider.id}`}>
-                  Model: {testResult.model} | Response: "{testResult.reply}"
-                </p>
+              {testResult?.tests && (
+                <div className="mt-2 space-y-1.5" data-testid={`div-test-results-${provider.id}`}>
+                  {testResult.tests.map((t: any, idx: number) => (
+                    <div key={idx} className="flex flex-col gap-0.5 rounded-md border p-2">
+                      <div className="flex items-center justify-between gap-2 flex-wrap">
+                        <div className="flex items-center gap-1.5">
+                          {t.success ? (
+                            <CheckCircle2 className="w-3 h-3 text-green-600 dark:text-green-400 shrink-0" />
+                          ) : (
+                            <XCircle className="w-3 h-3 text-destructive shrink-0" />
+                          )}
+                          <span className="text-xs font-medium">{t.name}</span>
+                        </div>
+                        <span className="text-xs text-muted-foreground">{t.latencyMs}ms</span>
+                      </div>
+                      {t.model && (
+                        <span className="text-xs text-muted-foreground ml-[18px]">Model: {t.model}</span>
+                      )}
+                      {t.success && t.reply && (
+                        <span className="text-xs text-muted-foreground ml-[18px]">Response: "{t.reply}"</span>
+                      )}
+                      {!t.success && t.error && (
+                        <p className="text-xs text-destructive ml-[18px] break-all">{t.error}</p>
+                      )}
+                    </div>
+                  ))}
+                </div>
               )}
             </div>
           </div>

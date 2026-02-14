@@ -4289,17 +4289,22 @@ export async function registerRoutes(
       if (!apiKey) {
         return res.json({
           success: false,
-          error: `API key secret "${config.apiKeySecretName}" is not set. Add it to your environment secrets.`,
+          tests: [{
+            name: "API Key",
+            success: false,
+            error: `Secret "${config.apiKeySecretName}" is not set. Add it to your environment secrets.`,
+            latencyMs: 0,
+          }],
+          error: `API key secret "${config.apiKeySecretName}" is not set.`,
           latencyMs: 0,
         });
       }
 
       const providerType = config.providerType;
-      const baseUrl = config.baseUrl || (providerType === "anthropic" ? "https://api.anthropic.com" : "https://api.openai.com/v1");
-      const model = config.extractionModel || config.modelName;
+      const tests: Array<{ name: string; success: boolean; model?: string; reply?: string; error?: string; latencyMs: number }> = [];
 
-      const startTime = Date.now();
-
+      // Test 1: Transcription service
+      const transcriptionStart = Date.now();
       try {
         if (providerType === "azure_speech") {
           const sdk = await import("microsoft-cognitiveservices-speech-sdk");
@@ -4310,20 +4315,19 @@ export async function registerRoutes(
           speechConfig.speechRecognitionLanguage = "en-US";
 
           const silentWav = Buffer.alloc(44 + 3200);
-          const header = silentWav;
-          header.write("RIFF", 0);
-          header.writeUInt32LE(36 + 3200, 4);
-          header.write("WAVE", 8);
-          header.write("fmt ", 12);
-          header.writeUInt32LE(16, 16);
-          header.writeUInt16LE(1, 20);
-          header.writeUInt16LE(1, 22);
-          header.writeUInt32LE(16000, 24);
-          header.writeUInt32LE(32000, 28);
-          header.writeUInt16LE(2, 32);
-          header.writeUInt16LE(16, 34);
-          header.write("data", 36);
-          header.writeUInt32LE(3200, 40);
+          silentWav.write("RIFF", 0);
+          silentWav.writeUInt32LE(36 + 3200, 4);
+          silentWav.write("WAVE", 8);
+          silentWav.write("fmt ", 12);
+          silentWav.writeUInt32LE(16, 16);
+          silentWav.writeUInt16LE(1, 20);
+          silentWav.writeUInt16LE(1, 22);
+          silentWav.writeUInt32LE(16000, 24);
+          silentWav.writeUInt32LE(32000, 28);
+          silentWav.writeUInt16LE(2, 32);
+          silentWav.writeUInt16LE(16, 34);
+          silentWav.write("data", 36);
+          silentWav.writeUInt32LE(3200, 40);
 
           const pushStream = sdk.AudioInputStream.createPushStream(
             sdk.AudioStreamFormat.getWaveFormatPCM(16000, 16, 1)
@@ -4333,131 +4337,188 @@ export async function registerRoutes(
           const audioConfig = sdk.AudioConfig.fromStreamInput(pushStream);
           const recognizer = new sdk.SpeechRecognizer(speechConfig, audioConfig);
 
-          try {
-            const result: string = await new Promise((resolve, reject) => {
-              const timer = setTimeout(() => {
-                recognizer.stopContinuousRecognitionAsync();
+          await new Promise<string>((resolve, reject) => {
+            const timer = setTimeout(() => {
+              recognizer.stopContinuousRecognitionAsync();
+              resolve("connected");
+            }, 8000);
+            recognizer.recognized = () => {
+              clearTimeout(timer);
+              recognizer.stopContinuousRecognitionAsync();
+              resolve("connected");
+            };
+            recognizer.canceled = (_s: any, e: any) => {
+              clearTimeout(timer);
+              recognizer.stopContinuousRecognitionAsync();
+              if (e.reason === sdk.CancellationReason.Error) {
+                reject(new Error(e.errorDetails));
+              } else {
                 resolve("connected");
-              }, 8000);
-              recognizer.recognized = () => {
-                clearTimeout(timer);
-                recognizer.stopContinuousRecognitionAsync();
-                resolve("connected");
-              };
-              recognizer.canceled = (_s: any, e: any) => {
-                clearTimeout(timer);
-                recognizer.stopContinuousRecognitionAsync();
-                if (e.reason === sdk.CancellationReason.Error) {
-                  reject(new Error(e.errorDetails));
-                } else {
-                  resolve("connected");
-                }
-              };
-              recognizer.sessionStarted = () => {
-                clearTimeout(timer);
-                recognizer.stopContinuousRecognitionAsync();
-                resolve("connected");
-              };
-              recognizer.startContinuousRecognitionAsync(
-                () => {},
-                (err: string) => { clearTimeout(timer); reject(new Error(err)); }
-              );
-            });
+              }
+            };
+            recognizer.sessionStarted = () => {
+              clearTimeout(timer);
+              recognizer.stopContinuousRecognitionAsync();
+              resolve("connected");
+            };
+            recognizer.startContinuousRecognitionAsync(
+              () => {},
+              (err: string) => { clearTimeout(timer); reject(new Error(err)); }
+            );
+          });
 
-            const latencyMs = Date.now() - startTime;
-            return res.json({
-              success: true,
-              reply: "Azure Speech service connection verified",
-              model: `Azure Speech (${region})`,
-              latencyMs,
+          tests.push({
+            name: "Speech-to-Text (Azure Speech)",
+            success: true,
+            model: `Azure Speech (${region})`,
+            reply: "Connection verified",
+            latencyMs: Date.now() - transcriptionStart,
+          });
+        } else {
+          const baseUrl = config.baseUrl || (providerType === "anthropic" ? "https://api.anthropic.com" : "https://api.openai.com/v1");
+          const transcriptionModel = config.modelName || "whisper-1";
+
+          if (providerType === "openai" || providerType === "azure_openai") {
+            const response = await fetch(`${baseUrl}/models`, {
+              headers: { "Authorization": `Bearer ${apiKey}` },
             });
-          } catch (azureErr: any) {
-            const latencyMs = Date.now() - startTime;
-            return res.json({
-              success: false,
-              error: `Azure Speech test failed: ${azureErr.message}`,
-              latencyMs,
+            if (!response.ok) {
+              const errBody = await response.text();
+              let parsed: any;
+              try { parsed = JSON.parse(errBody); } catch { parsed = null; }
+              throw new Error(`API returned ${response.status}: ${parsed?.error?.message || errBody.slice(0, 300)}`);
+            }
+            tests.push({
+              name: "Transcription API",
+              success: true,
+              model: transcriptionModel,
+              reply: "API key valid, models endpoint accessible",
+              latencyMs: Date.now() - transcriptionStart,
+            });
+          } else {
+            tests.push({
+              name: "Transcription",
+              success: true,
+              model: transcriptionModel,
+              reply: "Configured (no direct test available for this provider type)",
+              latencyMs: Date.now() - transcriptionStart,
             });
           }
         }
-
-        let response: Response;
-
-        if (providerType === "anthropic") {
-          response = await fetch(`${baseUrl}/v1/messages`, {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              "x-api-key": apiKey,
-              "anthropic-version": "2023-06-01",
-            },
-            body: JSON.stringify({
-              model,
-              max_tokens: 20,
-              messages: [{ role: "user", content: "Reply with exactly: OK" }],
-            }),
-          });
-        } else if (providerType === "azure_openai") {
-          const azureBase = baseUrl.replace(/\/+$/, "");
-          const apiVersion = "2025-03-01-preview";
-          response = await fetch(`${azureBase}/openai/deployments/${model}/chat/completions?api-version=${apiVersion}`, {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              "Authorization": `Bearer ${apiKey}`,
-            },
-            body: JSON.stringify({
-              max_tokens: 20,
-              messages: [{ role: "user", content: "Reply with exactly: OK" }],
-            }),
-          });
-        } else {
-          response = await fetch(`${baseUrl}/chat/completions`, {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              "Authorization": `Bearer ${apiKey}`,
-            },
-            body: JSON.stringify({
-              model,
-              max_tokens: 20,
-              messages: [{ role: "user", content: "Reply with exactly: OK" }],
-            }),
-          });
-        }
-
-        const latencyMs = Date.now() - startTime;
-
-        if (!response.ok) {
-          const errBody = await response.text();
-          let parsed: any;
-          try { parsed = JSON.parse(errBody); } catch { parsed = null; }
-          const errMsg = parsed?.error?.message || parsed?.error?.type || errBody.slice(0, 200);
-          return res.json({ success: false, error: `API returned ${response.status}: ${errMsg}`, latencyMs });
-        }
-
-        const body = await response.json();
-        let reply = "";
-        if (providerType === "anthropic") {
-          reply = body.content?.[0]?.text || "";
-        } else {
-          reply = body.choices?.[0]?.message?.content || "";
-        }
-
-        return res.json({
-          success: true,
-          reply: reply.trim(),
-          model: body.model || model,
-          latencyMs,
-        });
-      } catch (fetchErr: any) {
-        const latencyMs = Date.now() - startTime;
-        return res.json({
+      } catch (transErr: any) {
+        tests.push({
+          name: providerType === "azure_speech" ? "Speech-to-Text (Azure Speech)" : "Transcription API",
           success: false,
-          error: `Connection failed: ${fetchErr.message}`,
-          latencyMs,
+          error: transErr.message,
+          latencyMs: Date.now() - transcriptionStart,
         });
       }
+
+      // Test 2: Extraction model (chat completion)
+      const extractionModel = config.extractionModel;
+      if (extractionModel) {
+        const extractionStart = Date.now();
+        try {
+          const extractionKey = process.env["OPENAI_API_KEY"] || apiKey;
+          const extractionBaseUrl = providerType === "azure_speech"
+            ? "https://api.openai.com/v1"
+            : (config.baseUrl || (providerType === "anthropic" ? "https://api.anthropic.com" : "https://api.openai.com/v1"));
+
+          let response: Response;
+          if (providerType === "anthropic") {
+            response = await fetch(`${extractionBaseUrl}/v1/messages`, {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                "x-api-key": apiKey,
+                "anthropic-version": "2023-06-01",
+              },
+              body: JSON.stringify({
+                model: extractionModel,
+                max_tokens: 20,
+                messages: [{ role: "user", content: "Reply with exactly: OK" }],
+              }),
+            });
+          } else if (providerType === "azure_openai") {
+            const azureBase = (config.baseUrl || "").replace(/\/+$/, "");
+            const apiVersion = "2025-03-01-preview";
+            response = await fetch(`${azureBase}/openai/deployments/${extractionModel}/chat/completions?api-version=${apiVersion}`, {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                "Authorization": `Bearer ${apiKey}`,
+              },
+              body: JSON.stringify({
+                max_tokens: 20,
+                messages: [{ role: "user", content: "Reply with exactly: OK" }],
+              }),
+            });
+          } else {
+            response = await fetch(`${extractionBaseUrl}/chat/completions`, {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                "Authorization": `Bearer ${extractionKey}`,
+              },
+              body: JSON.stringify({
+                model: extractionModel,
+                max_tokens: 20,
+                messages: [{ role: "user", content: "Reply with exactly: OK" }],
+              }),
+            });
+          }
+
+          const extractionLatency = Date.now() - extractionStart;
+
+          if (!response.ok) {
+            const errBody = await response.text();
+            let parsed: any;
+            try { parsed = JSON.parse(errBody); } catch { parsed = null; }
+            const errMsg = parsed?.error?.message || parsed?.error?.type || errBody.slice(0, 300);
+            tests.push({
+              name: "Field Extraction (LLM)",
+              success: false,
+              model: extractionModel,
+              error: `API returned ${response.status}: ${errMsg}`,
+              latencyMs: extractionLatency,
+            });
+          } else {
+            const body = await response.json();
+            let reply = "";
+            if (providerType === "anthropic") {
+              reply = body.content?.[0]?.text || "";
+            } else {
+              reply = body.choices?.[0]?.message?.content || "";
+            }
+            tests.push({
+              name: "Field Extraction (LLM)",
+              success: true,
+              model: body.model || extractionModel,
+              reply: reply.trim(),
+              latencyMs: extractionLatency,
+            });
+          }
+        } catch (extErr: any) {
+          tests.push({
+            name: "Field Extraction (LLM)",
+            success: false,
+            model: extractionModel,
+            error: extErr.message,
+            latencyMs: Date.now() - extractionStart,
+          });
+        }
+      }
+
+      const allPassed = tests.every(t => t.success);
+      const totalLatency = tests.reduce((sum, t) => sum + t.latencyMs, 0);
+
+      return res.json({
+        success: allPassed,
+        tests,
+        model: tests[0]?.model || config.modelName,
+        reply: allPassed ? `All ${tests.length} tests passed` : `${tests.filter(t => !t.success).length} of ${tests.length} tests failed`,
+        latencyMs: totalLatency,
+      });
     } catch (err: any) {
       return res.status(500).json({ message: err.message });
     }

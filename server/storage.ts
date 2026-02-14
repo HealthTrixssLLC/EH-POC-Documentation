@@ -196,6 +196,7 @@ export interface IStorage {
   getAiProviderConfig(id: string): Promise<AiProviderConfig | undefined>;
   createAiProviderConfig(config: InsertAiProviderConfig): Promise<AiProviderConfig>;
   updateAiProviderConfig(id: string, updates: Partial<AiProviderConfig>): Promise<AiProviderConfig | undefined>;
+  deleteAiProviderConfig(id: string): Promise<boolean>;
 
   getRecordingsByVisit(visitId: string): Promise<VoiceRecording[]>;
   getRecording(id: string): Promise<VoiceRecording | undefined>;
@@ -793,6 +794,11 @@ export class DatabaseStorage implements IStorage {
   async updateAiProviderConfig(id: string, updates: Partial<AiProviderConfig>) {
     const [updated] = await db.update(aiProviderConfig).set(updates).where(eq(aiProviderConfig.id, id)).returning();
     return updated;
+  }
+
+  async deleteAiProviderConfig(id: string) {
+    const deleted = await db.delete(aiProviderConfig).where(eq(aiProviderConfig.id, id)).returning();
+    return deleted.length > 0;
   }
 
   async getRecordingsByVisit(visitId: string) {

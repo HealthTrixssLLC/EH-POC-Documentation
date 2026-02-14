@@ -4279,6 +4279,29 @@ export async function registerRoutes(
     }
   });
 
+  app.delete("/api/ai-providers/:id", async (req, res) => {
+    try {
+      const configs = await storage.getAiProviderConfigs();
+      const config = configs.find(c => c.id === req.params.id);
+      if (!config) return res.status(404).json({ message: "Provider config not found" });
+
+      const deleted = await storage.deleteAiProviderConfig(req.params.id);
+      if (!deleted) return res.status(404).json({ message: "Provider config not found" });
+
+      await storage.createAuditEvent({
+        eventType: "ai_config_deleted",
+        userId: req.body?.userId || "system",
+        userName: req.body?.userName || "System",
+        userRole: "admin",
+        details: `AI provider '${config.displayName}' (${config.providerType}) deleted`,
+      });
+
+      return res.json({ success: true, message: `Provider '${config.displayName}' deleted` });
+    } catch (err: any) {
+      return res.status(500).json({ message: err.message });
+    }
+  });
+
   app.post("/api/ai-providers/:id/test", async (req, res) => {
     try {
       const configs = await storage.getAiProviderConfigs();

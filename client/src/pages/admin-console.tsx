@@ -37,6 +37,7 @@ import {
   Activity,
   CheckCircle2,
   Users,
+  Trash2,
 } from "lucide-react";
 
 const SEVERITY_COLORS: Record<string, string> = {
@@ -595,6 +596,20 @@ function AiProviderConfig() {
     },
   });
 
+  const deleteMutation = useMutation({
+    mutationFn: async (id: string) => {
+      return apiRequest("DELETE", `/api/ai-providers/${id}`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/ai-providers"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/ai-providers/active"] });
+      toast({ title: "Provider deleted" });
+    },
+    onError: (err: any) => {
+      toast({ title: "Delete failed", description: err.message, variant: "destructive" });
+    },
+  });
+
   return (
     <div className="space-y-4">
       <Card>
@@ -642,7 +657,9 @@ function AiProviderConfig() {
             key={p.id}
             provider={p}
             onUpdate={(updates) => updateMutation.mutate({ id: p.id, updates })}
+            onDelete={() => deleteMutation.mutate(p.id)}
             isPending={updateMutation.isPending}
+            isDeleting={deleteMutation.isPending}
           />
         ))
       )}
@@ -664,9 +681,10 @@ function AiProviderConfig() {
   );
 }
 
-function ProviderCard({ provider, onUpdate, isPending }: { provider: any; onUpdate: (u: any) => void; isPending: boolean }) {
+function ProviderCard({ provider, onUpdate, onDelete, isPending, isDeleting }: { provider: any; onUpdate: (u: any) => void; onDelete: () => void; isPending: boolean; isDeleting: boolean }) {
   const [editing, setEditing] = useState(false);
   const [testResult, setTestResult] = useState<any>(null);
+  const [confirmDelete, setConfirmDelete] = useState(false);
   const { toast } = useToast();
   const [form, setForm] = useState({
     displayName: provider.displayName,
@@ -722,6 +740,36 @@ function ProviderCard({ provider, onUpdate, isPending }: { provider: any; onUpda
             >
               {editing ? "Cancel" : "Edit"}
             </Button>
+            {!confirmDelete ? (
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => setConfirmDelete(true)}
+                data-testid={`button-delete-provider-${provider.id}`}
+              >
+                <Trash2 className="w-3.5 h-3.5 text-muted-foreground" />
+              </Button>
+            ) : (
+              <div className="flex items-center gap-1">
+                <Button
+                  variant="destructive"
+                  size="sm"
+                  onClick={() => { onDelete(); setConfirmDelete(false); }}
+                  disabled={isDeleting}
+                  data-testid={`button-confirm-delete-provider-${provider.id}`}
+                >
+                  {isDeleting ? <Loader2 className="w-3 h-3 mr-1 animate-spin" /> : null}
+                  Delete
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setConfirmDelete(false)}
+                >
+                  Cancel
+                </Button>
+              </div>
+            )}
           </div>
         </div>
 

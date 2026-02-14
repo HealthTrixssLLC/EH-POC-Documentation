@@ -1,4 +1,10 @@
 import { QueryClient, QueryFunction } from "@tanstack/react-query";
+import {
+  cacheApiResponse,
+  getCachedResponse,
+  enqueueMutation,
+} from "./offline-db";
+import { refreshPendingCount } from "./sync-manager";
 
 const PRODUCTION_API_URL = "https://eh-poc-application.healthtrixss.com";
 
@@ -45,6 +51,26 @@ async function throwIfResNotOk(res: Response) {
   }
 }
 
+function extractVisitId(url: string): string | undefined {
+  const match = url.match(/\/api\/visits\/([^/]+)/);
+  return match?.[1];
+}
+
+function shouldCacheUrl(url: string): boolean {
+  if (!url.startsWith("/api/")) return false;
+  const noCachePaths = [
+    "/api/demo/reset",
+    "/api/fhir/",
+    "/api/audit-",
+    "/api/ai-providers",
+  ];
+  return !noCachePaths.some((p) => url.includes(p));
+}
+
+function isOfflineSafeMethod(method: string): boolean {
+  return ["POST", "PUT", "PATCH", "DELETE"].includes(method.toUpperCase());
+}
+
 export async function apiRequest(
   method: string,
   url: string,
@@ -54,15 +80,80 @@ export async function apiRequest(
     ...getAuthHeaders(),
     ...(data ? { "Content-Type": "application/json" } : {}),
   };
-  const res = await fetch(resolveUrl(url), {
-    method,
-    headers,
-    body: data ? JSON.stringify(data) : undefined,
-    credentials: isCapacitorNative() ? "omit" : "include",
-  });
 
-  await throwIfResNotOk(res);
-  return res;
+  try {
+    const res = await fetch(resolveUrl(url), {
+      method,
+      headers,
+      body: data ? JSON.stringify(data) : undefined,
+      credentials: isCapacitorNative() ? "omit" : "include",
+    });
+
+    await throwIfResNotOk(res);
+
+    if (method.toUpperCase() === "GET" && shouldCacheUrl(url)) {
+      try {
+        const cloned = res.clone();
+        const json = await cloned.json();
+        cacheApiResponse(url, json, extractVisitId(url));
+      } catch {}
+    }
+
+    return res;
+  } catch (err) {
+    const isNetworkErr = err instanceof TypeError ||
+      (err instanceof Error && (
+        err.message.includes("Failed to fetch") ||
+        err.message.includes("NetworkError") ||
+        err.message.includes("Load failed")
+      ));
+    const effectivelyOffline = !navigator.onLine || isNetworkErr;
+
+    if (effectivelyOffline && isOfflineSafeMethod(method)) {
+      await enqueueMutation({
+        method: method.toUpperCase(),
+        url,
+        body: data,
+        headers,
+        visitId: extractVisitId(url),
+        entityType: url.split("/").pop() || "unknown",
+      });
+      await refreshPendingCount();
+
+      const offlineResponse = new Response(
+        JSON.stringify({
+          offline: true,
+          queued: true,
+          message: "Saved offline. Will sync when connection is restored.",
+        }),
+        {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        },
+      );
+      return offlineResponse;
+    }
+
+    if (
+      effectivelyOffline &&
+      method.toUpperCase() === "GET" &&
+      shouldCacheUrl(url)
+    ) {
+      const cached = await getCachedResponse(url);
+      if (cached) {
+        return new Response(JSON.stringify(cached.data), {
+          status: 200,
+          headers: {
+            "Content-Type": "application/json",
+            "X-Offline-Cache": "true",
+            "X-Cached-At": String(cached.cachedAt),
+          },
+        });
+      }
+    }
+
+    throw err;
+  }
 }
 
 type UnauthorizedBehavior = "returnNull" | "throw";
@@ -72,17 +163,44 @@ export const getQueryFn: <T>(options: {
   ({ on401: unauthorizedBehavior }) =>
   async ({ queryKey }) => {
     const rawUrl = queryKey.join("/") as string;
-    const res = await fetch(resolveUrl(rawUrl), {
-      credentials: isCapacitorNative() ? "omit" : "include",
-      headers: getAuthHeaders(),
-    });
 
-    if (unauthorizedBehavior === "returnNull" && res.status === 401) {
-      return null;
+    try {
+      const res = await fetch(resolveUrl(rawUrl), {
+        credentials: isCapacitorNative() ? "omit" : "include",
+        headers: getAuthHeaders(),
+      });
+
+      if (unauthorizedBehavior === "returnNull" && res.status === 401) {
+        return null;
+      }
+
+      await throwIfResNotOk(res);
+      const data = await res.json();
+
+      if (shouldCacheUrl(rawUrl)) {
+        try {
+          cacheApiResponse(rawUrl, data, extractVisitId(rawUrl));
+        } catch {}
+      }
+
+      return data;
+    } catch (err) {
+      const isNetworkErr = err instanceof TypeError ||
+        (err instanceof Error && (
+          err.message.includes("Failed to fetch") ||
+          err.message.includes("NetworkError") ||
+          err.message.includes("Load failed")
+        ));
+      const effectivelyOffline = !navigator.onLine || isNetworkErr;
+
+      if (effectivelyOffline && shouldCacheUrl(rawUrl)) {
+        const cached = await getCachedResponse(rawUrl);
+        if (cached) {
+          return cached.data as Awaited<ReturnType<QueryFunction>>;
+        }
+      }
+      throw err;
     }
-
-    await throwIfResNotOk(res);
-    return await res.json();
   };
 
 export const queryClient = new QueryClient({

@@ -16,6 +16,8 @@ import { IOSInstallPrompt } from "@/components/ios-install-prompt";
 import { MobileShell } from "@/components/mobile-shell";
 import { MobileHeader } from "@/components/mobile-header";
 import { usePlatform } from "@/hooks/use-platform";
+import { NetworkProvider } from "@/lib/network-context";
+import { OfflineBanner } from "@/components/offline-banner";
 import NotFound from "@/pages/not-found";
 import LoginPage from "@/pages/login";
 import Dashboard from "@/pages/dashboard";
@@ -241,11 +243,14 @@ function App() {
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
         <ThemeProvider>
-          <AuthProvider>
-            <AppContent />
-            <IOSInstallPrompt />
-            <Toaster />
-          </AuthProvider>
+          <NetworkProvider>
+            <AuthProvider>
+              <OfflineBanner />
+              <AppContent />
+              <IOSInstallPrompt />
+              <Toaster />
+            </AuthProvider>
+          </NetworkProvider>
         </ThemeProvider>
       </TooltipProvider>
     </QueryClientProvider>

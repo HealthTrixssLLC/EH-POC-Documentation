@@ -697,7 +697,7 @@ export const RECOMMENDATION_DISMISS_REASONS = [
 export const CODE_TYPES = ["CPT", "HCPCS", "ICD-10"] as const;
 export type CodeType = typeof CODE_TYPES[number];
 
-export const AI_PROVIDER_TYPES = ["openai", "anthropic", "azure_openai"] as const;
+export const AI_PROVIDER_TYPES = ["openai", "anthropic", "azure_openai", "azure_speech"] as const;
 export type AiProviderType = typeof AI_PROVIDER_TYPES[number];
 
 export const aiProviderConfig = pgTable("ai_provider_config", {
@@ -708,6 +708,8 @@ export const aiProviderConfig = pgTable("ai_provider_config", {
   baseUrl: text("base_url"),
   modelName: text("model_name").notNull().default("whisper-1"),
   extractionModel: text("extraction_model").notNull().default("gpt-4o-mini"),
+  speechRegion: text("speech_region"),
+  speechEndpoint: text("speech_endpoint"),
   active: boolean("active").notNull().default(true),
   featureFlags: jsonb("feature_flags").$type<Record<string, boolean>>(),
   createdAt: text("created_at"),

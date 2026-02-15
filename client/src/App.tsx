@@ -48,6 +48,8 @@ import VisitConsents from "@/pages/visit-consents";
 import VoiceCapture from "@/pages/voice-capture";
 import AuditQueue from "@/pages/audit-queue";
 import VisitActive from "@/pages/visit-active";
+import PrivacyPolicy from "@/pages/privacy-policy";
+import ProductDescription from "@/pages/product-description";
 import { useQuery as useQueryHook } from "@tanstack/react-query";
 
 function DemoWatermark() {
@@ -221,6 +223,8 @@ function AppContent() {
   const { isMobileLayout } = usePlatform();
 
   if (!isAuthenticated) {
+    if (location === "/privacy") return <PrivacyPolicy />;
+    if (location === "/product") return <ProductDescription />;
     if (location !== "/login") {
       return <Redirect to="/login" />;
     }

@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useLocation } from "wouter";
+import { useLocation, Link } from "wouter";
 import { useAuth } from "@/lib/auth";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -321,6 +321,16 @@ export default function LoginPage() {
         <p className="text-center text-xs text-muted-foreground">
           HIPAA-compliant clinical platform. All access is monitored and audited.
         </p>
+
+        <div className="flex items-center justify-center gap-3 flex-wrap">
+          <Link href="/product" className="text-xs text-muted-foreground underline hover-elevate" data-testid="link-product">
+            About Easy Health
+          </Link>
+          <span className="text-muted-foreground text-xs">|</span>
+          <Link href="/privacy" className="text-xs text-muted-foreground underline hover-elevate" data-testid="link-privacy">
+            Privacy Policy
+          </Link>
+        </div>
       </div>
     </div>
   );

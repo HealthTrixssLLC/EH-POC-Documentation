@@ -15,6 +15,7 @@ import {
   CheckCircle2,
   AlertTriangle,
 } from "lucide-react";
+import { getSupportedAudioMimeType, getAudioBlobType } from "@/lib/audio-utils";
 
 interface MobileVoiceOverlayProps {
   visitId: string;
@@ -28,7 +29,7 @@ export function MobileVoiceOverlay({ visitId, open, onClose }: MobileVoiceOverla
   const { user } = useAuth();
   const { toast } = useToast();
 
-  const { data: consents } = useQuery<any[]>({ queryKey: [`/api/visits/${visitId}/consents`] });
+  const { data: consents, refetch: refetchConsents } = useQuery<any[]>({ queryKey: [`/api/visits/${visitId}/consents`] });
   const { data: aiStatus } = useQuery<any>({ queryKey: ["/api/ai-providers/active"] });
 
   const voiceConsent = consents?.find((c: any) => c.consentType === "voice_transcription" && c.status === "granted");
@@ -52,8 +53,9 @@ export function MobileVoiceOverlay({ visitId, open, onClose }: MobileVoiceOverla
       setElapsed(0);
       setResultMessage("");
       setErrorMessage("");
+      refetchConsents();
     }
-  }, [open]);
+  }, [open, refetchConsents]);
 
   useEffect(() => {
     return () => {
@@ -70,7 +72,10 @@ export function MobileVoiceOverlay({ visitId, open, onClose }: MobileVoiceOverla
   const startRecording = useCallback(async () => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      const recorder = new MediaRecorder(stream, { mimeType: "audio/webm;codecs=opus" });
+      const supportedMime = getSupportedAudioMimeType();
+      const recorderOptions: MediaRecorderOptions = supportedMime ? { mimeType: supportedMime } : {};
+      const recorder = new MediaRecorder(stream, recorderOptions);
+      const actualMime = recorder.mimeType || supportedMime || "audio/webm";
       chunksRef.current = [];
 
       recorder.ondataavailable = (e) => {
@@ -79,7 +84,7 @@ export function MobileVoiceOverlay({ visitId, open, onClose }: MobileVoiceOverla
 
       recorder.onstop = () => {
         stream.getTracks().forEach(t => t.stop());
-        const blob = new Blob(chunksRef.current, { type: "audio/webm" });
+        const blob = new Blob(chunksRef.current, { type: getAudioBlobType(actualMime) });
         if (blob.size > 0) {
           saveAndProcess(blob);
         }
@@ -94,7 +99,14 @@ export function MobileVoiceOverlay({ visitId, open, onClose }: MobileVoiceOverla
         setElapsed(pausedElapsedRef.current + (Date.now() - startTimeRef.current) / 1000);
       }, 100);
     } catch (err: any) {
-      toast({ title: "Microphone access denied", description: "Please allow microphone access.", variant: "destructive" });
+      const isNotSupported = err?.name === "NotSupportedError" || err?.name === "TypeError";
+      toast({
+        title: isNotSupported ? "Recording not supported" : "Microphone access denied",
+        description: isNotSupported
+          ? "Your browser does not support audio recording. Please use Safari on iOS 14.3+."
+          : "Please allow microphone access in your device settings.",
+        variant: "destructive",
+      });
     }
   }, [toast]);
 

@@ -4921,7 +4921,8 @@ export async function registerRoutes(
 
           const audioBuffer = Buffer.from(recording.audioData, "base64");
           const tmpDir = os.tmpdir();
-          const inputPath = path.join(tmpDir, `speech_in_${Date.now()}.webm`);
+          const inputExt = (recording.mimeType || "").includes("mp4") ? ".mp4" : (recording.mimeType || "").includes("ogg") ? ".ogg" : ".webm";
+          const inputPath = path.join(tmpDir, `speech_in_${Date.now()}${inputExt}`);
           const outputPath = path.join(tmpDir, `speech_out_${Date.now()}.wav`);
           fs.writeFileSync(inputPath, audioBuffer);
           try {
@@ -4984,7 +4985,8 @@ export async function registerRoutes(
           });
 
           const audioBuffer = Buffer.from(recording.audioData, "base64");
-          const audioFile = new File([audioBuffer], "recording.webm", { type: recording.mimeType });
+          const fileExt = (recording.mimeType || "").includes("mp4") ? "mp4" : (recording.mimeType || "").includes("ogg") ? "ogg" : "webm";
+          const audioFile = new File([audioBuffer], `recording.${fileExt}`, { type: recording.mimeType });
 
           const result = await openai.audio.transcriptions.create({
             file: audioFile,

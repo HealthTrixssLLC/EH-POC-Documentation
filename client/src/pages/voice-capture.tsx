@@ -42,6 +42,7 @@ import {
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { usePlatform } from "@/hooks/use-platform";
+import { getSupportedAudioMimeType, getAudioBlobType } from "@/lib/audio-utils";
 
 export default function VoiceCapture() {
   const { isMobileLayout } = usePlatform();
@@ -482,7 +483,10 @@ function RecordingPanel({ visitId, hasConsent, user, recordings, isLoading, onPr
   const startRecording = useCallback(async () => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      const recorder = new MediaRecorder(stream, { mimeType: "audio/webm;codecs=opus" });
+      const supportedMime = getSupportedAudioMimeType();
+      const recorderOptions: MediaRecorderOptions = supportedMime ? { mimeType: supportedMime } : {};
+      const recorder = new MediaRecorder(stream, recorderOptions);
+      const actualMime = recorder.mimeType || supportedMime || "audio/webm";
       chunksRef.current = [];
 
       recorder.ondataavailable = (e) => {
@@ -490,7 +494,7 @@ function RecordingPanel({ visitId, hasConsent, user, recordings, isLoading, onPr
       };
 
       recorder.onstop = () => {
-        const blob = new Blob(chunksRef.current, { type: "audio/webm" });
+        const blob = new Blob(chunksRef.current, { type: getAudioBlobType(actualMime) });
         stream.getTracks().forEach(t => t.stop());
         if (blob.size > 0) {
           saveMutation.mutate(blob);

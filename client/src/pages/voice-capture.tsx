@@ -52,11 +52,25 @@ export default function VoiceCapture() {
   const { user } = useAuth();
   const { toast } = useToast();
 
-  const { data: consents } = useQuery<any[]>({ queryKey: [`/api/visits/${visitId}/consents`] });
+  const { data: consents, refetch: refetchConsents } = useQuery<any[]>({ queryKey: [`/api/visits/${visitId}/consents`], refetchOnMount: "always", refetchOnWindowFocus: true, staleTime: 0 });
   const { data: recordings, isLoading: loadingRecordings } = useQuery<any[]>({ queryKey: [`/api/visits/${visitId}/recordings`] });
   const { data: txs, isLoading: loadingTxs } = useQuery<any[]>({ queryKey: [`/api/visits/${visitId}/transcripts`] });
   const { data: extractedFields, isLoading: loadingFields } = useQuery<any[]>({ queryKey: [`/api/visits/${visitId}/extracted-fields`] });
   const { data: aiStatus } = useQuery<any>({ queryKey: ["/api/ai-providers/active"] });
+
+  useEffect(() => {
+    const handleVisibility = () => {
+      if (document.visibilityState === "visible") {
+        refetchConsents();
+      }
+    };
+    document.addEventListener("visibilitychange", handleVisibility);
+    return () => document.removeEventListener("visibilitychange", handleVisibility);
+  }, [refetchConsents]);
+
+  useEffect(() => {
+    refetchConsents();
+  }, [visitId, refetchConsents]);
   const { data: overview } = useQuery<any>({ queryKey: ["/api/visits", visitId, "overview"] });
 
   const [activeTab, setActiveTab] = useState("record");

@@ -1,0 +1,52 @@
+ ...-_iPhone_17_Pro_Max_-_2026-02-18_at_07.47_1771422454235.png | Bin 0 -> 297159 bytes
+ ...-_iPhone_17_Pro_Max_-_2026-02-18_at_07.47_1771422463265.png | Bin 0 -> 299921 bytes
+ ...-_iPhone_17_Pro_Max_-_2026-02-18_at_07.47_1771422474388.png | Bin 0 -> 267426 bytes
+ ...-_iPhone_17_Pro_Max_-_2026-02-18_at_07.48_1771422485318.png | Bin 0 -> 301282 bytes
+ client/src/pages/voice-capture.tsx                             |  16 +++++++++++++++-
+ 5 files changed, 15 insertions(+), 1 deletion(-)
+ create mode 100644 attached_assets/Simulator_Screenshot_-_iPhone_17_Pro_Max_-_2026-02-18_at_07.47_1771422454235.png
+ create mode 100644 attached_assets/Simulator_Screenshot_-_iPhone_17_Pro_Max_-_2026-02-18_at_07.47_1771422463265.png
+ create mode 100644 attached_assets/Simulator_Screenshot_-_iPhone_17_Pro_Max_-_2026-02-18_at_07.47_1771422474388.png
+ create mode 100644 attached_assets/Simulator_Screenshot_-_iPhone_17_Pro_Max_-_2026-02-18_at_07.48_1771422485318.png
+jaybaker@Jays-Mac-mini EH-POC-Documentation % npm install
+npm run build
+npx cap sync ios
+open ios/App/App.xcodeproj
+
+up to date, audited 633 packages in 714ms
+
+87 packages are looking for funding
+  run `npm fund` for details
+
+2 vulnerabilities (1 low, 1 moderate)
+
+To address all issues, run:
+  npm audit fix
+
+Run `npm audit` for details.
+
+> rest-express@1.0.0 build
+> tsx script/build.ts
+
+building client...
+vite v7.3.0 building client environment for production...
+transforming (15) src/components/ui/toaster.tsx
+A PostCSS plugin did not pass the `from` option to `postcss.parse`. This may cause imported assets to be incorrectly transformed. If you've recently added a PostCSS plugin that raised this warning, please contact the package author to fix the issue.
+✓ 2537 modules transformed.
+../dist/public/index.html                     4.22 kB │ gzip:   1.27 kB
+../dist/public/assets/index-CSXVsvra.css    108.62 kB │ gzip:  16.82 kB
+../dist/public/assets/index-B8cnE7Jc.js   1,507.03 kB │ gzip: 399.48 kB
+
+(!) Some chunks are larger than 500 kB after minification. Consider:
+- Using dynamic import() to code-split the application
+- Use build.rollupOptions.output.manualChunks to improve chunking: https://rollupjs.org/configuration-options/#output-manualchunks
+- Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.
+✓ built in 2.12s
+building server...
+
+  dist/index.cjs  1.4mb ⚠️
+
+⚡ Done in 55ms
+npm error could not determine executable to run
+npm error A complete log of this run can be found in: /Volumes/ExternalData/UsersExternal/jaybaker/.npm/_logs/2026-02-18T15_08_54_935Z-debug-0.log
+jaybaker@Jays-Mac-mini EH-POC-Documentation % 

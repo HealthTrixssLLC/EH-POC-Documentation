@@ -38,6 +38,20 @@ Easy Health employs a modern web architecture:
     -   **HIPAA Security Features**: Admin-configurable MFA (multi-factor authentication) with 6-digit OTP codes, role-based bypass, configurable code TTL and max attempts. Session timeout with auto-lock and password re-entry. Biometric authentication gate for iOS (Face ID/Touch ID via Capacitor). Security admin panel with toggles for MFA, biometric auth, session timeout. Key files: `client/src/pages/login.tsx` (MFA flow), `client/src/lib/auth.tsx` (session timeout), `client/src/components/session-lock-screen.tsx`, `client/src/hooks/use-biometric-auth.ts`, `client/src/components/biometric-gate.tsx`, `server/routes.ts` (auth endpoints).
     -   **Offline-First Local Storage**: IndexedDB-backed offline data layer with automatic sync. Caches API GET responses for offline reads, queues POST/PUT/PATCH/DELETE mutations for replay when connectivity returns. Includes NetworkProvider context for online/offline state, SyncManager for mutation replay with retry and conflict handling, OfflineBanner UI showing offline status/sync progress/failed items. Service worker enhanced with API response caching (stale-while-revalidate for visit data). Key files: `client/src/lib/offline-db.ts` (IndexedDB schema), `client/src/lib/sync-manager.ts` (queue replay), `client/src/lib/network-context.tsx` (React context), `client/src/components/offline-banner.tsx` (UI).
 
+## Technical Documentation (docs/)
+Complete technical documentation suite for the EH engineering team:
+-   **docs/README.md**: Index linking all documentation
+-   **docs/api-endpoints.md** (5,222 lines): Complete reference for all 128+ REST endpoints with business purpose, auth, request/response examples, validation rules, error codes, and testing checklists
+-   **docs/fhir-compliance.md** (1,787 lines): FHIR R4 compliance guide with resource mappings, terminology bindings (ICD-10, LOINC, CPT, SNOMED), bundle composition, inbound processing, and interoperability roadmap
+-   **docs/fhir-api-reference.md**: FHIR R4 API endpoint reference with test payloads
+-   **docs/technical-activity-diagrams.md** (1,333 lines): 10 Mermaid sequence/activity diagrams with swimlanes for all major workflows, handoff tables, and architecture decision records
+-   **docs/hipaa-security.md** (983 lines): HIPAA security guide with PHI classification, encryption requirements, RBAC permissions matrix, audit logging, breach notification, BAA requirements, and developer security checklist
+-   **docs/azure-deployment.md** (2,335 lines): Azure deployment hardening guide with step-by-step CLI commands, VNet/Private Endpoints, Key Vault, WAF, CI/CD pipeline, compliance controls, cost estimation, and migration runbook
+-   **docs/ios-build-guide.md**: iOS build with Capacitor
+-   **docs/ios-app-store-submission-guide.md**: App Store submission guide
+-   **docs/testflight-guide.md**: TestFlight beta testing
+-   **docs/app-review-checklist.md**: Apple review preparation
+
 ## External Dependencies
 -   **Database**: PostgreSQL
 -   **API Integration**: OpenAI (Whisper for transcription, GPT-4o for field extraction), Azure Cognitive Services (Speech SDK for transcription)

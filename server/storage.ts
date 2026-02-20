@@ -67,6 +67,12 @@ import {
   type SecuritySettings, type InsertSecuritySettings,
   mfaCodes,
   type MfaCode, type InsertMfaCode,
+  billingReadinessEvaluations,
+  type BillingReadinessEvaluation, type InsertBillingReadinessEvaluation,
+  emLevelRules,
+  type EmLevelRule, type InsertEmLevelRule,
+  emEvaluations,
+  type EmEvaluation, type InsertEmEvaluation,
 } from "@shared/schema";
 
 export interface IStorage {
@@ -272,6 +278,19 @@ export interface IStorage {
   getLatestMfaCode(userId: string): Promise<MfaCode | undefined>;
   updateMfaCode(id: string, updates: Partial<MfaCode>): Promise<MfaCode | undefined>;
   updateUser(id: string, updates: Partial<User>): Promise<User | undefined>;
+
+  // CR-P1: Billing Readiness
+  createBillingReadinessEvaluation(eval_: InsertBillingReadinessEvaluation): Promise<BillingReadinessEvaluation>;
+  getBillingReadinessEvaluations(visitId: string): Promise<BillingReadinessEvaluation[]>;
+  getLatestBillingReadinessEvaluation(visitId: string): Promise<BillingReadinessEvaluation | undefined>;
+
+  // CR-P2: E/M Level Rules & Evaluations
+  getEmLevelRule(cptCode: string): Promise<EmLevelRule | undefined>;
+  getAllEmLevelRules(): Promise<EmLevelRule[]>;
+  createEmLevelRule(rule: InsertEmLevelRule): Promise<EmLevelRule>;
+  createEmEvaluation(eval_: InsertEmEvaluation): Promise<EmEvaluation>;
+  getEmEvaluationByVisit(visitId: string): Promise<EmEvaluation | undefined>;
+  getEmEvaluationsByVisit(visitId: string): Promise<EmEvaluation[]>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -1059,6 +1078,50 @@ export class DatabaseStorage implements IStorage {
   async updateUser(id: string, updates: Partial<User>) {
     const [updated] = await db.update(users).set(updates).where(eq(users.id, id)).returning();
     return updated;
+  }
+
+  // CR-P1: Billing Readiness
+  async createBillingReadinessEvaluation(eval_: InsertBillingReadinessEvaluation) {
+    const [created] = await db.insert(billingReadinessEvaluations).values(eval_).returning();
+    return created;
+  }
+
+  async getBillingReadinessEvaluations(visitId: string) {
+    return db.select().from(billingReadinessEvaluations).where(eq(billingReadinessEvaluations.visitId, visitId)).orderBy(desc(billingReadinessEvaluations.evaluatedAt));
+  }
+
+  async getLatestBillingReadinessEvaluation(visitId: string) {
+    const [eval_] = await db.select().from(billingReadinessEvaluations).where(eq(billingReadinessEvaluations.visitId, visitId)).orderBy(desc(billingReadinessEvaluations.evaluatedAt)).limit(1);
+    return eval_;
+  }
+
+  // CR-P2: E/M Level Rules & Evaluations
+  async getEmLevelRule(cptCode: string) {
+    const [rule] = await db.select().from(emLevelRules).where(and(eq(emLevelRules.cptCode, cptCode), eq(emLevelRules.active, true)));
+    return rule;
+  }
+
+  async getAllEmLevelRules() {
+    return db.select().from(emLevelRules).where(eq(emLevelRules.active, true));
+  }
+
+  async createEmLevelRule(rule: InsertEmLevelRule) {
+    const [created] = await db.insert(emLevelRules).values(rule).returning();
+    return created;
+  }
+
+  async createEmEvaluation(eval_: InsertEmEvaluation) {
+    const [created] = await db.insert(emEvaluations).values(eval_).returning();
+    return created;
+  }
+
+  async getEmEvaluationByVisit(visitId: string) {
+    const [eval_] = await db.select().from(emEvaluations).where(eq(emEvaluations.visitId, visitId)).orderBy(desc(emEvaluations.evaluatedAt)).limit(1);
+    return eval_;
+  }
+
+  async getEmEvaluationsByVisit(visitId: string) {
+    return db.select().from(emEvaluations).where(eq(emEvaluations.visitId, visitId)).orderBy(desc(emEvaluations.evaluatedAt));
   }
 }
 

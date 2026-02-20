@@ -26,7 +26,12 @@ import {
   Lightbulb,
   Stethoscope,
   Info,
+  DollarSign,
+  Activity,
+  Loader2,
 } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Progress } from "@/components/ui/progress";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { usePlatform } from "@/hooks/use-platform";
@@ -38,6 +43,9 @@ export default function ReviewFinalize() {
   const [, setLocation] = useLocation();
   const { toast } = useToast();
   const [signature, setSignature] = useState("");
+  const [showEmOverrideDialog, setShowEmOverrideDialog] = useState(false);
+  const [showBillingOverrideDialog, setShowBillingOverrideDialog] = useState(false);
+  const [overrideReason, setOverrideReason] = useState("");
 
   const { data: bundle, isLoading } = useQuery<any>({
     queryKey: ["/api/visits", visitId, "bundle"],
@@ -79,6 +87,16 @@ export default function ReviewFinalize() {
     enabled: !!visitId,
   });
 
+  const { data: billingReadiness } = useQuery<any>({
+    queryKey: ["/api/visits", visitId, "billing-readiness"],
+    enabled: !!visitId,
+  });
+
+  const { data: emEvaluation } = useQuery<any>({
+    queryKey: ["/api/visits", visitId, "em-evaluation"],
+    enabled: !!visitId,
+  });
+
   const [diagValidation, setDiagValidation] = useState<any>(null);
 
   const validateDiagnosesMutation = useMutation({
@@ -96,6 +114,44 @@ export default function ReviewFinalize() {
       validateDiagnosesMutation.mutate();
     }
   }, [visitId, codes.length]);
+
+  const evaluateBillingReadinessMutation = useMutation({
+    mutationFn: async () => {
+      const resp = await apiRequest("POST", `/api/visits/${visitId}/billing-readiness`, {});
+      return resp.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/visits", visitId, "billing-readiness"] });
+      toast({ title: "Billing readiness evaluated" });
+    },
+  });
+
+  const evaluateEmMutation = useMutation({
+    mutationFn: async () => {
+      const resp = await apiRequest("POST", `/api/visits/${visitId}/em-evaluation`, {});
+      return resp.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/visits", visitId, "em-evaluation"] });
+      toast({ title: "E/M evaluation complete" });
+    },
+  });
+
+  const billingOverrideMutation = useMutation({
+    mutationFn: async (reason: string) => {
+      const resp = await apiRequest("POST", `/api/visits/${visitId}/billing-readiness/override`, {
+        overrideReason: reason,
+        overrideBy: "np",
+      });
+      return resp.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/visits", visitId, "billing-readiness"] });
+      setShowBillingOverrideDialog(false);
+      setOverrideReason("");
+      toast({ title: "Billing gate overridden" });
+    },
+  });
 
   const generateCodesMutation = useMutation({
     mutationFn: async () => {
@@ -127,18 +183,31 @@ export default function ReviewFinalize() {
   });
 
   const finalizeMutation = useMutation({
-    mutationFn: async () => {
-      await apiRequest("POST", `/api/visits/${visitId}/finalize`, {
+    mutationFn: async (acknowledgeEmMismatch?: boolean) => {
+      const resp = await apiRequest("POST", `/api/visits/${visitId}/finalize`, {
         signature,
         attestationText: "I attest that the information documented in this visit record is accurate and complete to the best of my professional knowledge.",
+        acknowledgeEmMismatch,
       });
+      return resp.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/visits"] });
       toast({ title: "Visit finalized successfully" });
       setLocation("/visits");
     },
-    onError: (err: any) => {
+    onError: async (err: any) => {
+      try {
+        const msg = err.message || "";
+        const jsonStart = msg.indexOf("{");
+        if (jsonStart >= 0) {
+          const errData = JSON.parse(msg.slice(jsonStart));
+          if (errData.emWarning) {
+            setShowEmOverrideDialog(true);
+            return;
+          }
+        }
+      } catch {}
       toast({ title: "Finalization failed", description: err.message, variant: "destructive" });
     },
   });
@@ -592,6 +661,197 @@ export default function ReviewFinalize() {
         </CardContent>
       </Card>
 
+      {/* CR-P1: Billing Readiness Panel */}
+      <Card>
+        <CardHeader className="pb-3">
+          <div className="flex items-center justify-between gap-3 flex-wrap">
+            <div className="flex items-center gap-2">
+              <DollarSign className="w-5 h-5" style={{ color: "#2E456B" }} />
+              <h2 className="text-base font-semibold" data-testid="text-billing-readiness-title">Billing Readiness</h2>
+            </div>
+            <div className="flex items-center gap-2">
+              {billingReadiness && (
+                <Badge
+                  variant={billingReadiness.gateResult === "pass" ? "default" : billingReadiness.gateResult === "override" ? "secondary" : "destructive"}
+                  data-testid="badge-billing-gate-result"
+                >
+                  {billingReadiness.gateResult === "pass" ? "Pass" : billingReadiness.gateResult === "override" ? "Overridden" : "Fail"}
+                </Badge>
+              )}
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => evaluateBillingReadinessMutation.mutate()}
+                disabled={evaluateBillingReadinessMutation.isPending}
+                data-testid="button-evaluate-billing"
+              >
+                <RefreshCw className={`w-3.5 h-3.5 mr-1 ${evaluateBillingReadinessMutation.isPending ? "animate-spin" : ""}`} />
+                {evaluateBillingReadinessMutation.isPending ? "Evaluating..." : "Evaluate"}
+              </Button>
+            </div>
+          </div>
+          <p className="text-sm text-muted-foreground">Pre-claim compliance gate - evaluates documentation readiness for billing</p>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {billingReadiness ? (
+            <>
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-sm font-medium">Overall Score</span>
+                <span className="text-lg font-bold" data-testid="text-billing-overall-score">{billingReadiness.overallScore}%</span>
+              </div>
+              <div className="space-y-3">
+                <div>
+                  <div className="flex items-center justify-between gap-2 mb-1">
+                    <span className="text-xs text-muted-foreground">Completeness (40%)</span>
+                    <span className="text-xs font-medium">{billingReadiness.completenessScore}%</span>
+                  </div>
+                  <Progress value={billingReadiness.completenessScore} className="h-2" />
+                </div>
+                <div>
+                  <div className="flex items-center justify-between gap-2 mb-1">
+                    <span className="text-xs text-muted-foreground">Diagnosis Support (35%)</span>
+                    <span className="text-xs font-medium">{billingReadiness.diagnosisSupportScore}%</span>
+                  </div>
+                  <Progress value={billingReadiness.diagnosisSupportScore} className="h-2" />
+                </div>
+                <div>
+                  <div className="flex items-center justify-between gap-2 mb-1">
+                    <span className="text-xs text-muted-foreground">Coding Compliance (25%)</span>
+                    <span className="text-xs font-medium">{billingReadiness.codingComplianceScore}%</span>
+                  </div>
+                  <Progress value={billingReadiness.codingComplianceScore} className="h-2" />
+                </div>
+              </div>
+              {billingReadiness.failReasons && billingReadiness.failReasons.length > 0 && (
+                <>
+                  <Separator />
+                  <div className="space-y-1.5">
+                    <span className="text-xs font-medium text-muted-foreground">Issues Found</span>
+                    {billingReadiness.failReasons.map((reason: any, i: number) => (
+                      <div key={i} className="flex items-start gap-2 text-xs" data-testid={`billing-issue-${i}`}>
+                        {reason.severity === "error" ? (
+                          <XCircle className="w-3 h-3 flex-shrink-0 mt-0.5 text-destructive" />
+                        ) : (
+                          <AlertTriangle className="w-3 h-3 flex-shrink-0 mt-0.5 text-amber-500" />
+                        )}
+                        <span>{reason.description}</span>
+                      </div>
+                    ))}
+                  </div>
+                </>
+              )}
+              {billingReadiness.gateResult === "fail" && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="w-full"
+                  onClick={() => setShowBillingOverrideDialog(true)}
+                  data-testid="button-billing-override"
+                >
+                  Override Billing Gate
+                </Button>
+              )}
+            </>
+          ) : (
+            <div className="text-center py-4">
+              <p className="text-sm text-muted-foreground">
+                Run billing readiness evaluation to check pre-claim compliance.
+              </p>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* CR-P2: E/M Validation Panel */}
+      <Card>
+        <CardHeader className="pb-3">
+          <div className="flex items-center justify-between gap-3 flex-wrap">
+            <div className="flex items-center gap-2">
+              <Activity className="w-5 h-5" style={{ color: "#277493" }} />
+              <h2 className="text-base font-semibold" data-testid="text-em-validation-title">E/M Level Validation</h2>
+            </div>
+            <div className="flex items-center gap-2">
+              {emEvaluation && emEvaluation.levelMatch && emEvaluation.levelMatch !== "not_applicable" && (
+                <Badge
+                  variant={emEvaluation.levelMatch === "match" ? "default" : emEvaluation.levelMatch === "under_coded" ? "secondary" : "destructive"}
+                  data-testid="badge-em-match"
+                >
+                  {emEvaluation.levelMatch === "match" ? "Match" : emEvaluation.levelMatch === "under_coded" ? "Under-coded" : "Over-coded"}
+                </Badge>
+              )}
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => evaluateEmMutation.mutate()}
+                disabled={evaluateEmMutation.isPending}
+                data-testid="button-evaluate-em"
+              >
+                <RefreshCw className={`w-3.5 h-3.5 mr-1 ${evaluateEmMutation.isPending ? "animate-spin" : ""}`} />
+                {evaluateEmMutation.isPending ? "Evaluating..." : "Evaluate E/M"}
+              </Button>
+            </div>
+          </div>
+          <p className="text-sm text-muted-foreground">Validates E/M CPT code against Medical Decision Making (MDM) documentation</p>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {emEvaluation && emEvaluation.assignedCpt ? (
+            <>
+              <div className="flex items-center justify-between gap-2 flex-wrap">
+                <div>
+                  <span className="text-xs text-muted-foreground">Assigned E/M Code</span>
+                  <div className="flex items-center gap-2 mt-0.5">
+                    <Badge variant="outline" className="font-mono text-xs" data-testid="text-em-assigned-cpt">{emEvaluation.assignedCpt}</Badge>
+                    <span className="text-sm">vs. documented MDM:</span>
+                    <Badge variant="secondary" className="text-xs capitalize" data-testid="text-em-mdm-level">{emEvaluation.evaluatedMdmLevel}</Badge>
+                  </div>
+                </div>
+                <div className="text-right">
+                  <span className="text-xs text-muted-foreground">MDM Score</span>
+                  <div className="text-lg font-bold" data-testid="text-em-mdm-score">{emEvaluation.overallMdmScore}%</div>
+                </div>
+              </div>
+              <div className="space-y-3">
+                <div>
+                  <div className="flex items-center justify-between gap-2 mb-1">
+                    <span className="text-xs text-muted-foreground">Problems Addressed (35%)</span>
+                    <span className="text-xs font-medium">{emEvaluation.problemsScore}%</span>
+                  </div>
+                  <Progress value={emEvaluation.problemsScore} className="h-2" />
+                </div>
+                <div>
+                  <div className="flex items-center justify-between gap-2 mb-1">
+                    <span className="text-xs text-muted-foreground">Data Reviewed/Ordered (35%)</span>
+                    <span className="text-xs font-medium">{emEvaluation.dataScore}%</span>
+                  </div>
+                  <Progress value={emEvaluation.dataScore} className="h-2" />
+                </div>
+                <div>
+                  <div className="flex items-center justify-between gap-2 mb-1">
+                    <span className="text-xs text-muted-foreground">Risk of Complications (30%)</span>
+                    <span className="text-xs font-medium">{emEvaluation.riskScore}%</span>
+                  </div>
+                  <Progress value={emEvaluation.riskScore} className="h-2" />
+                </div>
+              </div>
+              {emEvaluation.suggestedCpt && (
+                <div className="flex items-center gap-2 p-2 rounded-md border border-amber-300 dark:border-amber-600 text-sm" data-testid="text-em-suggestion">
+                  <AlertTriangle className="w-4 h-4 flex-shrink-0" style={{ color: "#FEA002" }} />
+                  <span>Suggested CPT: <Badge variant="outline" className="font-mono text-xs">{emEvaluation.suggestedCpt}</Badge></span>
+                </div>
+              )}
+            </>
+          ) : emEvaluation && emEvaluation.levelMatch === "not_applicable" ? (
+            <p className="text-sm text-muted-foreground text-center py-4">
+              No E/M CPT code found on this visit. E/M validation not applicable.
+            </p>
+          ) : (
+            <p className="text-sm text-muted-foreground text-center py-4">
+              Run E/M evaluation to validate CPT code against documentation.
+            </p>
+          )}
+        </CardContent>
+      </Card>
+
       {!completenessOk && failedRequired.length > 0 && (
         <Card className="border-destructive/30">
           <CardContent className="p-4 flex items-start gap-3">
@@ -691,6 +951,80 @@ export default function ReviewFinalize() {
           </Button>
         </CardContent>
       </Card>
+
+      {showEmOverrideDialog && (
+        <Dialog open={true} onOpenChange={() => setShowEmOverrideDialog(false)}>
+          <DialogContent className="max-w-md">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <AlertTriangle className="w-5 h-5 text-amber-500" />
+                E/M Level Mismatch Warning
+              </DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4">
+              <p className="text-sm text-muted-foreground">
+                The E/M CPT code on this visit may not match the documented level of medical decision making.
+                Over-coded visits may face audit risk. Do you want to proceed with finalization?
+              </p>
+              {emEvaluation && (
+                <div className="flex items-center gap-2 p-2 rounded-md border text-sm">
+                  <span>Assigned: <Badge variant="outline" className="font-mono text-xs">{emEvaluation.assignedCpt}</Badge></span>
+                  <span>Suggested: <Badge variant="outline" className="font-mono text-xs">{emEvaluation.suggestedCpt}</Badge></span>
+                </div>
+              )}
+              <div className="flex gap-2">
+                <Button variant="outline" onClick={() => setShowEmOverrideDialog(false)} data-testid="button-em-override-cancel">Cancel</Button>
+                <Button
+                  onClick={() => {
+                    setShowEmOverrideDialog(false);
+                    finalizeMutation.mutate(true);
+                  }}
+                  disabled={finalizeMutation.isPending}
+                  data-testid="button-em-override-confirm"
+                >
+                  {finalizeMutation.isPending ? <><Loader2 className="w-4 h-4 mr-1 animate-spin" /> Finalizing...</> : "Acknowledge & Finalize"}
+                </Button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
+      )}
+
+      {showBillingOverrideDialog && (
+        <Dialog open={true} onOpenChange={() => setShowBillingOverrideDialog(false)}>
+          <DialogContent className="max-w-md">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <DollarSign className="w-5 h-5 text-amber-500" />
+                Override Billing Gate
+              </DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4">
+              <p className="text-sm text-muted-foreground">
+                This visit did not pass the billing readiness threshold (80/100).
+                Provide a reason to override the gate and allow claim export.
+              </p>
+              <Textarea
+                value={overrideReason}
+                onChange={(e) => setOverrideReason(e.target.value)}
+                placeholder="Reason for override (required)..."
+                className="min-h-[80px]"
+                data-testid="input-billing-override-reason"
+              />
+              <div className="flex gap-2">
+                <Button variant="outline" onClick={() => { setShowBillingOverrideDialog(false); setOverrideReason(""); }} data-testid="button-billing-override-cancel">Cancel</Button>
+                <Button
+                  onClick={() => billingOverrideMutation.mutate(overrideReason)}
+                  disabled={!overrideReason.trim() || billingOverrideMutation.isPending}
+                  data-testid="button-billing-override-confirm"
+                >
+                  {billingOverrideMutation.isPending ? <><Loader2 className="w-4 h-4 mr-1 animate-spin" /> Overriding...</> : "Override Gate"}
+                </Button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
+      )}
     </div>
   );
 }

@@ -46,6 +46,20 @@ interface AdjudicationSummary {
   hieIngestionSummary: { resourceCount: number; receivedAt: string | null; status: string } | null;
   suspectedConditionsReviewed: { total: number; confirmed: number; dismissed: number; pending: number };
   hieMedReconciliationStatus: { total: number; verified: number; pending: number };
+  billingReadiness?: {
+    overallScore: number;
+    gateResult: string;
+    completenessScore: number;
+    diagnosisSupportScore: number;
+    codingComplianceScore: number;
+  } | null;
+  emEvaluation?: {
+    assignedCpt: string;
+    evaluatedMdmLevel: string;
+    overallMdmScore: number;
+    levelMatch: string;
+    suggestedCpt?: string;
+  } | null;
 }
 
 interface EnhancedVisit {
@@ -168,6 +182,60 @@ function AdjudicationCard({ visitId }: { visitId: string }) {
                 <CheckCircle2 className="w-3 h-3 text-green-600 dark:text-green-400 flex-shrink-0" />
               )}
             </div>
+          </div>
+        </>
+      )}
+
+      {summary.billingReadiness && (
+        <>
+          <Separator />
+          <div className="space-y-2">
+            <div className="flex items-center justify-between gap-2">
+              <span className="text-xs font-medium text-muted-foreground">Billing Readiness</span>
+              <Badge
+                variant={summary.billingReadiness.gateResult === "pass" ? "default" : summary.billingReadiness.gateResult === "override" ? "secondary" : "destructive"}
+                className="text-xs"
+                data-testid="badge-adj-billing-gate"
+              >
+                {summary.billingReadiness.gateResult === "pass" ? "Pass" : summary.billingReadiness.gateResult === "override" ? "Overridden" : "Fail"}
+              </Badge>
+            </div>
+            <div>
+              <div className="flex items-center justify-between gap-2 mb-1">
+                <span className="text-xs text-muted-foreground">Score</span>
+                <span className="text-xs font-medium">{summary.billingReadiness.overallScore}%</span>
+              </div>
+              <Progress value={summary.billingReadiness.overallScore} className="h-2" />
+            </div>
+          </div>
+        </>
+      )}
+
+      {summary.emEvaluation && summary.emEvaluation.assignedCpt && (
+        <>
+          <Separator />
+          <div className="space-y-2">
+            <div className="flex items-center justify-between gap-2">
+              <span className="text-xs font-medium text-muted-foreground">E/M Validation</span>
+              <Badge
+                variant={summary.emEvaluation.levelMatch === "match" ? "default" : summary.emEvaluation.levelMatch === "under_coded" ? "secondary" : "destructive"}
+                className="text-xs"
+                data-testid="badge-adj-em-match"
+              >
+                {summary.emEvaluation.levelMatch === "match" ? "Match" : summary.emEvaluation.levelMatch === "under_coded" ? "Under-coded" : "Over-coded"}
+              </Badge>
+            </div>
+            <div className="flex items-center gap-2 text-xs">
+              <Badge variant="outline" className="font-mono text-[10px]">{summary.emEvaluation.assignedCpt}</Badge>
+              <span className="text-muted-foreground">MDM: {summary.emEvaluation.evaluatedMdmLevel}</span>
+              <span className="text-muted-foreground">Score: {summary.emEvaluation.overallMdmScore}%</span>
+            </div>
+            {summary.emEvaluation.suggestedCpt && (
+              <div className="flex items-center gap-1 text-xs text-amber-600 dark:text-amber-400">
+                <AlertTriangle className="w-3 h-3" />
+                Suggested: {summary.emEvaluation.suggestedCpt}
+              </div>
+            )}
           </div>
         </>
       )}

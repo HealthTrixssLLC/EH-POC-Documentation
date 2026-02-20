@@ -68,6 +68,9 @@ export const visits = pgTable("visits", {
   safetyNotes: text("safety_notes"),
   lockedAt: text("locked_at"),
   lockedBy: text("locked_by"),
+  billingReadinessScore: integer("billing_readiness_score"),
+  billingGateResult: text("billing_gate_result"),
+  billingGateEvaluatedAt: text("billing_gate_evaluated_at"),
   createdAt: timestamp("created_at").defaultNow(),
 });
 
@@ -970,6 +973,63 @@ export const mfaCodes = pgTable("mfa_codes", {
 export const insertMfaCodeSchema = createInsertSchema(mfaCodes).omit({ id: true });
 export type InsertMfaCode = z.infer<typeof insertMfaCodeSchema>;
 export type MfaCode = typeof mfaCodes.$inferSelect;
+
+// CR-P1: Billing Readiness Evaluations
+export const billingReadinessEvaluations = pgTable("billing_readiness_evaluations", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  visitId: varchar("visit_id").notNull(),
+  evaluatedAt: text("evaluated_at").notNull(),
+  evaluatedBy: text("evaluated_by").notNull().default("system"),
+  overallScore: integer("overall_score").notNull(),
+  completenessScore: integer("completeness_score").notNull(),
+  diagnosisSupportScore: integer("diagnosis_support_score").notNull(),
+  codingComplianceScore: integer("coding_compliance_score").notNull(),
+  gateResult: text("gate_result").notNull(),
+  failReasons: jsonb("fail_reasons").$type<{ category: string; description: string; severity: string }[]>(),
+  overrideReason: text("override_reason"),
+  overrideBy: text("override_by"),
+});
+
+export const insertBillingReadinessEvaluationSchema = createInsertSchema(billingReadinessEvaluations).omit({ id: true });
+export type InsertBillingReadinessEvaluation = z.infer<typeof insertBillingReadinessEvaluationSchema>;
+export type BillingReadinessEvaluation = typeof billingReadinessEvaluations.$inferSelect;
+
+// CR-P2: E/M Level Rules
+export const emLevelRules = pgTable("em_level_rules", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  cptCode: text("cpt_code").notNull(),
+  levelLabel: text("level_label").notNull(),
+  mdmLevel: text("mdm_level").notNull(),
+  minProblems: integer("min_problems").notNull(),
+  minDataPoints: integer("min_data_points").notNull(),
+  riskLevel: text("risk_level").notNull(),
+  description: text("description"),
+  active: boolean("active").notNull().default(true),
+});
+
+export const insertEmLevelRuleSchema = createInsertSchema(emLevelRules).omit({ id: true });
+export type InsertEmLevelRule = z.infer<typeof insertEmLevelRuleSchema>;
+export type EmLevelRule = typeof emLevelRules.$inferSelect;
+
+// CR-P2: E/M Evaluations
+export const emEvaluations = pgTable("em_evaluations", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  visitId: varchar("visit_id").notNull(),
+  assignedCpt: text("assigned_cpt").notNull(),
+  evaluatedMdmLevel: text("evaluated_mdm_level").notNull(),
+  problemsScore: integer("problems_score"),
+  dataScore: integer("data_score"),
+  riskScore: integer("risk_score"),
+  overallMdmScore: integer("overall_mdm_score"),
+  levelMatch: text("level_match").notNull(),
+  suggestedCpt: text("suggested_cpt"),
+  evaluationDetails: jsonb("evaluation_details"),
+  evaluatedAt: text("evaluated_at").notNull(),
+});
+
+export const insertEmEvaluationSchema = createInsertSchema(emEvaluations).omit({ id: true });
+export type InsertEmEvaluation = z.infer<typeof insertEmEvaluationSchema>;
+export type EmEvaluation = typeof emEvaluations.$inferSelect;
 
 export const AUDIT_FINDING_CATEGORIES = [
   { code: "documentation_quality", label: "Documentation Quality", description: "Completeness and accuracy of clinical documentation" },

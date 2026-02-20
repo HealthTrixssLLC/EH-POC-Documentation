@@ -1893,8 +1893,22 @@ export async function registerRoutes(
         });
       }
 
-      const { signature, attestationText } = req.body;
+      const { signature, attestationText, acknowledgeEmMismatch } = req.body;
       const now = new Date().toISOString();
+
+      // CR-P2: E/M mismatch soft gate
+      const emEval = await storage.getEmEvaluationByVisit(visit.id);
+      if (emEval && emEval.levelMatch === "over_coded" && !acknowledgeEmMismatch) {
+        return res.status(400).json({
+          message: "E/M level mismatch detected",
+          emWarning: true,
+          levelMatch: emEval.levelMatch,
+          assignedCpt: emEval.assignedCpt,
+          evaluatedMdmLevel: emEval.evaluatedMdmLevel,
+          suggestedCpt: emEval.suggestedCpt,
+          overallMdmScore: emEval.overallMdmScore,
+        });
+      }
 
       // Generate clinical note
       const member = await storage.getMember(visit.memberId);
@@ -2248,6 +2262,17 @@ export async function registerRoutes(
         qualityFlags.push({ flag: "hie_meds_pending", severity: "warning", description: `${pendingHieMeds.length} HIE medication(s) not yet verified` });
       }
 
+      // CR-P1: Billing readiness data
+      const billingReadiness = await storage.getLatestBillingReadinessEvaluation(visit.id);
+
+      // CR-P2: E/M evaluation data
+      const emEvaluation = await storage.getEmEvaluationByVisit(visit.id);
+      if (emEvaluation && emEvaluation.levelMatch === "over_coded") {
+        qualityFlags.push({ flag: "em_over_coded", severity: "error", description: `E/M code ${emEvaluation.assignedCpt} over-coded. Documentation supports ${emEvaluation.evaluatedMdmLevel} MDM.${emEvaluation.suggestedCpt ? ` Suggested: ${emEvaluation.suggestedCpt}` : ""}` });
+      } else if (emEvaluation && emEvaluation.levelMatch === "under_coded") {
+        qualityFlags.push({ flag: "em_under_coded", severity: "warning", description: `E/M code ${emEvaluation.assignedCpt} under-coded. Documentation supports ${emEvaluation.evaluatedMdmLevel} MDM.${emEvaluation.suggestedCpt ? ` Consider: ${emEvaluation.suggestedCpt}` : ""}` });
+      }
+
       const overallScore = Math.round((completenessData.score + diagnosisSupportData.score) / 2);
       const errorFlags = qualityFlags.filter(f => f.severity === "error").length;
       const warningFlags = qualityFlags.filter(f => f.severity === "warning").length;
@@ -2266,6 +2291,26 @@ export async function registerRoutes(
         hieIngestionSummary,
         suspectedConditionsReviewed,
         hieMedReconciliationStatus,
+        billingReadiness: billingReadiness ? {
+          overallScore: billingReadiness.overallScore,
+          completenessScore: billingReadiness.completenessScore,
+          diagnosisSupportScore: billingReadiness.diagnosisSupportScore,
+          codingComplianceScore: billingReadiness.codingComplianceScore,
+          gateResult: billingReadiness.gateResult,
+          evaluatedAt: billingReadiness.evaluatedAt,
+          failReasons: billingReadiness.failReasons,
+        } : null,
+        emEvaluation: emEvaluation ? {
+          assignedCpt: emEvaluation.assignedCpt,
+          evaluatedMdmLevel: emEvaluation.evaluatedMdmLevel,
+          problemsScore: emEvaluation.problemsScore,
+          dataScore: emEvaluation.dataScore,
+          riskScore: emEvaluation.riskScore,
+          overallMdmScore: emEvaluation.overallMdmScore,
+          levelMatch: emEvaluation.levelMatch,
+          suggestedCpt: emEvaluation.suggestedCpt,
+          evaluatedAt: emEvaluation.evaluatedAt,
+        } : null,
       });
     } catch (err: any) {
       return res.status(500).json({ message: err.message });
@@ -2281,11 +2326,405 @@ export async function registerRoutes(
     }
   });
 
-  // Export
+  // ===== CR-P1: Billing Readiness Evaluation =====
+  app.post("/api/visits/:id/billing-readiness", async (req, res) => {
+    try {
+      const visit = await storage.getVisit(req.params.id);
+      if (!visit) return res.status(404).json({ message: "Visit not found" });
+
+      const now = new Date().toISOString();
+      const failReasons: { category: string; description: string; severity: string }[] = [];
+
+      // 1. Completeness score (reuse existing engine)
+      let completenessScore = 100;
+      const planId = visit.planId;
+      if (planId) {
+        const rules = await storage.getCompletenessRules(planId);
+        if (rules.length > 0) {
+          const [compConsents, compVitals, compMedRecon, compChecklist] = await Promise.all([
+            storage.getConsentsByVisit(visit.id),
+            storage.getVitalsByVisit(visit.id),
+            storage.getMedReconciliationByVisit(visit.id),
+            storage.getChecklistByVisit(visit.id),
+          ]);
+          let passed = 0;
+          for (const rule of rules) {
+            let ok = false;
+            switch (rule.componentType) {
+              case "consent": { const c = compConsents.find(c => c.consentType === rule.componentId); ok = c?.status === "granted" || c?.status === "exception" || !rule.required; break; }
+              case "vitals": ok = !!compVitals; break;
+              case "medication": ok = compMedRecon.length > 0; break;
+              case "assessment":
+              case "measure": { const ci = compChecklist.find(c => c.itemType === rule.componentType && c.itemId === rule.componentId); ok = ci?.status === "complete" || ci?.status === "unable_to_assess"; break; }
+              default: ok = true;
+            }
+            if (ok) passed++;
+            else failReasons.push({ category: "completeness", description: `Missing: ${rule.label}`, severity: rule.required ? "error" : "warning" });
+          }
+          completenessScore = rules.length > 0 ? Math.round((passed / rules.length) * 100) : 100;
+        }
+      }
+
+      // 2. Diagnosis support score (reuse existing engine)
+      const [codes, vitals, assessmentResponses, medRecon, member] = await Promise.all([
+        storage.getCodesByVisit(visit.id),
+        storage.getVitalsByVisit(visit.id),
+        storage.getAssessmentResponsesByVisit(visit.id),
+        storage.getMedReconciliationByVisit(visit.id),
+        storage.getMember(visit.memberId),
+      ]);
+      const labResultsList = member ? await storage.getLabResultsByMember(member.id) : [];
+      const icdCodes = codes.filter((c: any) => c.codeType === "ICD-10" && !c.removedByNp);
+
+      let supportedCount = 0;
+      for (const code of icdCodes) {
+        const rule = await storage.getDiagnosisRuleByCode(code.code);
+        if (!rule) { supportedCount++; continue; }
+        const evidenceArray = rule.requiredEvidence as any[];
+        let allMet = true;
+        for (const ev of evidenceArray) {
+          let met = false;
+          if (ev.type === "vitals" && ev.field) met = vitals ? !!(vitals as any)[ev.field] : false;
+          else if (ev.type === "assessment" && ev.instrumentId) met = assessmentResponses.some((ar: any) => ar.instrumentId === ev.instrumentId && ar.status === "complete");
+          else if (ev.type === "medication") met = medRecon.length > 0;
+          else if (ev.type === "lab") met = ev.testName ? labResultsList.some((lr: any) => lr.testName.toLowerCase().includes(ev.testName.toLowerCase())) : labResultsList.length > 0;
+          if (!met) allMet = false;
+        }
+        if (allMet) supportedCount++;
+        else failReasons.push({ category: "diagnosis_support", description: `Unsupported diagnosis: ${code.code} - ${code.description}`, severity: "warning" });
+      }
+      const diagnosisSupportScore = icdCodes.length > 0 ? Math.round((supportedCount / icdCodes.length) * 100) : 100;
+
+      // 3. Coding compliance score
+      const unverifiedCodes = codes.filter((c: any) => c.codeType === "ICD-10" && !c.removedByNp && !c.verified);
+      const cptCodes = codes.filter((c: any) => c.codeType === "CPT" && !c.removedByNp);
+      let codingIssues = 0;
+      const codingTotal = Math.max(icdCodes.length + cptCodes.length, 1);
+      if (unverifiedCodes.length > 0) {
+        codingIssues += unverifiedCodes.length;
+        failReasons.push({ category: "coding_compliance", description: `${unverifiedCodes.length} unverified diagnosis code(s)`, severity: "info" });
+      }
+      if (!vitals && cptCodes.length > 0) {
+        codingIssues++;
+        failReasons.push({ category: "coding_compliance", description: "CPT codes assigned without vitals documentation", severity: "warning" });
+      }
+      if (medRecon.length === 0 && icdCodes.some((c: any) => c.code.startsWith("E11") || c.code === "I10")) {
+        codingIssues++;
+        failReasons.push({ category: "coding_compliance", description: "Chronic condition codes without medication reconciliation", severity: "warning" });
+      }
+      const codingComplianceScore = Math.max(0, Math.round(((codingTotal - codingIssues) / codingTotal) * 100));
+
+      // Composite billing readiness score (weighted average)
+      const overallScore = Math.round(completenessScore * 0.40 + diagnosisSupportScore * 0.35 + codingComplianceScore * 0.25);
+
+      const BILLING_GATE_THRESHOLD = 80;
+      const gateResult = overallScore >= BILLING_GATE_THRESHOLD ? "pass" : "fail";
+
+      const evaluation = await storage.createBillingReadinessEvaluation({
+        visitId: visit.id,
+        evaluatedAt: now,
+        evaluatedBy: "system",
+        overallScore,
+        completenessScore,
+        diagnosisSupportScore,
+        codingComplianceScore,
+        gateResult,
+        failReasons: failReasons.length > 0 ? failReasons : null,
+      });
+
+      await storage.updateVisit(visit.id, {
+        billingReadinessScore: overallScore,
+        billingGateResult: gateResult,
+        billingGateEvaluatedAt: now,
+      });
+
+      const auditEventType = gateResult === "pass" ? "billing_gate_pass" : "billing_gate_fail";
+      await storage.createAuditEvent({
+        eventType: auditEventType,
+        visitId: visit.id,
+        patientId: visit.memberId,
+        details: `Billing readiness evaluation: score=${overallScore}, result=${gateResult}`,
+      });
+
+      return res.json(evaluation);
+    } catch (err: any) {
+      return res.status(500).json({ message: err.message });
+    }
+  });
+
+  app.get("/api/visits/:id/billing-readiness", async (req, res) => {
+    try {
+      const evaluation = await storage.getLatestBillingReadinessEvaluation(req.params.id);
+      return res.json(evaluation || null);
+    } catch (err: any) {
+      return res.status(500).json({ message: err.message });
+    }
+  });
+
+  app.post("/api/visits/:id/billing-readiness/override", async (req, res) => {
+    try {
+      const visit = await storage.getVisit(req.params.id);
+      if (!visit) return res.status(404).json({ message: "Visit not found" });
+
+      const { overrideReason, overrideBy } = req.body;
+      if (!overrideReason) return res.status(400).json({ message: "Override reason is required" });
+
+      const now = new Date().toISOString();
+      const latest = await storage.getLatestBillingReadinessEvaluation(visit.id);
+
+      const evaluation = await storage.createBillingReadinessEvaluation({
+        visitId: visit.id,
+        evaluatedAt: now,
+        evaluatedBy: overrideBy || "system",
+        overallScore: latest?.overallScore || 0,
+        completenessScore: latest?.completenessScore || 0,
+        diagnosisSupportScore: latest?.diagnosisSupportScore || 0,
+        codingComplianceScore: latest?.codingComplianceScore || 0,
+        gateResult: "override",
+        failReasons: latest?.failReasons || null,
+        overrideReason,
+        overrideBy,
+      });
+
+      await storage.updateVisit(visit.id, {
+        billingGateResult: "override",
+        billingGateEvaluatedAt: now,
+      });
+
+      await storage.createAuditEvent({
+        eventType: "billing_gate_override",
+        visitId: visit.id,
+        patientId: visit.memberId,
+        userId: overrideBy,
+        details: `Billing gate overridden. Reason: ${overrideReason}`,
+      });
+
+      return res.json(evaluation);
+    } catch (err: any) {
+      return res.status(500).json({ message: err.message });
+    }
+  });
+
+  // ===== CR-P2: E/M Level Evaluation =====
+  app.post("/api/visits/:id/em-evaluation", async (req, res) => {
+    try {
+      const visit = await storage.getVisit(req.params.id);
+      if (!visit) return res.status(404).json({ message: "Visit not found" });
+
+      const now = new Date().toISOString();
+      const codes = await storage.getCodesByVisit(visit.id);
+      const emCptCodes = codes.filter((c: any) => c.codeType === "CPT" && !c.removedByNp);
+      const emCodes = ["99341","99342","99343","99344","99345","99347","99348","99349","99350","99381","99382","99383","99384","99385","99386","99387","99391","99392","99393","99394","99395","99396","99397"];
+      const assignedEmCode = emCptCodes.find((c: any) => emCodes.includes(c.code));
+
+      if (!assignedEmCode) {
+        return res.json({ message: "No E/M CPT code found on visit", levelMatch: "not_applicable" });
+      }
+
+      const rule = await storage.getEmLevelRule(assignedEmCode.code);
+
+      // MDM scoring engine
+      const [vitals, assessmentResponses, medRecon, member, checklist, icdCodesAll] = await Promise.all([
+        storage.getVitalsByVisit(visit.id),
+        storage.getAssessmentResponsesByVisit(visit.id),
+        storage.getMedReconciliationByVisit(visit.id),
+        storage.getMember(visit.memberId),
+        storage.getChecklistByVisit(visit.id),
+        storage.getCodesByVisit(visit.id),
+      ]);
+
+      const icdCodes = icdCodesAll.filter((c: any) => c.codeType === "ICD-10" && !c.removedByNp);
+      const labResultsList = member ? await storage.getLabResultsByMember(member.id) : [];
+
+      // Problems addressed scoring
+      const activeDiagnoses = icdCodes.length;
+      const chronicConditions = icdCodes.filter((c: any) => {
+        const code = c.code;
+        return code.startsWith("E11") || code.startsWith("I10") || code.startsWith("J44") || code.startsWith("I50") || code.startsWith("N18") || code.startsWith("F32");
+      }).length;
+      let problemsRawScore = Math.min(activeDiagnoses * 15, 60) + Math.min(chronicConditions * 20, 40);
+      const problemsScore = Math.min(problemsRawScore, 100);
+
+      // Data reviewed/ordered scoring
+      let dataPoints = 0;
+      if (vitals) dataPoints += 2;
+      if (labResultsList.length > 0) dataPoints += 2;
+      if (medRecon.length > 0) dataPoints += 2;
+      if (assessmentResponses.length > 0) dataPoints += assessmentResponses.length;
+      const completedMeasures = checklist.filter(c => c.itemType === "measure" && c.status === "complete").length;
+      dataPoints += completedMeasures;
+      const dataScore = Math.min(dataPoints * 12, 100);
+
+      // Risk of complications scoring
+      let riskPoints = 0;
+      if (medRecon.length >= 5) riskPoints += 30;
+      else if (medRecon.length >= 3) riskPoints += 20;
+      else if (medRecon.length > 0) riskPoints += 10;
+      if (chronicConditions >= 3) riskPoints += 30;
+      else if (chronicConditions >= 1) riskPoints += 15;
+      if (vitals) {
+        if ((vitals as any).systolic >= 140 || (vitals as any).oxygenSaturation < 92) riskPoints += 20;
+      }
+      if (icdCodes.some((c: any) => c.code.startsWith("F32") || c.code.startsWith("F33"))) riskPoints += 20;
+      const riskScore = Math.min(riskPoints, 100);
+
+      const overallMdmScore = Math.round(problemsScore * 0.35 + dataScore * 0.35 + riskScore * 0.30);
+
+      // Determine MDM level from score
+      let evaluatedMdmLevel: string;
+      if (overallMdmScore >= 75) evaluatedMdmLevel = "high";
+      else if (overallMdmScore >= 50) evaluatedMdmLevel = "moderate";
+      else if (overallMdmScore >= 25) evaluatedMdmLevel = "low";
+      else evaluatedMdmLevel = "straightforward";
+
+      // Compare against rule
+      const mdmLevels = ["straightforward", "low", "moderate", "high"];
+      let levelMatch: "match" | "over_coded" | "under_coded" = "match";
+      let suggestedCpt: string | null = null;
+
+      if (rule) {
+        const requiredLevel = mdmLevels.indexOf(rule.mdmLevel);
+        const evaluatedLevel = mdmLevels.indexOf(evaluatedMdmLevel);
+        if (evaluatedLevel < requiredLevel) {
+          levelMatch = "over_coded";
+          // Suggest a lower-level CPT
+          const allRules = await storage.getAllEmLevelRules();
+          const lowerRule = allRules.find(r => mdmLevels.indexOf(r.mdmLevel) === evaluatedLevel);
+          suggestedCpt = lowerRule?.cptCode || null;
+        } else if (evaluatedLevel > requiredLevel) {
+          levelMatch = "under_coded";
+          const allRules = await storage.getAllEmLevelRules();
+          const higherRule = allRules.find(r => mdmLevels.indexOf(r.mdmLevel) === evaluatedLevel);
+          suggestedCpt = higherRule?.cptCode || null;
+        }
+      }
+
+      const evaluationDetails = {
+        activeDiagnoses,
+        chronicConditions,
+        dataPointsCount: dataPoints,
+        medicationsCount: medRecon.length,
+        assessmentsCompleted: assessmentResponses.length,
+        labsAvailable: labResultsList.length,
+        vitalsRecorded: !!vitals,
+      };
+
+      const evaluation = await storage.createEmEvaluation({
+        visitId: visit.id,
+        assignedCpt: assignedEmCode.code,
+        evaluatedMdmLevel,
+        problemsScore,
+        dataScore,
+        riskScore,
+        overallMdmScore,
+        levelMatch,
+        suggestedCpt,
+        evaluationDetails,
+        evaluatedAt: now,
+      });
+
+      // Add quality flag for mismatches
+      if (levelMatch === "over_coded") {
+        await storage.createVisitAlert({
+          visitId: visit.id,
+          ruleId: "em_over_coded",
+          ruleName: "E/M Over-Coding Detected",
+          severity: "error",
+          message: `E/M code ${assignedEmCode.code} may be over-coded. Documentation supports ${evaluatedMdmLevel} MDM level.`,
+          recommendedAction: suggestedCpt ? `Consider using CPT ${suggestedCpt} instead.` : "Review documentation to support current E/M level.",
+          status: "active",
+          triggeredAt: now,
+        });
+      } else if (levelMatch === "under_coded") {
+        await storage.createVisitAlert({
+          visitId: visit.id,
+          ruleId: "em_under_coded",
+          ruleName: "E/M Under-Coding Detected",
+          severity: "warning",
+          message: `E/M code ${assignedEmCode.code} may be under-coded. Documentation supports ${evaluatedMdmLevel} MDM level.`,
+          recommendedAction: suggestedCpt ? `Consider using CPT ${suggestedCpt} for appropriate reimbursement.` : "Review E/M level assignment.",
+          status: "active",
+          triggeredAt: now,
+        });
+      }
+
+      return res.json(evaluation);
+    } catch (err: any) {
+      return res.status(500).json({ message: err.message });
+    }
+  });
+
+  app.get("/api/visits/:id/em-evaluation", async (req, res) => {
+    try {
+      const evaluation = await storage.getEmEvaluationByVisit(req.params.id);
+      return res.json(evaluation || null);
+    } catch (err: any) {
+      return res.status(500).json({ message: err.message });
+    }
+  });
+
+  app.get("/api/em-level-rules", async (_req, res) => {
+    try {
+      const rules = await storage.getAllEmLevelRules();
+      return res.json(rules);
+    } catch (err: any) {
+      return res.status(500).json({ message: err.message });
+    }
+  });
+
+  // Export (with billing readiness gate - CR-P1)
   app.post("/api/visits/:id/export", async (req, res) => {
     try {
       const visit = await storage.getVisit(req.params.id);
       if (!visit) return res.status(404).json({ message: "Visit not found" });
+
+      const { overrideReason, overrideBy } = req.body || {};
+      const BILLING_GATE_THRESHOLD = 80;
+
+      // Enforce billing readiness gate
+      const billingEval = await storage.getLatestBillingReadinessEvaluation(visit.id);
+      if (billingEval) {
+        if (billingEval.gateResult === "fail" && billingEval.overallScore < BILLING_GATE_THRESHOLD && !overrideReason) {
+          await storage.createAuditEvent({
+            eventType: "billing_gate_fail",
+            visitId: visit.id,
+            patientId: visit.memberId,
+            details: `Export blocked: billing readiness score ${billingEval.overallScore} < threshold ${BILLING_GATE_THRESHOLD}`,
+          });
+          return res.status(403).json({
+            message: "Export blocked: billing readiness score below threshold",
+            billingReadinessScore: billingEval.overallScore,
+            threshold: BILLING_GATE_THRESHOLD,
+            gateResult: "fail",
+            failReasons: billingEval.failReasons,
+          });
+        }
+      }
+
+      // If override provided for failed gate, log it
+      if (overrideReason && billingEval && billingEval.gateResult === "fail") {
+        await storage.createBillingReadinessEvaluation({
+          visitId: visit.id,
+          evaluatedAt: new Date().toISOString(),
+          evaluatedBy: overrideBy || "system",
+          overallScore: billingEval.overallScore,
+          completenessScore: billingEval.completenessScore,
+          diagnosisSupportScore: billingEval.diagnosisSupportScore,
+          codingComplianceScore: billingEval.codingComplianceScore,
+          gateResult: "override",
+          failReasons: billingEval.failReasons,
+          overrideReason,
+          overrideBy,
+        });
+        await storage.updateVisit(visit.id, { billingGateResult: "override" });
+        await storage.createAuditEvent({
+          eventType: "billing_gate_override",
+          visitId: visit.id,
+          patientId: visit.memberId,
+          userId: overrideBy,
+          details: `Export billing gate overridden. Reason: ${overrideReason}`,
+        });
+      }
 
       const fhirBundle = await buildComprehensiveFhirBundle(visit.id);
       if (!fhirBundle) return res.status(404).json({ message: "Visit not found" });

@@ -16,6 +16,8 @@ import {
   Clock,
   CheckCircle2,
   XCircle,
+  History,
+  ArrowRight,
 } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -39,6 +41,11 @@ export default function VisitDetail() {
 
   const { data: tasks } = useQuery<any[]>({
     queryKey: ["/api/visits", visitId, "tasks"],
+    enabled: !!visitId,
+  });
+
+  const { data: changeHistory } = useQuery<any[]>({
+    queryKey: ["/api/visits", visitId, "change-history"],
     enabled: !!visitId,
   });
 
@@ -130,6 +137,7 @@ export default function VisitDetail() {
           <TabsTrigger value="note" data-testid="tab-note"><FileText className="w-3 h-3 mr-1" /> Clinical Note</TabsTrigger>
           <TabsTrigger value="checklist" data-testid="tab-checklist"><ClipboardCheck className="w-3 h-3 mr-1" /> Checklist</TabsTrigger>
           <TabsTrigger value="tasks" data-testid="tab-tasks"><Target className="w-3 h-3 mr-1" /> Care Plan</TabsTrigger>
+          <TabsTrigger value="changes" data-testid="tab-changes"><History className="w-3 h-3 mr-1" /> Changes{changeHistory && changeHistory.length > 0 ? ` (${changeHistory.length})` : ""}</TabsTrigger>
         </TabsList>
 
         <TabsContent value="note" className="mt-4">
@@ -238,6 +246,45 @@ export default function VisitDetail() {
               <CardContent className="flex flex-col items-center py-8 text-muted-foreground">
                 <Target className="w-8 h-8 mb-2 opacity-40" />
                 <span className="text-sm">No care plan tasks</span>
+              </CardContent>
+            </Card>
+          )}
+        </TabsContent>
+
+        <TabsContent value="changes" className="mt-4 space-y-2">
+          {changeHistory && changeHistory.length > 0 ? (
+            changeHistory.map((change: any) => (
+              <Card key={change.id}>
+                <CardContent className="p-3">
+                  <div className="flex items-start gap-3">
+                    <div className="flex items-center justify-center w-8 h-8 rounded-md flex-shrink-0 bg-muted mt-0.5">
+                      <History className="w-4 h-4 text-muted-foreground" />
+                    </div>
+                    <div className="flex-1 min-w-0 space-y-1">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <Badge variant="outline" className="text-xs">{change.entityType}</Badge>
+                        <span className="text-sm font-medium">{change.fieldName}</span>
+                        {change.remediationId && <Badge variant="secondary" className="text-xs">Remediation</Badge>}
+                      </div>
+                      <div className="flex items-center gap-1 text-xs text-muted-foreground flex-wrap">
+                        {change.previousValue && <span className="line-through">{String(change.previousValue).substring(0, 60)}</span>}
+                        {change.previousValue && change.newValue && <ArrowRight className="w-3 h-3 flex-shrink-0" />}
+                        {change.newValue && <span className="font-medium text-foreground">{String(change.newValue).substring(0, 60)}</span>}
+                      </div>
+                      <div className="text-xs text-muted-foreground">
+                        {new Date(change.changedAt).toLocaleString()}
+                        {change.changeReason && <span className="ml-2">Reason: {change.changeReason}</span>}
+                      </div>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            ))
+          ) : (
+            <Card>
+              <CardContent className="flex flex-col items-center py-8 text-muted-foreground">
+                <History className="w-8 h-8 mb-2 opacity-40" />
+                <span className="text-sm">No documentation changes recorded</span>
               </CardContent>
             </Card>
           )}

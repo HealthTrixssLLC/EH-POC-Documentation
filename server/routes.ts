@@ -24,6 +24,21 @@ function evaluateCondition(value: number, threshold: number, operator: string): 
   }
 }
 
+async function trackDocumentationChange(visitId: string, entityType: string, entityId: string | null, fieldName: string, previousValue: any, newValue: any, changedBy: string, changeReason?: string) {
+  await storage.createDocumentationChange({
+    visitId,
+    entityType,
+    entityId,
+    fieldName,
+    previousValue: previousValue != null ? String(previousValue) : null,
+    newValue: newValue != null ? String(newValue) : null,
+    changedBy,
+    changedAt: new Date().toISOString(),
+    changeReason: changeReason || null,
+    remediationId: null,
+  });
+}
+
 export async function registerRoutes(
   httpServer: Server,
   app: Express
@@ -1265,6 +1280,19 @@ export async function registerRoutes(
       const existing = await storage.getVitalsByVisit(req.params.id);
       let vitalsResult;
       if (existing) {
+        const trackedFields = ["systolic", "diastolic", "heartRate", "oxygenSaturation", "weight", "bmi", "temperature", "respiratoryRate"] as const;
+        const changedBy = (req.headers["x-user-id"] as string) || "system";
+        for (const field of trackedFields) {
+          const oldVal = (existing as any)[field];
+          const newVal = req.body[field];
+          if (newVal !== undefined && oldVal !== newVal) {
+            try {
+              await trackDocumentationChange(req.params.id, "vitals", existing.id, field, oldVal, newVal, changedBy);
+            } catch (trackErr) {
+              console.error("Track vitals change failed:", trackErr);
+            }
+          }
+        }
         vitalsResult = await storage.updateVitals(existing.id, req.body);
       } else {
         vitalsResult = await storage.createVitals({ ...req.body, visitId: req.params.id, recordedAt: new Date().toISOString() });
@@ -2375,6 +2403,9 @@ export async function registerRoutes(
       // CR-P3: Encounter audit
       const auditReport = await storage.getEncounterAuditReport(visit.id);
 
+      // CR-P8: NLP Code Alignment
+      const codeAlignmentResult = await storage.getNlpCodeAlignmentResult(visit.id);
+
       const overallScore = Math.round((completenessData.score + diagnosisSupportData.score) / 2);
       const errorFlags = qualityFlags.filter(f => f.severity === "error").length;
       const warningFlags = qualityFlags.filter(f => f.severity === "warning").length;
@@ -2425,6 +2456,13 @@ export async function registerRoutes(
           auditResult: auditReport.auditResult,
           flagCount: auditReport.flagCount,
           auditedAt: auditReport.auditedAt,
+        } : null,
+        codeAlignment: codeAlignmentResult ? {
+          alignmentScore: codeAlignmentResult.alignmentScore,
+          codesWithoutSupportCount: Array.isArray(codeAlignmentResult.codesWithoutSupport) ? (codeAlignmentResult.codesWithoutSupport as any[]).length : 0,
+          conditionsWithoutCodesCount: Array.isArray(codeAlignmentResult.conditionsWithoutCodes) ? (codeAlignmentResult.conditionsWithoutCodes as any[]).length : 0,
+          modelUsed: codeAlignmentResult.modelUsed,
+          analyzedAt: codeAlignmentResult.analyzedAt,
         } : null,
       });
     } catch (err: any) {
@@ -3392,6 +3430,338 @@ export async function registerRoutes(
         avgCodingComplianceScore,
         topFlags,
       });
+    } catch (err: any) {
+      return res.status(500).json({ message: err.message });
+    }
+  });
+
+  // CR-P6: Provider Quality Trending
+  app.get("/api/providers/quality-summary", async (_req, res) => {
+    try {
+      const allUsers = await storage.getAllUsers();
+      const npUsers = allUsers.filter(u => u.role === "np");
+      const allVisits = await storage.getAllVisits();
+      const allReports = await storage.getAllEncounterAuditReports();
+
+      const reportMap = new Map<string, typeof allReports>();
+      for (const r of allReports) {
+        if (!reportMap.has(r.visitId)) reportMap.set(r.visitId, []);
+        reportMap.get(r.visitId)!.push(r);
+      }
+
+      let totalOrgCompleteness = 0, totalOrgDiagnosis = 0, totalOrgCoding = 0, totalOrgOverall = 0, orgCount = 0;
+
+      const providerSummaries = npUsers.map(np => {
+        const providerVisits = allVisits.filter(v => v.npUserId === np.id && (v.status === "finalized" || v.status === "ready_for_review"));
+        const reports: typeof allReports = [];
+        for (const v of providerVisits) {
+          const r = reportMap.get(v.id);
+          if (r) reports.push(...r);
+        }
+        const encounterCount = providerVisits.length;
+        const avgCompleteness = reports.length > 0 ? Math.round(reports.reduce((s, r) => s + r.completenessScore, 0) / reports.length) : 0;
+        const avgDiagnosis = reports.length > 0 ? Math.round(reports.reduce((s, r) => s + r.diagnosisSupportScore, 0) / reports.length) : 0;
+        const avgCoding = reports.length > 0 ? Math.round(reports.reduce((s, r) => s + (r.codingComplianceScore || 0), 0) / reports.length) : 0;
+        const avgOverall = reports.length > 0 ? Math.round(reports.reduce((s, r) => s + r.overallAuditScore, 0) / reports.length) : 0;
+
+        if (reports.length > 0) {
+          totalOrgCompleteness += avgCompleteness;
+          totalOrgDiagnosis += avgDiagnosis;
+          totalOrgCoding += avgCoding;
+          totalOrgOverall += avgOverall;
+          orgCount++;
+        }
+
+        return {
+          providerId: np.id,
+          providerName: np.fullName,
+          encounterCount,
+          avgCompleteness,
+          avgDiagnosis,
+          avgCoding,
+          avgOverall,
+          auditedEncounters: reports.length,
+        };
+      });
+
+      providerSummaries.sort((a, b) => b.avgOverall - a.avgOverall);
+
+      return res.json({
+        providers: providerSummaries,
+        orgAverages: {
+          completeness: orgCount > 0 ? Math.round(totalOrgCompleteness / orgCount) : 0,
+          diagnosisSupport: orgCount > 0 ? Math.round(totalOrgDiagnosis / orgCount) : 0,
+          codingCompliance: orgCount > 0 ? Math.round(totalOrgCoding / orgCount) : 0,
+          overall: orgCount > 0 ? Math.round(totalOrgOverall / orgCount) : 0,
+        },
+      });
+    } catch (err: any) {
+      return res.status(500).json({ message: err.message });
+    }
+  });
+
+  app.get("/api/providers/:id/quality", async (req, res) => {
+    try {
+      const providerId = req.params.id;
+      const allVisits = await storage.getAllVisits();
+      const providerVisits = allVisits.filter(v => v.npUserId === providerId);
+      const allReports = await storage.getAllEncounterAuditReports();
+      const snapshots = await storage.getProviderQualitySnapshots(providerId);
+
+      const reportMap = new Map<string, (typeof allReports)[number]>();
+      for (const r of allReports) {
+        reportMap.set(r.visitId, r);
+      }
+
+      const now = new Date();
+      const computeRolling = (days: number) => {
+        const cutoff = new Date(now.getTime() - days * 24 * 60 * 60 * 1000).toISOString();
+        const windowVisits = providerVisits.filter(v => {
+          const date = v.finalizedAt || v.scheduledDate;
+          return date && date >= cutoff;
+        });
+        const windowReports = windowVisits.map(v => reportMap.get(v.id)).filter(Boolean) as (typeof allReports)[number][];
+        if (windowReports.length === 0) return { encounterCount: 0, avgCompleteness: 0, avgDiagnosis: 0, avgCoding: 0, avgOverall: 0 };
+        return {
+          encounterCount: windowReports.length,
+          avgCompleteness: Math.round(windowReports.reduce((s, r) => s + r.completenessScore, 0) / windowReports.length),
+          avgDiagnosis: Math.round(windowReports.reduce((s, r) => s + r.diagnosisSupportScore, 0) / windowReports.length),
+          avgCoding: Math.round(windowReports.reduce((s, r) => s + (r.codingComplianceScore || 0), 0) / windowReports.length),
+          avgOverall: Math.round(windowReports.reduce((s, r) => s + r.overallAuditScore, 0) / windowReports.length),
+        };
+      };
+
+      const flagCounts: Record<string, number> = {};
+      for (const v of providerVisits) {
+        const report = reportMap.get(v.id);
+        if (report?.qualityFlags) {
+          for (const f of report.qualityFlags as any[]) {
+            flagCounts[f.flag] = (flagCounts[f.flag] || 0) + 1;
+          }
+        }
+      }
+      const topFlags = Object.entries(flagCounts)
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 10)
+        .map(([flag, count]) => ({ flag, count }));
+
+      const trend = providerVisits
+        .filter(v => reportMap.has(v.id))
+        .sort((a, b) => (a.scheduledDate || "").localeCompare(b.scheduledDate || ""))
+        .map(v => {
+          const r = reportMap.get(v.id)!;
+          return {
+            date: v.scheduledDate,
+            visitId: v.id,
+            completeness: r.completenessScore,
+            diagnosisSupport: r.diagnosisSupportScore,
+            codingCompliance: r.codingComplianceScore || 0,
+            overall: r.overallAuditScore,
+          };
+        });
+
+      return res.json({
+        providerId,
+        snapshots,
+        encounterCount: providerVisits.length,
+        rolling30: computeRolling(30),
+        rolling60: computeRolling(60),
+        rolling90: computeRolling(90),
+        flagBreakdown: topFlags,
+        trend,
+      });
+    } catch (err: any) {
+      return res.status(500).json({ message: err.message });
+    }
+  });
+
+  app.post("/api/providers/:id/quality/snapshot", async (req, res) => {
+    try {
+      const providerId = req.params.id;
+      const allVisits = await storage.getAllVisits();
+      const providerVisits = allVisits.filter(v => v.npUserId === providerId && (v.status === "finalized" || v.status === "ready_for_review"));
+      const allReports = await storage.getAllEncounterAuditReports();
+
+      const reports = providerVisits.map(v => allReports.find(r => r.visitId === v.id)).filter(Boolean) as (typeof allReports)[number][];
+
+      const now = new Date();
+      const periodEnd = now.toISOString().split("T")[0];
+      const periodStart = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000).toISOString().split("T")[0];
+
+      const flagCounts: Record<string, number> = {};
+      for (const r of reports) {
+        if (r.qualityFlags) {
+          for (const f of r.qualityFlags as any[]) {
+            flagCounts[f.flag] = (flagCounts[f.flag] || 0) + 1;
+          }
+        }
+      }
+      const topFlags = Object.entries(flagCounts)
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 10)
+        .map(([flag, count]) => ({ flag, count }));
+
+      const snapshot = await storage.createProviderQualitySnapshot({
+        providerId,
+        periodStart,
+        periodEnd,
+        encounterCount: reports.length,
+        avgCompletenessScore: reports.length > 0 ? Math.round(reports.reduce((s, r) => s + r.completenessScore, 0) / reports.length) : 0,
+        avgDiagnosisSupportScore: reports.length > 0 ? Math.round(reports.reduce((s, r) => s + r.diagnosisSupportScore, 0) / reports.length) : 0,
+        avgCodingComplianceScore: reports.length > 0 ? Math.round(reports.reduce((s, r) => s + (r.codingComplianceScore || 0), 0) / reports.length) : 0,
+        avgOverallScore: reports.length > 0 ? Math.round(reports.reduce((s, r) => s + r.overallAuditScore, 0) / reports.length) : 0,
+        flagCount: Object.values(flagCounts).reduce((s, c) => s + c, 0),
+        topFlags,
+        computedAt: now.toISOString(),
+      });
+
+      return res.json(snapshot);
+    } catch (err: any) {
+      return res.status(500).json({ message: err.message });
+    }
+  });
+
+  // CR-P7: Documentation Change Tracking
+  app.get("/api/visits/:id/change-history", async (req, res) => {
+    try {
+      const changes = await storage.getDocumentationChanges(req.params.id);
+      changes.sort((a, b) => (b.changedAt || "").localeCompare(a.changedAt || ""));
+      return res.json(changes);
+    } catch (err: any) {
+      return res.status(500).json({ message: err.message });
+    }
+  });
+
+  app.post("/api/visits/:id/change-history", async (req, res) => {
+    try {
+      const { entityType, entityId, fieldName, previousValue, newValue, changedBy, changeReason, remediationId } = req.body;
+      const change = await storage.createDocumentationChange({
+        visitId: req.params.id,
+        entityType,
+        entityId: entityId || null,
+        fieldName,
+        previousValue: previousValue != null ? String(previousValue) : null,
+        newValue: newValue != null ? String(newValue) : null,
+        changedBy: changedBy || "system",
+        changedAt: new Date().toISOString(),
+        changeReason: changeReason || null,
+        remediationId: remediationId || null,
+      });
+
+      await storage.createAuditEvent({
+        eventType: "documentation_field_changed",
+        visitId: req.params.id,
+        userId: changedBy || "system",
+        details: `Field '${fieldName}' on ${entityType} changed: '${previousValue}' -> '${newValue}'`,
+      });
+
+      return res.json(change);
+    } catch (err: any) {
+      return res.status(500).json({ message: err.message });
+    }
+  });
+
+  // CR-P8: NLP Code Alignment
+  app.post("/api/visits/:id/code-alignment", async (req, res) => {
+    try {
+      const visit = await storage.getVisit(req.params.id);
+      if (!visit) return res.status(404).json({ message: "Visit not found" });
+
+      const clinicalNote = await storage.getClinicalNote(visit.id);
+      const codes = await storage.getCodesByVisit(visit.id);
+
+      const noteText = clinicalNote
+        ? [clinicalNote.chiefComplaint, clinicalNote.hpiNotes, clinicalNote.rosNotes, clinicalNote.examNotes, clinicalNote.assessmentNotes, clinicalNote.planNotes].filter(Boolean).join("\n")
+        : "";
+
+      const icdCodes = codes.filter(c => c.codeType === "ICD-10" && !c.removedByNp).map(c => ({ code: c.code, description: c.description }));
+      const cptCodes = codes.filter(c => (c.codeType === "CPT" || c.codeType === "HCPCS") && !c.removedByNp).map(c => ({ code: c.code, description: c.description }));
+
+      let codesWithoutSupport: { code: string; codeType: string; description: string; reason: string }[] = [];
+      let conditionsWithoutCodes: { condition: string; suggestedCode: string; reason: string }[] = [];
+      let alignmentScore = 100;
+      let modelUsed = "deterministic-fallback";
+      let analysisDetails: any = {};
+
+      const apiKey = process.env.OPENAI_API_KEY;
+      if (apiKey && noteText.length > 0) {
+        try {
+          const response = await fetch("https://api.openai.com/v1/chat/completions", {
+            method: "POST",
+            headers: { "Content-Type": "application/json", "Authorization": `Bearer ${apiKey}` },
+            body: JSON.stringify({
+              model: "gpt-4o",
+              messages: [
+                {
+                  role: "system",
+                  content: "You are a medical coding auditor. Analyze the clinical documentation and assigned codes. Return a JSON object with: codesWithoutSupport (array of {code, codeType, description, reason} for codes not supported by documentation), conditionsWithoutCodes (array of {condition, suggestedCode, reason} for documented conditions without assigned codes), and alignmentScore (0-100 integer)."
+                },
+                {
+                  role: "user",
+                  content: `Clinical Documentation:\n${noteText}\n\nAssigned ICD-10 Codes:\n${icdCodes.map(c => `${c.code}: ${c.description}`).join("\n")}\n\nAssigned CPT/HCPCS Codes:\n${cptCodes.map(c => `${c.code}: ${c.description}`).join("\n")}\n\nAnalyze code-documentation alignment and return JSON.`
+                }
+              ],
+              response_format: { type: "json_object" },
+            }),
+          });
+
+          if (response.ok) {
+            const data = await response.json() as any;
+            const parsed = JSON.parse(data.choices[0].message.content);
+            codesWithoutSupport = parsed.codesWithoutSupport || [];
+            conditionsWithoutCodes = parsed.conditionsWithoutCodes || [];
+            alignmentScore = typeof parsed.alignmentScore === "number" ? parsed.alignmentScore : 100;
+            modelUsed = "gpt-4o";
+            analysisDetails = { rawResponse: parsed };
+          }
+        } catch (aiErr) {
+          console.error("OpenAI code alignment call failed, using fallback:", aiErr);
+        }
+      }
+
+      if (modelUsed === "deterministic-fallback") {
+        const noteWords = noteText.toLowerCase();
+        for (const icd of icdCodes) {
+          const descWords = icd.description.toLowerCase().split(/\s+/).filter(w => w.length > 3);
+          const found = descWords.some(w => noteWords.includes(w));
+          if (!found) {
+            codesWithoutSupport.push({ code: icd.code, codeType: "ICD-10", description: icd.description, reason: "No matching keywords found in clinical documentation" });
+          }
+        }
+        for (const cpt of cptCodes) {
+          const descWords = cpt.description.toLowerCase().split(/\s+/).filter(w => w.length > 3);
+          const found = descWords.some(w => noteWords.includes(w));
+          if (!found) {
+            codesWithoutSupport.push({ code: cpt.code, codeType: "CPT", description: cpt.description, reason: "No matching keywords found in clinical documentation" });
+          }
+        }
+        const totalCodes = icdCodes.length + cptCodes.length;
+        const unsupported = codesWithoutSupport.length;
+        alignmentScore = totalCodes > 0 ? Math.round(((totalCodes - unsupported) / totalCodes) * 100) : 100;
+        analysisDetails = { method: "keyword-matching", totalCodes, unsupported };
+      }
+
+      const result = await storage.createNlpCodeAlignmentResult({
+        visitId: visit.id,
+        analyzedAt: new Date().toISOString(),
+        codesWithoutSupport,
+        conditionsWithoutCodes,
+        alignmentScore,
+        analysisDetails,
+        modelUsed,
+      });
+
+      return res.json(result);
+    } catch (err: any) {
+      return res.status(500).json({ message: err.message });
+    }
+  });
+
+  app.get("/api/visits/:id/code-alignment", async (req, res) => {
+    try {
+      const result = await storage.getNlpCodeAlignmentResult(req.params.id);
+      if (!result) return res.status(404).json({ message: "No code alignment result found" });
+      return res.json(result);
     } catch (err: any) {
       return res.status(500).json({ message: err.message });
     }

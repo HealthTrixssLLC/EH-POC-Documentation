@@ -77,6 +77,12 @@ interface AdjudicationSummary {
     flagCount: number;
     auditedAt: string;
   } | null;
+  codeAlignment?: {
+    alignmentScore: number;
+    codesWithoutSupportCount: number;
+    conditionsWithoutCodesCount: number;
+    modelUsed: string;
+  } | null;
 }
 
 interface EnhancedVisit {
@@ -316,6 +322,41 @@ function AdjudicationCard({ visitId }: { visitId: string }) {
             {summary.encounterAudit.flagCount > 0 && (
               <span className="text-xs text-muted-foreground">{summary.encounterAudit.flagCount} quality flag(s)</span>
             )}
+          </div>
+        </>
+      )}
+
+      {summary.codeAlignment ? (
+        <>
+          <Separator />
+          <div className="space-y-2">
+            <div className="flex items-center justify-between gap-2">
+              <span className="text-xs font-medium text-muted-foreground">Code Alignment</span>
+              <Badge
+                variant={summary.codeAlignment.alignmentScore >= 80 ? "default" : summary.codeAlignment.alignmentScore >= 60 ? "secondary" : "destructive"}
+                className="text-xs"
+                data-testid="badge-adj-alignment"
+              >
+                {summary.codeAlignment.alignmentScore}%
+              </Badge>
+            </div>
+            <div className="flex items-center gap-3 text-xs text-muted-foreground">
+              <span className={summary.codeAlignment.codesWithoutSupportCount > 0 ? "text-amber-600 dark:text-amber-400" : ""}>
+                {summary.codeAlignment.codesWithoutSupportCount} unsupported
+              </span>
+              <span>
+                {summary.codeAlignment.conditionsWithoutCodesCount} uncoded
+              </span>
+              <span className="italic">{summary.codeAlignment.modelUsed}</span>
+            </div>
+          </div>
+        </>
+      ) : (
+        <>
+          <Separator />
+          <div className="flex items-center justify-between gap-2">
+            <span className="text-xs font-medium text-muted-foreground">Code Alignment</span>
+            <span className="text-xs text-muted-foreground italic" data-testid="text-adj-alignment-na">Not analyzed</span>
           </div>
         </>
       )}

@@ -81,6 +81,12 @@ import {
   type PayorPolicyEvaluation, type InsertPayorPolicyEvaluation,
   encounterAuditReports,
   type EncounterAuditReport, type InsertEncounterAuditReport,
+  providerQualitySnapshots,
+  type ProviderQualitySnapshot, type InsertProviderQualitySnapshot,
+  documentationChanges,
+  type DocumentationChange, type InsertDocumentationChange,
+  nlpCodeAlignmentResults,
+  type NlpCodeAlignmentResult, type InsertNlpCodeAlignmentResult,
 } from "@shared/schema";
 
 export interface IStorage {
@@ -317,6 +323,20 @@ export interface IStorage {
   createEncounterAuditReport(report: InsertEncounterAuditReport): Promise<EncounterAuditReport>;
   getEncounterAuditReport(visitId: string): Promise<EncounterAuditReport | undefined>;
   getAllEncounterAuditReports(): Promise<EncounterAuditReport[]>;
+
+  // CR-P6: Provider Quality Snapshots
+  createProviderQualitySnapshot(snapshot: InsertProviderQualitySnapshot): Promise<ProviderQualitySnapshot>;
+  getProviderQualitySnapshots(providerId: string): Promise<ProviderQualitySnapshot[]>;
+  getAllProviderQualitySnapshots(): Promise<ProviderQualitySnapshot[]>;
+
+  // CR-P7: Documentation Changes
+  createDocumentationChange(change: InsertDocumentationChange): Promise<DocumentationChange>;
+  getDocumentationChanges(visitId: string): Promise<DocumentationChange[]>;
+  getDocumentationChangesByEntity(entityType: string, entityId: string): Promise<DocumentationChange[]>;
+
+  // CR-P8: NLP Code Alignment
+  createNlpCodeAlignmentResult(result: InsertNlpCodeAlignmentResult): Promise<NlpCodeAlignmentResult>;
+  getNlpCodeAlignmentResult(visitId: string): Promise<NlpCodeAlignmentResult | undefined>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -1207,6 +1227,45 @@ export class DatabaseStorage implements IStorage {
 
   async getAllEncounterAuditReports() {
     return db.select().from(encounterAuditReports).orderBy(desc(encounterAuditReports.auditedAt));
+  }
+
+  // CR-P6: Provider Quality Snapshots
+  async createProviderQualitySnapshot(snapshot: InsertProviderQualitySnapshot) {
+    const [created] = await db.insert(providerQualitySnapshots).values(snapshot).returning();
+    return created;
+  }
+
+  async getProviderQualitySnapshots(providerId: string) {
+    return db.select().from(providerQualitySnapshots).where(eq(providerQualitySnapshots.providerId, providerId)).orderBy(desc(providerQualitySnapshots.computedAt));
+  }
+
+  async getAllProviderQualitySnapshots() {
+    return db.select().from(providerQualitySnapshots).orderBy(desc(providerQualitySnapshots.computedAt));
+  }
+
+  // CR-P7: Documentation Changes
+  async createDocumentationChange(change: InsertDocumentationChange) {
+    const [created] = await db.insert(documentationChanges).values(change).returning();
+    return created;
+  }
+
+  async getDocumentationChanges(visitId: string) {
+    return db.select().from(documentationChanges).where(eq(documentationChanges.visitId, visitId)).orderBy(desc(documentationChanges.changedAt));
+  }
+
+  async getDocumentationChangesByEntity(entityType: string, entityId: string) {
+    return db.select().from(documentationChanges).where(and(eq(documentationChanges.entityType, entityType), eq(documentationChanges.entityId, entityId))).orderBy(desc(documentationChanges.changedAt));
+  }
+
+  // CR-P8: NLP Code Alignment
+  async createNlpCodeAlignmentResult(result: InsertNlpCodeAlignmentResult) {
+    const [created] = await db.insert(nlpCodeAlignmentResults).values(result).returning();
+    return created;
+  }
+
+  async getNlpCodeAlignmentResult(visitId: string) {
+    const [result] = await db.select().from(nlpCodeAlignmentResults).where(eq(nlpCodeAlignmentResults.visitId, visitId)).orderBy(desc(nlpCodeAlignmentResults.analyzedAt)).limit(1);
+    return result;
   }
 }
 

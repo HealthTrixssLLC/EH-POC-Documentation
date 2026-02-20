@@ -50,6 +50,7 @@ import AuditQueue from "@/pages/audit-queue";
 import VisitActive from "@/pages/visit-active";
 import PrivacyPolicy from "@/pages/privacy-policy";
 import ProductDescription from "@/pages/product-description";
+import ProviderQuality from "@/pages/provider-quality";
 import { useQuery as useQueryHook } from "@tanstack/react-query";
 
 function DemoWatermark() {
@@ -99,6 +100,7 @@ function Router() {
       <Route path="/admin/tech-docs" component={TechDocs} />
       <Route path="/audit" component={AuditViewer} />
       <Route path="/audit/queue" component={AuditQueue} />
+      <Route path="/providers/quality" component={ProviderQuality} />
       <Route path="/help" component={HelpSupport} />
       <Route path="/demo" component={DemoManagement} />
       <Route component={NotFound} />

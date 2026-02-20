@@ -1103,6 +1103,58 @@ export const insertEncounterAuditReportSchema = createInsertSchema(encounterAudi
 export type InsertEncounterAuditReport = z.infer<typeof insertEncounterAuditReportSchema>;
 export type EncounterAuditReport = typeof encounterAuditReports.$inferSelect;
 
+export const providerQualitySnapshots = pgTable("provider_quality_snapshots", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  providerId: varchar("provider_id").notNull(),
+  periodStart: text("period_start").notNull(),
+  periodEnd: text("period_end").notNull(),
+  encounterCount: integer("encounter_count").notNull(),
+  avgCompletenessScore: real("avg_completeness_score").notNull(),
+  avgDiagnosisSupportScore: real("avg_diagnosis_support_score").notNull(),
+  avgCodingComplianceScore: real("avg_coding_compliance_score"),
+  avgOverallScore: real("avg_overall_score").notNull(),
+  flagCount: integer("flag_count").notNull().default(0),
+  topFlags: jsonb("top_flags"),
+  computedAt: text("computed_at").notNull(),
+});
+
+export const insertProviderQualitySnapshotSchema = createInsertSchema(providerQualitySnapshots).omit({ id: true });
+export type InsertProviderQualitySnapshot = z.infer<typeof insertProviderQualitySnapshotSchema>;
+export type ProviderQualitySnapshot = typeof providerQualitySnapshots.$inferSelect;
+
+export const documentationChanges = pgTable("documentation_changes", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  visitId: varchar("visit_id").notNull(),
+  entityType: text("entity_type").notNull(),
+  entityId: varchar("entity_id"),
+  fieldName: text("field_name").notNull(),
+  previousValue: text("previous_value"),
+  newValue: text("new_value"),
+  changedBy: text("changed_by").notNull(),
+  changedAt: text("changed_at").notNull(),
+  changeReason: text("change_reason"),
+  remediationId: varchar("remediation_id"),
+});
+
+export const insertDocumentationChangeSchema = createInsertSchema(documentationChanges).omit({ id: true });
+export type InsertDocumentationChange = z.infer<typeof insertDocumentationChangeSchema>;
+export type DocumentationChange = typeof documentationChanges.$inferSelect;
+
+export const nlpCodeAlignmentResults = pgTable("nlp_code_alignment_results", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  visitId: varchar("visit_id").notNull(),
+  analyzedAt: text("analyzed_at").notNull(),
+  codesWithoutSupport: jsonb("codes_without_support"),
+  conditionsWithoutCodes: jsonb("conditions_without_codes"),
+  alignmentScore: integer("alignment_score").notNull(),
+  analysisDetails: jsonb("analysis_details"),
+  modelUsed: text("model_used").notNull(),
+});
+
+export const insertNlpCodeAlignmentResultSchema = createInsertSchema(nlpCodeAlignmentResults).omit({ id: true });
+export type InsertNlpCodeAlignmentResult = z.infer<typeof insertNlpCodeAlignmentResultSchema>;
+export type NlpCodeAlignmentResult = typeof nlpCodeAlignmentResults.$inferSelect;
+
 export const AUDIT_FINDING_CATEGORIES = [
   { code: "documentation_quality", label: "Documentation Quality", description: "Completeness and accuracy of clinical documentation" },
   { code: "coding_accuracy", label: "Coding Accuracy", description: "CPT/ICD-10 code correctness and specificity" },

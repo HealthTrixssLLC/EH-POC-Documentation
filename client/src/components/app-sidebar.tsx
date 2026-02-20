@@ -28,6 +28,7 @@ import {
   HelpCircle,
   Database,
   ClipboardCheck,
+  TrendingUp,
 } from "lucide-react";
 
 const roleMenus: Record<string, Array<{ title: string; url: string; icon: any }>> = {
@@ -38,6 +39,7 @@ const roleMenus: Record<string, Array<{ title: string; url: string; icon: any }>
   supervisor: [
     { title: "Dashboard", url: "/", icon: LayoutDashboard },
     { title: "Review Queue", url: "/reviews", icon: CheckSquare },
+    { title: "Provider Quality", url: "/providers/quality", icon: TrendingUp },
     { title: "All Visits", url: "/visits", icon: ClipboardList },
   ],
   care_coordinator: [
@@ -48,6 +50,7 @@ const roleMenus: Record<string, Array<{ title: string; url: string; icon: any }>
   admin: [
     { title: "Dashboard", url: "/", icon: LayoutDashboard },
     { title: "Admin Console", url: "/admin", icon: Settings },
+    { title: "Provider Quality", url: "/providers/quality", icon: TrendingUp },
     { title: "FHIR Interop", url: "/admin/fhir", icon: FileJson },
     { title: "Tech Docs", url: "/admin/tech-docs", icon: FileText },
     { title: "All Visits", url: "/visits", icon: ClipboardList },

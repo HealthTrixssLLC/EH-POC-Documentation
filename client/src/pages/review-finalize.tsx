@@ -32,6 +32,8 @@ import {
   Shield,
   FileCheck,
   ClipboardCheck,
+  GitCompareArrows,
+  History,
 } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Progress } from "@/components/ui/progress";
@@ -115,6 +117,16 @@ export default function ReviewFinalize() {
     enabled: !!visitId,
   });
 
+  const { data: codeAlignment } = useQuery<any>({
+    queryKey: ["/api/visits", visitId, "code-alignment"],
+    enabled: !!visitId,
+  });
+
+  const { data: changeHistory } = useQuery<any[]>({
+    queryKey: ["/api/visits", visitId, "change-history"],
+    enabled: !!visitId,
+  });
+
   const [diagValidation, setDiagValidation] = useState<any>(null);
 
   const validateDiagnosesMutation = useMutation({
@@ -185,6 +197,17 @@ export default function ReviewFinalize() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/visits", visitId, "encounter-audit"] });
       toast({ title: "Encounter audit complete" });
+    },
+  });
+
+  const runCodeAlignmentMutation = useMutation({
+    mutationFn: async () => {
+      const resp = await apiRequest("POST", `/api/visits/${visitId}/code-alignment`, {});
+      return resp.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/visits", visitId, "code-alignment"] });
+      toast({ title: "Code alignment analysis complete" });
     },
   });
 
@@ -1108,6 +1131,123 @@ export default function ReviewFinalize() {
           )}
         </CardContent>
       </Card>
+
+      {/* CR-P8: Code Alignment Panel */}
+      <Card>
+        <CardHeader className="pb-3">
+          <div className="flex items-center justify-between gap-3 flex-wrap">
+            <div className="flex items-center gap-2">
+              <GitCompareArrows className="w-5 h-5" style={{ color: "#277493" }} />
+              <h2 className="text-base font-semibold" data-testid="text-code-alignment-title">Code Alignment</h2>
+            </div>
+            <div className="flex items-center gap-2">
+              {codeAlignment && codeAlignment.alignmentScore !== undefined && (
+                <Badge
+                  variant={codeAlignment.alignmentScore >= 80 ? "default" : codeAlignment.alignmentScore >= 60 ? "secondary" : "destructive"}
+                  data-testid="badge-alignment-score"
+                >
+                  {codeAlignment.alignmentScore}% aligned
+                </Badge>
+              )}
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => runCodeAlignmentMutation.mutate()}
+                disabled={runCodeAlignmentMutation.isPending}
+                data-testid="button-run-alignment"
+              >
+                <RefreshCw className={`w-3.5 h-3.5 mr-1 ${runCodeAlignmentMutation.isPending ? "animate-spin" : ""}`} />
+                {runCodeAlignmentMutation.isPending ? "Analyzing..." : "Run Analysis"}
+              </Button>
+            </div>
+          </div>
+          <p className="text-sm text-muted-foreground">NLP analysis comparing clinical narrative to submitted codes</p>
+        </CardHeader>
+        <CardContent>
+          {codeAlignment && codeAlignment.alignmentScore !== undefined ? (
+            <div className="space-y-3">
+              {codeAlignment.modelUsed && (
+                <Badge variant="outline" className="text-xs">{codeAlignment.modelUsed}</Badge>
+              )}
+              {codeAlignment.codesWithoutSupport && (codeAlignment.codesWithoutSupport as any[]).length > 0 && (
+                <div className="space-y-1.5">
+                  <span className="text-xs font-medium text-muted-foreground">Codes Without Narrative Support ({(codeAlignment.codesWithoutSupport as any[]).length})</span>
+                  {(codeAlignment.codesWithoutSupport as any[]).map((c: any, idx: number) => (
+                    <div key={idx} className="flex items-start gap-2 text-xs p-2 rounded-md border" data-testid={`unsupported-code-${idx}`}>
+                      <XCircle className="w-3.5 h-3.5 text-destructive flex-shrink-0 mt-0.5" />
+                      <div>
+                        <span className="font-mono font-medium">{c.code}</span>
+                        {c.description && <span className="text-muted-foreground ml-1">- {c.description}</span>}
+                        {c.reason && <p className="text-muted-foreground mt-0.5">{c.reason}</p>}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+              {codeAlignment.conditionsWithoutCodes && (codeAlignment.conditionsWithoutCodes as any[]).length > 0 && (
+                <div className="space-y-1.5">
+                  <span className="text-xs font-medium text-muted-foreground">Conditions Discussed But Not Coded ({(codeAlignment.conditionsWithoutCodes as any[]).length})</span>
+                  {(codeAlignment.conditionsWithoutCodes as any[]).map((c: any, idx: number) => (
+                    <div key={idx} className="flex items-start gap-2 text-xs p-2 rounded-md border" data-testid={`uncoded-condition-${idx}`}>
+                      <AlertTriangle className="w-3.5 h-3.5 flex-shrink-0 mt-0.5" style={{ color: "#FEA002" }} />
+                      <div>
+                        <span className="font-medium">{c.condition}</span>
+                        {c.suggestedCode && <span className="font-mono text-muted-foreground ml-1">({c.suggestedCode})</span>}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+              {(!codeAlignment.codesWithoutSupport || (codeAlignment.codesWithoutSupport as any[]).length === 0) &&
+               (!codeAlignment.conditionsWithoutCodes || (codeAlignment.conditionsWithoutCodes as any[]).length === 0) && (
+                <div className="flex items-center gap-2 text-sm text-green-600">
+                  <CheckCircle2 className="w-4 h-4" />
+                  All codes are supported by clinical documentation
+                </div>
+              )}
+            </div>
+          ) : (
+            <p className="text-sm text-muted-foreground text-center py-4">
+              Run code alignment analysis to compare clinical narrative to submitted codes.
+            </p>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* CR-P7: Documentation Change History */}
+      {changeHistory && changeHistory.length > 0 && (
+        <Card>
+          <CardHeader className="pb-3">
+            <div className="flex items-center gap-2">
+              <History className="w-5 h-5" style={{ color: "#277493" }} />
+              <h2 className="text-base font-semibold" data-testid="text-change-history-title">Documentation Changes</h2>
+              <Badge variant="secondary" className="text-xs">{changeHistory.length}</Badge>
+            </div>
+            <p className="text-sm text-muted-foreground">Field-level changes tracked during documentation</p>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-2">
+              {changeHistory.slice(0, 20).map((change: any) => (
+                <div key={change.id} className="flex items-start gap-2 text-xs p-2 rounded-md border" data-testid={`change-${change.id}`}>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <Badge variant="outline" className="text-[10px]">{change.entityType}</Badge>
+                      <span className="font-medium">{change.fieldName}</span>
+                      {change.remediationId && <Badge variant="secondary" className="text-[10px]">Remediation</Badge>}
+                    </div>
+                    <div className="flex items-center gap-1 mt-1 text-muted-foreground">
+                      {change.previousValue && <span className="line-through">{String(change.previousValue).substring(0, 40)}</span>}
+                      {change.previousValue && change.newValue && <ArrowRight className="w-3 h-3 flex-shrink-0" />}
+                      {change.newValue && <span className="font-medium text-foreground">{String(change.newValue).substring(0, 40)}</span>}
+                    </div>
+                    <span className="text-muted-foreground">{new Date(change.changedAt).toLocaleString()}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {!completenessOk && failedRequired.length > 0 && (
         <Card className="border-destructive/30">

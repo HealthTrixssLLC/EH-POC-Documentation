@@ -1031,6 +1031,78 @@ export const insertEmEvaluationSchema = createInsertSchema(emEvaluations).omit({
 export type InsertEmEvaluation = z.infer<typeof insertEmEvaluationSchema>;
 export type EmEvaluation = typeof emEvaluations.$inferSelect;
 
+// CR-P4: CPT Defensibility Rules
+export const cptDefensibilityRules = pgTable("cpt_defensibility_rules", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  cptCode: text("cpt_code").notNull(),
+  category: text("category").notNull(),
+  label: text("label").notNull(),
+  requiredElements: jsonb("required_elements").$type<{ elementType: string; description: string; weight: number }[]>().notNull(),
+  minDocScore: integer("min_doc_score").notNull().default(70),
+  active: boolean("active").notNull().default(true),
+});
+
+export const insertCptDefensibilityRuleSchema = createInsertSchema(cptDefensibilityRules).omit({ id: true });
+export type InsertCptDefensibilityRule = z.infer<typeof insertCptDefensibilityRuleSchema>;
+export type CptDefensibilityRule = typeof cptDefensibilityRules.$inferSelect;
+
+// CR-P5: Payor Policies
+export const payorPolicies = pgTable("payor_policies", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  payorId: text("payor_id").notNull(),
+  policyType: text("policy_type").notNull(),
+  cptCodes: text("cpt_codes").array(),
+  icdCodes: text("icd_codes").array(),
+  ruleDefinition: jsonb("rule_definition").$type<Record<string, any>>().notNull(),
+  description: text("description").notNull(),
+  effectiveDate: text("effective_date"),
+  expirationDate: text("expiration_date"),
+  active: boolean("active").notNull().default(true),
+});
+
+export const insertPayorPolicySchema = createInsertSchema(payorPolicies).omit({ id: true });
+export type InsertPayorPolicy = z.infer<typeof insertPayorPolicySchema>;
+export type PayorPolicy = typeof payorPolicies.$inferSelect;
+
+// CR-P5: Payor Policy Evaluations
+export const payorPolicyEvaluations = pgTable("payor_policy_evaluations", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  visitId: varchar("visit_id").notNull(),
+  payorId: text("payor_id").notNull(),
+  evaluatedAt: text("evaluated_at").notNull(),
+  results: jsonb("results").$type<{ policyId: string; policyType: string; result: string; description: string }[]>().notNull(),
+  passCount: integer("pass_count").notNull(),
+  failCount: integer("fail_count").notNull(),
+  warningCount: integer("warning_count").notNull(),
+});
+
+export const insertPayorPolicyEvaluationSchema = createInsertSchema(payorPolicyEvaluations).omit({ id: true });
+export type InsertPayorPolicyEvaluation = z.infer<typeof insertPayorPolicyEvaluationSchema>;
+export type PayorPolicyEvaluation = typeof payorPolicyEvaluations.$inferSelect;
+
+// CR-P3: Encounter Audit Reports
+export const encounterAuditReports = pgTable("encounter_audit_reports", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  visitId: varchar("visit_id").notNull(),
+  auditedAt: text("audited_at").notNull(),
+  completenessScore: integer("completeness_score").notNull(),
+  diagnosisSupportScore: integer("diagnosis_support_score").notNull(),
+  codingComplianceScore: integer("coding_compliance_score").notNull(),
+  emDefensibilityScore: integer("em_defensibility_score"),
+  cptDefensibilityScore: integer("cpt_defensibility_score"),
+  billingReadinessScore: integer("billing_readiness_score").notNull(),
+  overallAuditScore: integer("overall_audit_score").notNull(),
+  auditResult: text("audit_result").notNull(),
+  qualityFlags: jsonb("quality_flags").$type<{ flag: string; severity: string; description: string }[]>(),
+  flagCount: integer("flag_count").notNull().default(0),
+  autoRoutedToReview: boolean("auto_routed_to_review").notNull().default(false),
+  dimensions: jsonb("dimensions").$type<Record<string, any>>(),
+});
+
+export const insertEncounterAuditReportSchema = createInsertSchema(encounterAuditReports).omit({ id: true });
+export type InsertEncounterAuditReport = z.infer<typeof insertEncounterAuditReportSchema>;
+export type EncounterAuditReport = typeof encounterAuditReports.$inferSelect;
+
 export const AUDIT_FINDING_CATEGORIES = [
   { code: "documentation_quality", label: "Documentation Quality", description: "Completeness and accuracy of clinical documentation" },
   { code: "coding_accuracy", label: "Coding Accuracy", description: "CPT/ICD-10 code correctness and specificity" },

@@ -1963,6 +1963,62 @@ export async function registerRoutes(
         details: `Visit finalized and signed by ${signature}`,
       });
 
+      // CR-P3: Trigger automated encounter audit
+      try {
+        const auditCodes = await storage.getCodesByVisit(visit.id);
+        const auditIcdCodes = auditCodes.filter((c: any) => c.codeType === "ICD-10" && !c.removedByNp);
+        const auditDiagRules = await Promise.all(auditIcdCodes.map(c => storage.getDiagnosisRuleByCode(c.code)));
+        const supportedDiags = auditDiagRules.filter(r => r !== undefined).length;
+        const diagScore = auditIcdCodes.length > 0 ? Math.round((supportedDiags / auditIcdCodes.length) * 100) : 100;
+
+        const auditChecklist = await storage.getChecklistByVisit(visit.id);
+        const totalItems = auditChecklist.length;
+        const completedItems = auditChecklist.filter(c => c.status === "complete" || c.status === "unable_to_assess").length;
+        const completenessAuditScore = totalItems > 0 ? Math.round((completedItems / totalItems) * 100) : 100;
+
+        const unverified = auditCodes.filter((c: any) => c.codeType === "ICD-10" && !c.removedByNp && !c.verified).length;
+        const codingScore = auditIcdCodes.length > 0 ? Math.round(((auditIcdCodes.length - unverified) / auditIcdCodes.length) * 100) : 100;
+
+        const finalEmEval = await storage.getEmEvaluationByVisit(visit.id);
+        const billingScore = Math.round(completenessAuditScore * 0.40 + diagScore * 0.35 + codingScore * 0.25);
+        const overallAuditScore = Math.round((completenessAuditScore + diagScore + codingScore + billingScore + (finalEmEval?.overallMdmScore || billingScore)) / 5);
+
+        let auditResult: string;
+        if (overallAuditScore >= 80) auditResult = "pass";
+        else if (overallAuditScore >= 60) auditResult = "warning";
+        else auditResult = "fail";
+
+        const auditFlags: any[] = [];
+        if (unverified > 0) auditFlags.push({ flag: "unverified_codes", severity: "warning", description: `${unverified} unverified diagnosis code(s)` });
+        if (completenessAuditScore < 80) auditFlags.push({ flag: "incomplete_documentation", severity: auditResult === "fail" ? "error" : "warning", description: `Documentation completeness at ${completenessAuditScore}%` });
+
+        await storage.createEncounterAuditReport({
+          visitId: visit.id,
+          auditedAt: now,
+          completenessScore: completenessAuditScore,
+          diagnosisSupportScore: diagScore,
+          codingComplianceScore: codingScore,
+          emDefensibilityScore: finalEmEval?.overallMdmScore || null,
+          cptDefensibilityScore: null,
+          billingReadinessScore: billingScore,
+          overallAuditScore,
+          auditResult,
+          qualityFlags: auditFlags,
+          flagCount: auditFlags.length,
+          autoRoutedToReview: auditResult === "fail" || auditResult === "warning",
+          dimensions: { completeness: completenessAuditScore, diagnosisSupport: diagScore, codingCompliance: codingScore, emDefensibility: finalEmEval?.overallMdmScore || null, billingReadiness: billingScore },
+        });
+
+        await storage.createAuditEvent({
+          eventType: "automated_audit_completed",
+          visitId: visit.id,
+          patientId: visit.memberId,
+          details: `Automated audit: ${auditResult} (score: ${overallAuditScore})`,
+        });
+      } catch (auditErr) {
+        console.error("Automated audit failed (non-blocking):", auditErr);
+      }
+
       return res.json(updated);
     } catch (err: any) {
       return res.status(500).json({ message: err.message });
@@ -2273,6 +2329,52 @@ export async function registerRoutes(
         qualityFlags.push({ flag: "em_under_coded", severity: "warning", description: `E/M code ${emEvaluation.assignedCpt} under-coded. Documentation supports ${emEvaluation.evaluatedMdmLevel} MDM.${emEvaluation.suggestedCpt ? ` Consider: ${emEvaluation.suggestedCpt}` : ""}` });
       }
 
+      // CR-P4: CPT defensibility (computed live)
+      const cptCodesForDefensibility = codes.filter((c: any) => c.codeType === "CPT" && !c.removedByNp);
+      let cptDefensibilityData: any = null;
+      if (cptCodesForDefensibility.length > 0) {
+        const cptDefScores: any[] = [];
+        const defTasks = await storage.getTasksByVisit(visit.id);
+        const defConsents = await storage.getConsentsByVisit(visit.id);
+        const defNote = await storage.getClinicalNote(visit.id);
+        for (const cpt of cptCodesForDefensibility) {
+          const defRule = await storage.getCptDefensibilityRule(cpt.code);
+          if (!defRule) continue;
+          let metWeight = 0;
+          let totalWeight = 0;
+          for (const el of defRule.requiredElements) {
+            totalWeight += el.weight;
+            let met = false;
+            switch (el.elementType) {
+              case "vitals": met = !!vitals; break;
+              case "assessment": met = assessmentResponses.some((ar: any) => ar.status === "complete"); break;
+              case "medication_reconciliation": met = medRecon.length > 0; break;
+              case "diagnosis": met = icdCodes.length > 0; break;
+              case "labs": met = labResultsList.length > 0; break;
+              case "hedis_measure": { const hi = checklist.filter(c => c.itemType === "measure"); met = hi.length > 0 && hi.every(c => c.status === "complete" || c.status === "unable_to_assess"); break; }
+              case "care_plan": met = defTasks.length > 0; break;
+              case "consent": met = defConsents.length > 0; break;
+              case "clinical_note": met = !!defNote; break;
+            }
+            if (met) metWeight += el.weight;
+          }
+          const defScore = totalWeight > 0 ? Math.round((metWeight / totalWeight) * 100) : 100;
+          cptDefScores.push({ score: defScore, status: defScore >= defRule.minDocScore ? "defensible" : defScore >= defRule.minDocScore * 0.7 ? "warning" : "under_documented" });
+        }
+        const aggScore = cptDefScores.length > 0 ? Math.round(cptDefScores.reduce((s, c) => s + c.score, 0) / cptDefScores.length) : 100;
+        cptDefensibilityData = {
+          aggregateScore: aggScore,
+          cptCount: cptDefScores.length,
+          underDocumentedCount: cptDefScores.filter(s => s.status === "under_documented").length,
+        };
+      }
+
+      // CR-P5: Payor compliance
+      const payorEval = await storage.getPayorPolicyEvaluation(visit.id);
+
+      // CR-P3: Encounter audit
+      const auditReport = await storage.getEncounterAuditReport(visit.id);
+
       const overallScore = Math.round((completenessData.score + diagnosisSupportData.score) / 2);
       const errorFlags = qualityFlags.filter(f => f.severity === "error").length;
       const warningFlags = qualityFlags.filter(f => f.severity === "warning").length;
@@ -2310,6 +2412,19 @@ export async function registerRoutes(
           levelMatch: emEvaluation.levelMatch,
           suggestedCpt: emEvaluation.suggestedCpt,
           evaluatedAt: emEvaluation.evaluatedAt,
+        } : null,
+        cptDefensibility: cptDefensibilityData,
+        payorCompliance: payorEval ? {
+          passCount: payorEval.passCount,
+          failCount: payorEval.failCount,
+          warningCount: payorEval.warningCount,
+          evaluatedAt: payorEval.evaluatedAt,
+        } : null,
+        encounterAudit: auditReport ? {
+          overallScore: auditReport.overallAuditScore,
+          auditResult: auditReport.auditResult,
+          flagCount: auditReport.flagCount,
+          auditedAt: auditReport.auditedAt,
         } : null,
       });
     } catch (err: any) {
@@ -2667,6 +2782,616 @@ export async function registerRoutes(
     try {
       const rules = await storage.getAllEmLevelRules();
       return res.json(rules);
+    } catch (err: any) {
+      return res.status(500).json({ message: err.message });
+    }
+  });
+
+  // ===== CR-P4: CPT Defensibility Scoring =====
+
+  async function evaluateCptDefensibility(visitId: string) {
+    const visit = await storage.getVisit(visitId);
+    if (!visit) return null;
+
+    const codes = await storage.getCodesByVisit(visit.id);
+    const cptCodes = codes.filter((c: any) => c.codeType === "CPT" && !c.removedByNp);
+
+    const [vitals, assessmentResponses, medRecon, icdCodes, member, tasks, consents, clinicalNote, checklist] = await Promise.all([
+      storage.getVitalsByVisit(visit.id),
+      storage.getAssessmentResponsesByVisit(visit.id),
+      storage.getMedReconciliationByVisit(visit.id),
+      Promise.resolve(codes.filter((c: any) => c.codeType === "ICD-10" && !c.removedByNp)),
+      storage.getMember(visit.memberId),
+      storage.getTasksByVisit(visit.id),
+      storage.getConsentsByVisit(visit.id),
+      storage.getClinicalNote(visit.id),
+      storage.getChecklistByVisit(visit.id),
+    ]);
+
+    const labResults = member ? await storage.getLabResultsByMember(member.id) : [];
+
+    const cptScores: any[] = [];
+    for (const cptCode of cptCodes) {
+      const rule = await storage.getCptDefensibilityRule(cptCode.code);
+      if (!rule) continue;
+
+      const elements: { description: string; weight: number; met: boolean }[] = [];
+      for (const el of rule.requiredElements) {
+        let met = false;
+        switch (el.elementType) {
+          case "vitals": met = !!vitals; break;
+          case "assessment": met = assessmentResponses.some((ar: any) => ar.status === "complete"); break;
+          case "medication_reconciliation": met = medRecon.length > 0; break;
+          case "diagnosis": met = icdCodes.length > 0; break;
+          case "labs": met = labResults.length > 0; break;
+          case "hedis_measure": {
+            const hedisItems = checklist.filter(c => c.itemType === "measure");
+            met = hedisItems.length > 0 && hedisItems.every(c => c.status === "complete" || c.status === "unable_to_assess");
+            break;
+          }
+          case "care_plan": met = tasks.length > 0; break;
+          case "consent": met = consents.length > 0; break;
+          case "clinical_note": met = !!clinicalNote; break;
+        }
+        elements.push({ description: el.description, weight: el.weight, met });
+      }
+
+      const totalWeight = elements.reduce((sum, e) => sum + e.weight, 0);
+      const metWeight = elements.filter(e => e.met).reduce((sum, e) => sum + e.weight, 0);
+      const score = totalWeight > 0 ? Math.round((metWeight / totalWeight) * 100) : 100;
+
+      let status: string;
+      if (score >= rule.minDocScore) status = "defensible";
+      else if (score >= rule.minDocScore * 0.7) status = "warning";
+      else status = "under_documented";
+
+      const result: any = {
+        cptCode: cptCode.code,
+        label: rule.label,
+        score,
+        minDocScore: rule.minDocScore,
+        status,
+        elements,
+      };
+
+      if (status !== "defensible") {
+        const missingElements = elements.filter(e => !e.met).map(e => e.description);
+        result.remediation = `Missing documentation: ${missingElements.join(", ")}. Complete these elements to improve defensibility score.`;
+      }
+
+      cptScores.push(result);
+    }
+
+    const aggregateScore = cptScores.length > 0
+      ? Math.round(cptScores.reduce((sum, s) => sum + s.score, 0) / cptScores.length)
+      : 100;
+
+    return {
+      cptScores,
+      aggregateScore,
+      evaluatedAt: new Date().toISOString(),
+    };
+  }
+
+  app.post("/api/visits/:id/cpt-defensibility", async (req, res) => {
+    try {
+      const visit = await storage.getVisit(req.params.id);
+      if (!visit) return res.status(404).json({ message: "Visit not found" });
+
+      const result = await evaluateCptDefensibility(visit.id);
+      return res.json(result);
+    } catch (err: any) {
+      return res.status(500).json({ message: err.message });
+    }
+  });
+
+  app.get("/api/visits/:id/cpt-defensibility", async (req, res) => {
+    try {
+      const visit = await storage.getVisit(req.params.id);
+      if (!visit) return res.status(404).json({ message: "Visit not found" });
+
+      const result = await evaluateCptDefensibility(visit.id);
+      return res.json(result);
+    } catch (err: any) {
+      return res.status(500).json({ message: err.message });
+    }
+  });
+
+  app.get("/api/cpt-defensibility-rules", async (_req, res) => {
+    try {
+      const rules = await storage.getAllCptDefensibilityRules();
+      return res.json(rules);
+    } catch (err: any) {
+      return res.status(500).json({ message: err.message });
+    }
+  });
+
+  app.post("/api/seed/cpt-defensibility-rules", async (_req, res) => {
+    try {
+      const rules = [
+        { cptCode: "99211", category: "em", label: "E/M Office Visit - Level 1", minDocScore: 60, requiredElements: [
+          { elementType: "vitals", description: "Complete vital signs recorded", weight: 30 },
+          { elementType: "diagnosis", description: "Active diagnoses documented", weight: 30 },
+          { elementType: "clinical_note", description: "Clinical note documented", weight: 40 },
+        ]},
+        { cptCode: "99212", category: "em", label: "E/M Office Visit - Level 2", minDocScore: 65, requiredElements: [
+          { elementType: "vitals", description: "Complete vital signs recorded", weight: 25 },
+          { elementType: "diagnosis", description: "Active diagnoses documented", weight: 25 },
+          { elementType: "clinical_note", description: "Clinical note documented", weight: 25 },
+          { elementType: "medication_reconciliation", description: "Medication reconciliation performed", weight: 25 },
+        ]},
+        { cptCode: "99213", category: "em", label: "E/M Office Visit - Level 3", minDocScore: 70, requiredElements: [
+          { elementType: "vitals", description: "Complete vital signs recorded", weight: 20 },
+          { elementType: "assessment", description: "Clinical assessments completed", weight: 20 },
+          { elementType: "diagnosis", description: "Active diagnoses documented", weight: 20 },
+          { elementType: "medication_reconciliation", description: "Medication reconciliation performed", weight: 15 },
+          { elementType: "clinical_note", description: "Clinical note documented", weight: 25 },
+        ]},
+        { cptCode: "99214", category: "em", label: "E/M Office Visit - Level 4", minDocScore: 75, requiredElements: [
+          { elementType: "vitals", description: "Complete vital signs recorded", weight: 20 },
+          { elementType: "assessment", description: "Clinical assessments completed", weight: 15 },
+          { elementType: "medication_reconciliation", description: "Medication reconciliation performed", weight: 15 },
+          { elementType: "diagnosis", description: "Active diagnoses documented", weight: 15 },
+          { elementType: "labs", description: "Lab results reviewed", weight: 10 },
+          { elementType: "care_plan", description: "Care plan tasks created", weight: 10 },
+          { elementType: "clinical_note", description: "Clinical note documented", weight: 15 },
+        ]},
+        { cptCode: "99215", category: "em", label: "E/M Office Visit - Level 5", minDocScore: 80, requiredElements: [
+          { elementType: "vitals", description: "Complete vital signs recorded", weight: 15 },
+          { elementType: "assessment", description: "Clinical assessments completed", weight: 15 },
+          { elementType: "medication_reconciliation", description: "Medication reconciliation performed", weight: 15 },
+          { elementType: "diagnosis", description: "Active diagnoses documented", weight: 15 },
+          { elementType: "labs", description: "Lab results reviewed", weight: 10 },
+          { elementType: "hedis_measure", description: "HEDIS measures documented", weight: 10 },
+          { elementType: "care_plan", description: "Care plan tasks created", weight: 10 },
+          { elementType: "clinical_note", description: "Clinical note documented", weight: 10 },
+        ]},
+        { cptCode: "99387", category: "preventive", label: "Preventive Initial Comprehensive", minDocScore: 70, requiredElements: [
+          { elementType: "vitals", description: "Complete vital signs recorded", weight: 20 },
+          { elementType: "assessment", description: "Clinical assessments completed", weight: 20 },
+          { elementType: "medication_reconciliation", description: "Medication reconciliation performed", weight: 15 },
+          { elementType: "diagnosis", description: "Active diagnoses documented", weight: 15 },
+          { elementType: "labs", description: "Lab results reviewed", weight: 10 },
+          { elementType: "hedis_measure", description: "HEDIS measures documented", weight: 10 },
+          { elementType: "care_plan", description: "Care plan tasks created", weight: 10 },
+        ]},
+        { cptCode: "96127", category: "assessment", label: "PHQ Screening", minDocScore: 70, requiredElements: [
+          { elementType: "assessment", description: "PHQ screening assessment completed", weight: 50 },
+          { elementType: "diagnosis", description: "Relevant diagnoses documented", weight: 20 },
+          { elementType: "care_plan", description: "Follow-up care plan if indicated", weight: 20 },
+          { elementType: "clinical_note", description: "Screening results documented in note", weight: 10 },
+        ]},
+        { cptCode: "96160", category: "assessment", label: "PRAPARE/Social Determinants Screening", minDocScore: 70, requiredElements: [
+          { elementType: "assessment", description: "PRAPARE/SDOH assessment completed", weight: 50 },
+          { elementType: "care_plan", description: "Social needs referrals created", weight: 25 },
+          { elementType: "clinical_note", description: "Social determinants documented in note", weight: 15 },
+          { elementType: "consent", description: "Patient consent for screening", weight: 10 },
+        ]},
+        { cptCode: "83036", category: "procedure", label: "HbA1c Test", minDocScore: 65, requiredElements: [
+          { elementType: "labs", description: "HbA1c lab result recorded", weight: 40 },
+          { elementType: "diagnosis", description: "Diabetes diagnosis documented", weight: 30 },
+          { elementType: "medication_reconciliation", description: "Diabetes medications reconciled", weight: 15 },
+          { elementType: "care_plan", description: "Diabetes management plan", weight: 15 },
+        ]},
+      ];
+
+      const created = [];
+      for (const rule of rules) {
+        const existing = await storage.getCptDefensibilityRule(rule.cptCode);
+        if (!existing) {
+          const r = await storage.createCptDefensibilityRule(rule);
+          created.push(r);
+        }
+      }
+
+      return res.json({ message: `Seeded ${created.length} CPT defensibility rules`, rules: created });
+    } catch (err: any) {
+      return res.status(500).json({ message: err.message });
+    }
+  });
+
+  // ===== CR-P5: Payor Policy Engine =====
+
+  app.post("/api/visits/:id/payor-compliance", async (req, res) => {
+    try {
+      const visit = await storage.getVisit(req.params.id);
+      if (!visit) return res.status(404).json({ message: "Visit not found" });
+
+      const member = await storage.getMember(visit.memberId);
+      if (!member) return res.status(404).json({ message: "Member not found" });
+
+      const now = new Date().toISOString();
+      const payorId = member.insurancePlan || "default";
+
+      let policies = await storage.getPayorPolicies(payorId);
+      if (policies.length === 0) {
+        policies = await storage.getPayorPolicies("default");
+      }
+      const activePolicies = policies.filter(p => p.active);
+
+      const codes = await storage.getCodesByVisit(visit.id);
+      const cptCodes = codes.filter((c: any) => c.codeType === "CPT" && !c.removedByNp);
+      const icdCodes = codes.filter((c: any) => c.codeType === "ICD-10" && !c.removedByNp);
+      const memberVisits = await storage.getVisitsByMember(visit.memberId);
+
+      const results: { policyId: string; policyType: string; result: string; description: string }[] = [];
+
+      for (const policy of activePolicies) {
+        const ruleDef = policy.ruleDefinition as Record<string, any>;
+
+        switch (policy.policyType) {
+          case "frequency": {
+            const policyCpts = policy.cptCodes || [];
+            const matchingCpts = cptCodes.filter((c: any) => policyCpts.includes(c.code));
+            if (matchingCpts.length === 0) {
+              results.push({ policyId: policy.id, policyType: policy.policyType, result: "not_applicable", description: policy.description });
+              break;
+            }
+            const timeWindowMonths = ruleDef.timeWindowMonths || 12;
+            const maxFrequency = ruleDef.maxFrequency || 1;
+            const cutoffDate = new Date();
+            cutoffDate.setMonth(cutoffDate.getMonth() - timeWindowMonths);
+            const cutoffStr = cutoffDate.toISOString().split("T")[0];
+
+            const priorVisits = memberVisits.filter(v => v.id !== visit.id && v.scheduledDate >= cutoffStr);
+            let frequencyViolation = false;
+            for (const mc of matchingCpts) {
+              let count = 0;
+              for (const pv of priorVisits) {
+                const pvCodes = await storage.getCodesByVisit(pv.id);
+                if (pvCodes.some((c: any) => c.code === mc.code && c.codeType === "CPT" && !c.removedByNp)) {
+                  count++;
+                }
+              }
+              if (count >= maxFrequency) {
+                frequencyViolation = true;
+              }
+            }
+            results.push({
+              policyId: policy.id,
+              policyType: policy.policyType,
+              result: frequencyViolation ? "fail" : "pass",
+              description: frequencyViolation ? `Frequency limit exceeded: ${policy.description}` : policy.description,
+            });
+            break;
+          }
+          case "lcd":
+          case "ncd": {
+            const policyCpts = policy.cptCodes || [];
+            const requiredIcds = policy.icdCodes || [];
+            const matchingCpts = cptCodes.filter((c: any) => policyCpts.includes(c.code));
+            if (matchingCpts.length === 0) {
+              results.push({ policyId: policy.id, policyType: policy.policyType, result: "not_applicable", description: policy.description });
+              break;
+            }
+            const hasRequiredIcd = requiredIcds.some((reqIcd: string) =>
+              icdCodes.some((ic: any) => ic.code.startsWith(reqIcd.replace(".x", "")))
+            );
+            results.push({
+              policyId: policy.id,
+              policyType: policy.policyType,
+              result: hasRequiredIcd ? "pass" : "fail",
+              description: hasRequiredIcd ? policy.description : `LCD/NCD violation: ${policy.description}. Required diagnosis not documented.`,
+            });
+            break;
+          }
+          case "modifier": {
+            results.push({
+              policyId: policy.id,
+              policyType: policy.policyType,
+              result: "warning",
+              description: `Modifier check: ${policy.description}. Manual review recommended (modifiers not tracked).`,
+            });
+            break;
+          }
+          case "prior_auth": {
+            const policyCpts = policy.cptCodes || [];
+            const matchingCpts = cptCodes.filter((c: any) => policyCpts.includes(c.code));
+            if (matchingCpts.length === 0) {
+              results.push({ policyId: policy.id, policyType: policy.policyType, result: "not_applicable", description: policy.description });
+            } else {
+              results.push({
+                policyId: policy.id,
+                policyType: policy.policyType,
+                result: "warning",
+                description: `Prior authorization required: ${policy.description}`,
+              });
+            }
+            break;
+          }
+          case "abn": {
+            results.push({
+              policyId: policy.id,
+              policyType: policy.policyType,
+              result: "warning",
+              description: `ABN documentation check: ${policy.description}`,
+            });
+            break;
+          }
+          default: {
+            results.push({
+              policyId: policy.id,
+              policyType: policy.policyType,
+              result: "warning",
+              description: policy.description,
+            });
+          }
+        }
+      }
+
+      const passCount = results.filter(r => r.result === "pass" || r.result === "not_applicable").length;
+      const failCount = results.filter(r => r.result === "fail").length;
+      const warningCount = results.filter(r => r.result === "warning").length;
+
+      const evaluation = await storage.createPayorPolicyEvaluation({
+        visitId: visit.id,
+        payorId,
+        evaluatedAt: now,
+        results,
+        passCount,
+        failCount,
+        warningCount,
+      });
+
+      return res.json(evaluation);
+    } catch (err: any) {
+      return res.status(500).json({ message: err.message });
+    }
+  });
+
+  app.get("/api/visits/:id/payor-compliance", async (req, res) => {
+    try {
+      const visit = await storage.getVisit(req.params.id);
+      if (!visit) return res.status(404).json({ message: "Visit not found" });
+
+      const evaluation = await storage.getPayorPolicyEvaluation(visit.id);
+      return res.json(evaluation || null);
+    } catch (err: any) {
+      return res.status(500).json({ message: err.message });
+    }
+  });
+
+  app.get("/api/admin/payor-policies", async (_req, res) => {
+    try {
+      const policies = await storage.getAllPayorPolicies();
+      return res.json(policies);
+    } catch (err: any) {
+      return res.status(500).json({ message: err.message });
+    }
+  });
+
+  app.post("/api/admin/payor-policies", async (req, res) => {
+    try {
+      const policy = await storage.createPayorPolicy(req.body);
+      return res.json(policy);
+    } catch (err: any) {
+      return res.status(500).json({ message: err.message });
+    }
+  });
+
+  app.put("/api/admin/payor-policies/:id", async (req, res) => {
+    try {
+      const updated = await storage.updatePayorPolicy(req.params.id, req.body);
+      if (!updated) return res.status(404).json({ message: "Policy not found" });
+      return res.json(updated);
+    } catch (err: any) {
+      return res.status(500).json({ message: err.message });
+    }
+  });
+
+  app.post("/api/seed/payor-policies", async (_req, res) => {
+    try {
+      const policies = [
+        {
+          payorId: "MA",
+          policyType: "frequency",
+          cptCodes: ["99387", "G0438", "G0439"],
+          icdCodes: [],
+          ruleDefinition: { timeWindowMonths: 12, maxFrequency: 1 },
+          description: "Annual Wellness Visit limited to 1 per 12 months for Medicare Advantage",
+          active: true,
+        },
+        {
+          payorId: "MA",
+          policyType: "lcd",
+          cptCodes: ["83036"],
+          icdCodes: ["E11.x"],
+          ruleDefinition: { requireDiagnosis: true },
+          description: "HbA1c test requires diabetes diagnosis (E11.x) for Medicare Advantage",
+          active: true,
+        },
+        {
+          payorId: "ACA",
+          policyType: "modifier",
+          cptCodes: [],
+          icdCodes: [],
+          ruleDefinition: { modifierCode: "95", context: "telehealth" },
+          description: "Telehealth modifier (95) required for virtual visits under ACA plans",
+          active: true,
+        },
+        {
+          payorId: "MA",
+          policyType: "prior_auth",
+          cptCodes: ["70553", "72148", "73721"],
+          icdCodes: [],
+          ruleDefinition: { requirePriorAuth: true },
+          description: "Prior authorization required for advanced imaging (MRI) under Medicare Advantage",
+          active: true,
+        },
+      ];
+
+      const created = [];
+      for (const policy of policies) {
+        const p = await storage.createPayorPolicy(policy);
+        created.push(p);
+      }
+
+      return res.json({ message: `Seeded ${created.length} payor policies`, policies: created });
+    } catch (err: any) {
+      return res.status(500).json({ message: err.message });
+    }
+  });
+
+  // ===== CR-P3: Automated Encounter Audit Engine =====
+
+  app.post("/api/visits/:id/encounter-audit", async (req, res) => {
+    try {
+      const visit = await storage.getVisit(req.params.id);
+      if (!visit) return res.status(404).json({ message: "Visit not found" });
+
+      const now = new Date().toISOString();
+
+      const [codes, checklist, member] = await Promise.all([
+        storage.getCodesByVisit(visit.id),
+        storage.getChecklistByVisit(visit.id),
+        storage.getMember(visit.memberId),
+      ]);
+
+      const icdCodes = codes.filter((c: any) => c.codeType === "ICD-10" && !c.removedByNp);
+
+      const totalItems = checklist.length;
+      const completedItems = checklist.filter(c => c.status === "complete" || c.status === "unable_to_assess").length;
+      const completenessScore = totalItems > 0 ? Math.round((completedItems / totalItems) * 100) : 100;
+
+      const diagRules = await Promise.all(icdCodes.map((c: any) => storage.getDiagnosisRuleByCode(c.code)));
+      const supportedDiags = diagRules.filter(r => r !== undefined).length;
+      const diagnosisSupportScore = icdCodes.length > 0 ? Math.round((supportedDiags / icdCodes.length) * 100) : 100;
+
+      const unverified = codes.filter((c: any) => c.codeType === "ICD-10" && !c.removedByNp && !c.verified).length;
+      const codingComplianceScore = icdCodes.length > 0 ? Math.round(((icdCodes.length - unverified) / icdCodes.length) * 100) : 100;
+
+      const emEval = await storage.getEmEvaluationByVisit(visit.id);
+      const emDefensibilityScore = emEval?.overallMdmScore || null;
+
+      const cptDefResult = await evaluateCptDefensibility(visit.id);
+      const cptDefensibilityScore = cptDefResult?.aggregateScore || null;
+
+      const billingReadinessScore = Math.round(completenessScore * 0.40 + diagnosisSupportScore * 0.35 + codingComplianceScore * 0.25);
+
+      const dimensionScores = [completenessScore, diagnosisSupportScore, codingComplianceScore, billingReadinessScore];
+      if (emDefensibilityScore !== null) dimensionScores.push(emDefensibilityScore);
+      else dimensionScores.push(billingReadinessScore);
+
+      const overallAuditScore = Math.round(dimensionScores.reduce((sum, s) => sum + s, 0) / dimensionScores.length);
+
+      let auditResult: string;
+      if (overallAuditScore >= 80) auditResult = "pass";
+      else if (overallAuditScore >= 60) auditResult = "warning";
+      else auditResult = "fail";
+
+      const qualityFlags: { flag: string; severity: string; description: string }[] = [];
+      if (unverified > 0) qualityFlags.push({ flag: "unverified_codes", severity: "warning", description: `${unverified} unverified diagnosis code(s)` });
+      if (completenessScore < 80) qualityFlags.push({ flag: "incomplete_documentation", severity: auditResult === "fail" ? "error" : "warning", description: `Documentation completeness at ${completenessScore}%` });
+      if (diagnosisSupportScore < 80) qualityFlags.push({ flag: "low_diagnosis_support", severity: "warning", description: `Diagnosis support score at ${diagnosisSupportScore}%` });
+      if (emEval && emEval.levelMatch === "over_coded") qualityFlags.push({ flag: "em_over_coded", severity: "error", description: `E/M code ${emEval.assignedCpt} may be over-coded` });
+      if (cptDefResult && cptDefResult.cptScores.some((s: any) => s.status === "under_documented")) {
+        const underDoc = cptDefResult.cptScores.filter((s: any) => s.status === "under_documented");
+        qualityFlags.push({ flag: "cpt_under_documented", severity: "warning", description: `${underDoc.length} CPT code(s) under-documented` });
+      }
+
+      const autoRoutedToReview = auditResult === "fail" || auditResult === "warning";
+
+      const report = await storage.createEncounterAuditReport({
+        visitId: visit.id,
+        auditedAt: now,
+        completenessScore,
+        diagnosisSupportScore,
+        codingComplianceScore,
+        emDefensibilityScore,
+        cptDefensibilityScore,
+        billingReadinessScore,
+        overallAuditScore,
+        auditResult,
+        qualityFlags,
+        flagCount: qualityFlags.length,
+        autoRoutedToReview,
+        dimensions: {
+          completeness: completenessScore,
+          diagnosisSupport: diagnosisSupportScore,
+          codingCompliance: codingComplianceScore,
+          emDefensibility: emDefensibilityScore,
+          cptDefensibility: cptDefensibilityScore,
+          billingReadiness: billingReadinessScore,
+        },
+      });
+
+      await storage.createAuditEvent({
+        eventType: "automated_audit_completed",
+        visitId: visit.id,
+        patientId: visit.memberId,
+        details: `Automated audit: ${auditResult} (score: ${overallAuditScore})`,
+      });
+
+      return res.json(report);
+    } catch (err: any) {
+      return res.status(500).json({ message: err.message });
+    }
+  });
+
+  app.get("/api/visits/:id/encounter-audit", async (req, res) => {
+    try {
+      const visit = await storage.getVisit(req.params.id);
+      if (!visit) return res.status(404).json({ message: "Visit not found" });
+
+      const report = await storage.getEncounterAuditReport(visit.id);
+      return res.json(report || null);
+    } catch (err: any) {
+      return res.status(500).json({ message: err.message });
+    }
+  });
+
+  app.get("/api/audit/reports", async (_req, res) => {
+    try {
+      const reports = await storage.getAllEncounterAuditReports();
+      return res.json(reports);
+    } catch (err: any) {
+      return res.status(500).json({ message: err.message });
+    }
+  });
+
+  app.get("/api/audit/dashboard", async (_req, res) => {
+    try {
+      const reports = await storage.getAllEncounterAuditReports();
+      const totalAudited = reports.length;
+      const passCount = reports.filter(r => r.auditResult === "pass").length;
+      const warningCount = reports.filter(r => r.auditResult === "warning").length;
+      const failCount = reports.filter(r => r.auditResult === "fail").length;
+
+      const passRate = totalAudited > 0 ? Math.round((passCount / totalAudited) * 100) : 0;
+      const warningRate = totalAudited > 0 ? Math.round((warningCount / totalAudited) * 100) : 0;
+      const failRate = totalAudited > 0 ? Math.round((failCount / totalAudited) * 100) : 0;
+
+      const avgOverallScore = totalAudited > 0 ? Math.round(reports.reduce((sum, r) => sum + r.overallAuditScore, 0) / totalAudited) : 0;
+      const avgCompletenessScore = totalAudited > 0 ? Math.round(reports.reduce((sum, r) => sum + r.completenessScore, 0) / totalAudited) : 0;
+      const avgDiagnosisSupportScore = totalAudited > 0 ? Math.round(reports.reduce((sum, r) => sum + r.diagnosisSupportScore, 0) / totalAudited) : 0;
+      const avgCodingComplianceScore = totalAudited > 0 ? Math.round(reports.reduce((sum, r) => sum + r.codingComplianceScore, 0) / totalAudited) : 0;
+
+      const flagCounts: Record<string, number> = {};
+      for (const report of reports) {
+        const flags = report.qualityFlags as any[] || [];
+        for (const f of flags) {
+          flagCounts[f.flag] = (flagCounts[f.flag] || 0) + 1;
+        }
+      }
+      const topFlags = Object.entries(flagCounts)
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 10)
+        .map(([flag, count]) => ({ flag, count }));
+
+      return res.json({
+        totalAudited,
+        passCount,
+        warningCount,
+        failCount,
+        passRate,
+        warningRate,
+        failRate,
+        avgOverallScore,
+        avgCompletenessScore,
+        avgDiagnosisSupportScore,
+        avgCodingComplianceScore,
+        topFlags,
+      });
     } catch (err: any) {
       return res.status(500).json({ message: err.message });
     }

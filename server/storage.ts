@@ -73,6 +73,14 @@ import {
   type EmLevelRule, type InsertEmLevelRule,
   emEvaluations,
   type EmEvaluation, type InsertEmEvaluation,
+  cptDefensibilityRules,
+  type CptDefensibilityRule, type InsertCptDefensibilityRule,
+  payorPolicies,
+  type PayorPolicy, type InsertPayorPolicy,
+  payorPolicyEvaluations,
+  type PayorPolicyEvaluation, type InsertPayorPolicyEvaluation,
+  encounterAuditReports,
+  type EncounterAuditReport, type InsertEncounterAuditReport,
 } from "@shared/schema";
 
 export interface IStorage {
@@ -291,6 +299,24 @@ export interface IStorage {
   createEmEvaluation(eval_: InsertEmEvaluation): Promise<EmEvaluation>;
   getEmEvaluationByVisit(visitId: string): Promise<EmEvaluation | undefined>;
   getEmEvaluationsByVisit(visitId: string): Promise<EmEvaluation[]>;
+
+  // CR-P4: CPT Defensibility Rules
+  getCptDefensibilityRule(cptCode: string): Promise<CptDefensibilityRule | undefined>;
+  getAllCptDefensibilityRules(): Promise<CptDefensibilityRule[]>;
+  createCptDefensibilityRule(rule: InsertCptDefensibilityRule): Promise<CptDefensibilityRule>;
+
+  // CR-P5: Payor Policies
+  getPayorPolicies(payorId: string): Promise<PayorPolicy[]>;
+  getAllPayorPolicies(): Promise<PayorPolicy[]>;
+  createPayorPolicy(policy: InsertPayorPolicy): Promise<PayorPolicy>;
+  updatePayorPolicy(id: string, updates: Partial<PayorPolicy>): Promise<PayorPolicy | undefined>;
+  createPayorPolicyEvaluation(eval_: InsertPayorPolicyEvaluation): Promise<PayorPolicyEvaluation>;
+  getPayorPolicyEvaluation(visitId: string): Promise<PayorPolicyEvaluation | undefined>;
+
+  // CR-P3: Encounter Audit Reports
+  createEncounterAuditReport(report: InsertEncounterAuditReport): Promise<EncounterAuditReport>;
+  getEncounterAuditReport(visitId: string): Promise<EncounterAuditReport | undefined>;
+  getAllEncounterAuditReports(): Promise<EncounterAuditReport[]>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -1122,6 +1148,65 @@ export class DatabaseStorage implements IStorage {
 
   async getEmEvaluationsByVisit(visitId: string) {
     return db.select().from(emEvaluations).where(eq(emEvaluations.visitId, visitId)).orderBy(desc(emEvaluations.evaluatedAt));
+  }
+
+  // CR-P4: CPT Defensibility Rules
+  async getCptDefensibilityRule(cptCode: string) {
+    const [rule] = await db.select().from(cptDefensibilityRules).where(and(eq(cptDefensibilityRules.cptCode, cptCode), eq(cptDefensibilityRules.active, true)));
+    return rule;
+  }
+
+  async getAllCptDefensibilityRules() {
+    return db.select().from(cptDefensibilityRules).where(eq(cptDefensibilityRules.active, true));
+  }
+
+  async createCptDefensibilityRule(rule: InsertCptDefensibilityRule) {
+    const [created] = await db.insert(cptDefensibilityRules).values(rule).returning();
+    return created;
+  }
+
+  // CR-P5: Payor Policies
+  async getPayorPolicies(payorId: string) {
+    return db.select().from(payorPolicies).where(and(eq(payorPolicies.payorId, payorId), eq(payorPolicies.active, true)));
+  }
+
+  async getAllPayorPolicies() {
+    return db.select().from(payorPolicies);
+  }
+
+  async createPayorPolicy(policy: InsertPayorPolicy) {
+    const [created] = await db.insert(payorPolicies).values(policy).returning();
+    return created;
+  }
+
+  async updatePayorPolicy(id: string, updates: Partial<PayorPolicy>) {
+    const [updated] = await db.update(payorPolicies).set(updates).where(eq(payorPolicies.id, id)).returning();
+    return updated;
+  }
+
+  async createPayorPolicyEvaluation(eval_: InsertPayorPolicyEvaluation) {
+    const [created] = await db.insert(payorPolicyEvaluations).values(eval_).returning();
+    return created;
+  }
+
+  async getPayorPolicyEvaluation(visitId: string) {
+    const [eval_] = await db.select().from(payorPolicyEvaluations).where(eq(payorPolicyEvaluations.visitId, visitId)).orderBy(desc(payorPolicyEvaluations.evaluatedAt)).limit(1);
+    return eval_;
+  }
+
+  // CR-P3: Encounter Audit Reports
+  async createEncounterAuditReport(report: InsertEncounterAuditReport) {
+    const [created] = await db.insert(encounterAuditReports).values(report).returning();
+    return created;
+  }
+
+  async getEncounterAuditReport(visitId: string) {
+    const [report] = await db.select().from(encounterAuditReports).where(eq(encounterAuditReports.visitId, visitId)).orderBy(desc(encounterAuditReports.auditedAt)).limit(1);
+    return report;
+  }
+
+  async getAllEncounterAuditReports() {
+    return db.select().from(encounterAuditReports).orderBy(desc(encounterAuditReports.auditedAt));
   }
 }
 

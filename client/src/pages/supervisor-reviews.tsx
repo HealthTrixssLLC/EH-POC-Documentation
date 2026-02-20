@@ -60,6 +60,23 @@ interface AdjudicationSummary {
     levelMatch: string;
     suggestedCpt?: string;
   } | null;
+  cptDefensibility?: {
+    aggregateScore: number;
+    cptCount: number;
+    underDocumentedCount: number;
+  } | null;
+  payorCompliance?: {
+    passCount: number;
+    failCount: number;
+    warningCount: number;
+    evaluatedAt: string;
+  } | null;
+  encounterAudit?: {
+    overallScore: number;
+    auditResult: string;
+    flagCount: number;
+    auditedAt: string;
+  } | null;
 }
 
 interface EnhancedVisit {
@@ -235,6 +252,69 @@ function AdjudicationCard({ visitId }: { visitId: string }) {
                 <AlertTriangle className="w-3 h-3" />
                 Suggested: {summary.emEvaluation.suggestedCpt}
               </div>
+            )}
+          </div>
+        </>
+      )}
+
+      {summary.cptDefensibility && (
+        <>
+          <Separator />
+          <div className="space-y-2">
+            <div className="flex items-center justify-between gap-2">
+              <span className="text-xs font-medium text-muted-foreground">CPT Defensibility</span>
+              <Badge
+                variant={summary.cptDefensibility.aggregateScore >= 80 ? "default" : summary.cptDefensibility.aggregateScore >= 60 ? "secondary" : "destructive"}
+                className="text-xs"
+                data-testid="badge-adj-cpt-score"
+              >
+                {summary.cptDefensibility.aggregateScore}%
+              </Badge>
+            </div>
+            <div className="flex items-center gap-2 text-xs text-muted-foreground">
+              <span>{summary.cptDefensibility.cptCount} CPT code(s)</span>
+              {summary.cptDefensibility.underDocumentedCount > 0 && (
+                <span className="text-amber-600 dark:text-amber-400">{summary.cptDefensibility.underDocumentedCount} under-documented</span>
+              )}
+            </div>
+          </div>
+        </>
+      )}
+
+      {summary.payorCompliance && (
+        <>
+          <Separator />
+          <div className="space-y-2">
+            <div className="flex items-center justify-between gap-2">
+              <span className="text-xs font-medium text-muted-foreground">Payor Compliance</span>
+              <Badge
+                variant={summary.payorCompliance.failCount === 0 ? "default" : "destructive"}
+                className="text-xs"
+                data-testid="badge-adj-payor"
+              >
+                {summary.payorCompliance.failCount === 0 ? "Compliant" : `${summary.payorCompliance.failCount} issue(s)`}
+              </Badge>
+            </div>
+          </div>
+        </>
+      )}
+
+      {summary.encounterAudit && (
+        <>
+          <Separator />
+          <div className="space-y-2">
+            <div className="flex items-center justify-between gap-2">
+              <span className="text-xs font-medium text-muted-foreground">Encounter Audit</span>
+              <Badge
+                variant={summary.encounterAudit.auditResult === "pass" ? "default" : summary.encounterAudit.auditResult === "warning" ? "secondary" : "destructive"}
+                className="text-xs"
+                data-testid="badge-adj-audit"
+              >
+                {summary.encounterAudit.auditResult === "pass" ? "Pass" : summary.encounterAudit.auditResult === "warning" ? "Warning" : "Fail"} ({summary.encounterAudit.overallScore}%)
+              </Badge>
+            </div>
+            {summary.encounterAudit.flagCount > 0 && (
+              <span className="text-xs text-muted-foreground">{summary.encounterAudit.flagCount} quality flag(s)</span>
             )}
           </div>
         </>

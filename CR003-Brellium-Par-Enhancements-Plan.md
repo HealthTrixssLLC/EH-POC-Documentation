@@ -5,7 +5,7 @@
 **System:** Easy Health Point of Care Application
 **Requestor:** Jay Baker
 **Date:** February 20, 2026
-**Status:** Phase 1 IMPLEMENTED (Feb 20, 2026) - Phase 2-4 Planning
+**Status:** Phase 1 IMPLEMENTED (Feb 20, 2026) - Phase 2 IMPLEMENTED (Feb 20, 2026) - Phase 3-4 Planning
 **Source:** Brellium Comparison Analysis (`attached_assets/eh-brellium_comparison_1771595118054.md`)
 
 ---
@@ -255,9 +255,9 @@ Columns:
 
 ### 3.3 Backend Implementation
 
-- [ ] Create `encounter_audit_reports` table in `shared/schema.ts`
-- [ ] Add storage interface methods: `createEncounterAuditReport()`, `getEncounterAuditReport(visitId)`, `getEncounterAuditReports(filters)`
-- [ ] Implement automated audit pipeline function `runEncounterAudit(visitId)`:
+- [x] Create `encounter_audit_reports` table in `shared/schema.ts`
+- [x] Add storage interface methods: `createEncounterAuditReport()`, `getEncounterAuditReport(visitId)`, `getEncounterAuditReports(filters)`
+- [x] Implement automated audit pipeline function `runEncounterAudit(visitId)`:
   - Execute completeness engine evaluation
   - Execute diagnosis support scoring
   - Execute coding compliance checks (unverified codes, unsupported diagnoses)
@@ -268,35 +268,35 @@ Columns:
   - Compute overall audit score as weighted average
   - Determine audit result: pass (>= 80), warning (60-79), fail (< 60)
   - Auto-route to supervisor review if result = "fail" or "warning"
-- [ ] Trigger automated audit at visit finalization (`POST /api/visits/:id/finalize`)
-- [ ] Create `GET /api/audit/reports` endpoint with filters (date range, score range, result, provider)
-- [ ] Create `GET /api/audit/reports/:visitId` endpoint for single visit audit report
-- [ ] Create `GET /api/audit/dashboard` endpoint returning aggregate metrics:
+- [x] Trigger automated audit at visit finalization (`POST /api/visits/:id/finalize`)
+- [x] Create `GET /api/audit/reports` endpoint with filters (date range, score range, result, provider)
+- [x] Create `GET /api/audit/reports/:visitId` endpoint for single visit audit report
+- [x] Create `GET /api/audit/dashboard` endpoint returning aggregate metrics:
   - Total encounters audited
   - % pass / warning / fail
   - Average scores by dimension
   - Trend data (daily/weekly/monthly)
   - Top quality flag categories
-- [ ] Add audit event type: `automated_audit_completed`, `automated_audit_routed_to_review`
+- [x] Add audit event type: `automated_audit_completed`, `automated_audit_routed_to_review`
 
 ### 3.4 Frontend Implementation
 
-- [ ] Add Audit Dashboard page (or section within existing admin/compliance pages) showing:
+- [x] Add Audit Dashboard page (or section within existing admin/compliance pages) showing:
   - Aggregate audit metrics (pass/warning/fail distribution)
   - Score trend charts (30/60/90 day)
   - Quality flag frequency breakdown
   - Filterable encounter audit list
-- [ ] Add audit score badge to visit list and visit detail pages
-- [ ] Add audit report view per encounter with dimension breakdown
-- [ ] Auto-route indicators on supervisor review queue for audit-flagged encounters
+- [x] Add audit score badge to visit list and visit detail pages
+- [x] Add audit report view per encounter with dimension breakdown
+- [x] Auto-route indicators on supervisor review queue for audit-flagged encounters
 
 ### 3.5 Validation & Testing
 
-- [ ] Verify audit runs automatically at finalization for every visit
-- [ ] Verify audit results are stored and retrievable
-- [ ] Verify auto-routing to supervisor review for failed/warning visits
-- [ ] Verify dashboard metrics compute correctly
-- [ ] Verify audit trail captures automated audit events
+- [x] Verify audit runs automatically at finalization for every visit
+- [x] Verify audit results are stored and retrievable
+- [x] Verify auto-routing to supervisor review for failed/warning visits
+- [x] Verify dashboard metrics compute correctly
+- [x] Verify audit trail captures automated audit events
 
 ---
 
@@ -325,32 +325,32 @@ Columns:
 
 ### 4.3 Backend Implementation
 
-- [ ] Create `cpt_defensibility_rules` table in `shared/schema.ts`
-- [ ] Add storage interface methods: `getCptDefensibilityRule(cptCode)`, `getAllCptDefensibilityRules()`, `createCptDefensibilityRule()`
-- [ ] Implement CPT defensibility evaluation function `evaluateCptDefensibility(visitId)`:
+- [x] Create `cpt_defensibility_rules` table in `shared/schema.ts`
+- [x] Add storage interface methods: `getCptDefensibilityRule(cptCode)`, `getAllCptDefensibilityRules()`, `createCptDefensibilityRule()`
+- [x] Implement CPT defensibility evaluation function `evaluateCptDefensibility(visitId)`:
   - For each CPT code on the visit, look up defensibility rules
   - Evaluate required elements against documented data (vitals, assessments, meds, diagnoses, measures)
   - Compute per-CPT defensibility score based on element weights
   - Compute aggregate CPT Defensibility Score for the encounter
   - Flag under-documented CPTs with specific remediation instructions
-- [ ] Create `GET /api/visits/:id/cpt-defensibility` endpoint
-- [ ] Add CPT defensibility score to adjudication summary
-- [ ] Include CPT defensibility in automated audit pipeline (CR-P3)
-- [ ] Seed defensibility rules for common home visit CPT codes (99345, 99350, 99387, 96127, 96160, 83036, etc.)
+- [x] Create `GET /api/visits/:id/cpt-defensibility` endpoint
+- [x] Add CPT defensibility score to adjudication summary
+- [x] Include CPT defensibility in automated audit pipeline (CR-P3)
+- [x] Seed defensibility rules for common home visit CPT codes (99345, 99350, 99387, 96127, 96160, 83036, etc.)
 
 ### 4.4 Frontend Implementation
 
-- [ ] Add CPT Defensibility panel to review-finalize page showing per-CPT scores
-- [ ] Color-code CPT codes by defensibility (green >= 80, yellow 60-79, red < 60)
-- [ ] Show remediation instructions for under-documented CPTs
-- [ ] Add CPT defensibility score to adjudication scorecard on supervisor review
+- [x] Add CPT Defensibility panel to review-finalize page showing per-CPT scores
+- [x] Color-code CPT codes by defensibility (green >= 80, yellow 60-79, red < 60)
+- [x] Show remediation instructions for under-documented CPTs
+- [x] Add CPT defensibility score to adjudication scorecard on supervisor review
 
 ### 4.5 Validation & Testing
 
-- [ ] Verify per-CPT scoring matches expected values for test scenarios
-- [ ] Verify aggregate score computation
-- [ ] Verify remediation instructions display for under-documented CPTs
-- [ ] Verify CPT defensibility appears in adjudication summary
+- [x] Verify per-CPT scoring matches expected values for test scenarios
+- [x] Verify aggregate score computation
+- [x] Verify remediation instructions display for under-documented CPTs
+- [x] Verify CPT defensibility appears in adjudication summary
 
 ---
 
@@ -398,10 +398,10 @@ Columns:
 
 ### 5.3 Backend Implementation
 
-- [ ] Create `payor_policies` table in `shared/schema.ts`
-- [ ] Create `payor_policy_evaluations` table in `shared/schema.ts`
-- [ ] Add storage interface methods: `getPayorPolicies(payorId)`, `createPayorPolicy()`, `createPayorPolicyEvaluation()`, `getPayorPolicyEvaluation(visitId)`
-- [ ] Implement payor policy evaluation function `evaluatePayorPolicies(visitId)`:
+- [x] Create `payor_policies` table in `shared/schema.ts`
+- [x] Create `payor_policy_evaluations` table in `shared/schema.ts`
+- [x] Add storage interface methods: `getPayorPolicies(payorId)`, `createPayorPolicy()`, `createPayorPolicyEvaluation()`, `getPayorPolicyEvaluation(visitId)`
+- [x] Implement payor policy evaluation function `evaluatePayorPolicies(visitId)`:
   - Identify patient's payor from member record
   - Retrieve applicable policies for that payor
   - Evaluate each policy against visit data:
@@ -411,25 +411,25 @@ Columns:
     - **Prior auth:** Flag procedures requiring prior authorization
     - **ABN:** Flag when ABN is required for non-covered services
   - Return pass/fail/warning per policy
-- [ ] Create `GET /api/visits/:id/payor-compliance` endpoint
-- [ ] Integrate payor policy evaluation into pre-claim compliance gate (CR-P1)
-- [ ] Provide payor-specific denial risk warnings as quality flags
-- [ ] Create admin endpoint to manage payor policies: `GET/POST/PUT /api/admin/payor-policies`
-- [ ] Seed initial payor policies for common MA and ACA plan requirements
+- [x] Create `GET /api/visits/:id/payor-compliance` endpoint
+- [x] Integrate payor policy evaluation into pre-claim compliance gate (CR-P1)
+- [x] Provide payor-specific denial risk warnings as quality flags
+- [x] Create admin endpoint to manage payor policies: `GET/POST/PUT /api/admin/payor-policies`
+- [x] Seed initial payor policies for common MA and ACA plan requirements
 
 ### 5.4 Frontend Implementation
 
-- [ ] Add Payor Compliance panel to review-finalize page showing policy evaluation results
-- [ ] Show denial risk warnings during documentation on intake dashboard
-- [ ] Add payor policy management UI in admin console
-- [ ] Include payor compliance status on supervisor review queue
+- [x] Add Payor Compliance panel to review-finalize page showing policy evaluation results
+- [x] Show denial risk warnings during documentation on intake dashboard
+- [x] Add payor policy management UI in admin console
+- [x] Include payor compliance status on supervisor review queue
 
 ### 5.5 Validation & Testing
 
-- [ ] Verify frequency limit detection blocks repeat services within window
-- [ ] Verify LCD/NCD rules flag medical necessity gaps
-- [ ] Verify payor policy results integrate with pre-claim gate
-- [ ] Verify admin can create and modify payor policies
+- [x] Verify frequency limit detection blocks repeat services within window
+- [x] Verify LCD/NCD rules flag medical necessity gaps
+- [x] Verify payor policy results integrate with pre-claim gate
+- [x] Verify admin can create and modify payor policies
 
 ---
 

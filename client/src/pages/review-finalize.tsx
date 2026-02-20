@@ -29,6 +29,9 @@ import {
   DollarSign,
   Activity,
   Loader2,
+  Shield,
+  FileCheck,
+  ClipboardCheck,
 } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Progress } from "@/components/ui/progress";
@@ -97,6 +100,21 @@ export default function ReviewFinalize() {
     enabled: !!visitId,
   });
 
+  const { data: cptDefensibility } = useQuery<any>({
+    queryKey: ["/api/visits", visitId, "cpt-defensibility"],
+    enabled: !!visitId,
+  });
+
+  const { data: payorCompliance } = useQuery<any>({
+    queryKey: ["/api/visits", visitId, "payor-compliance"],
+    enabled: !!visitId,
+  });
+
+  const { data: encounterAudit } = useQuery<any>({
+    queryKey: ["/api/visits", visitId, "encounter-audit"],
+    enabled: !!visitId,
+  });
+
   const [diagValidation, setDiagValidation] = useState<any>(null);
 
   const validateDiagnosesMutation = useMutation({
@@ -134,6 +152,39 @@ export default function ReviewFinalize() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/visits", visitId, "em-evaluation"] });
       toast({ title: "E/M evaluation complete" });
+    },
+  });
+
+  const evaluateCptDefensibilityMutation = useMutation({
+    mutationFn: async () => {
+      const resp = await apiRequest("POST", `/api/visits/${visitId}/cpt-defensibility`, {});
+      return resp.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/visits", visitId, "cpt-defensibility"] });
+      toast({ title: "CPT defensibility evaluated" });
+    },
+  });
+
+  const evaluatePayorComplianceMutation = useMutation({
+    mutationFn: async () => {
+      const resp = await apiRequest("POST", `/api/visits/${visitId}/payor-compliance`, {});
+      return resp.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/visits", visitId, "payor-compliance"] });
+      toast({ title: "Payor compliance evaluated" });
+    },
+  });
+
+  const runEncounterAuditMutation = useMutation({
+    mutationFn: async () => {
+      const resp = await apiRequest("POST", `/api/visits/${visitId}/encounter-audit`, {});
+      return resp.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/visits", visitId, "encounter-audit"] });
+      toast({ title: "Encounter audit complete" });
     },
   });
 
@@ -847,6 +898,212 @@ export default function ReviewFinalize() {
           ) : (
             <p className="text-sm text-muted-foreground text-center py-4">
               Run E/M evaluation to validate CPT code against documentation.
+            </p>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* CR-P4: CPT Defensibility Panel */}
+      <Card>
+        <CardHeader className="pb-3">
+          <div className="flex items-center justify-between gap-3 flex-wrap">
+            <div className="flex items-center gap-2">
+              <Shield className="w-5 h-5" style={{ color: "#277493" }} />
+              <h2 className="text-base font-semibold" data-testid="text-cpt-defensibility-title">CPT Defensibility</h2>
+            </div>
+            <div className="flex items-center gap-2">
+              {cptDefensibility && cptDefensibility.aggregateScore !== undefined && (
+                <Badge
+                  variant={cptDefensibility.aggregateScore >= 80 ? "default" : cptDefensibility.aggregateScore >= 60 ? "secondary" : "destructive"}
+                  data-testid="badge-cpt-aggregate"
+                >
+                  {cptDefensibility.aggregateScore}%
+                </Badge>
+              )}
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => evaluateCptDefensibilityMutation.mutate()}
+                disabled={evaluateCptDefensibilityMutation.isPending}
+                data-testid="button-evaluate-cpt"
+              >
+                <RefreshCw className={`w-3.5 h-3.5 mr-1 ${evaluateCptDefensibilityMutation.isPending ? "animate-spin" : ""}`} />
+                {evaluateCptDefensibilityMutation.isPending ? "Evaluating..." : "Evaluate CPT"}
+              </Button>
+            </div>
+          </div>
+          <p className="text-sm text-muted-foreground">Per-CPT documentation defensibility scoring against required elements</p>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          {cptDefensibility && cptDefensibility.cptScores && cptDefensibility.cptScores.length > 0 ? (
+            cptDefensibility.cptScores.map((cpt: any, idx: number) => (
+              <div key={idx} className="p-3 border rounded-lg space-y-2" data-testid={`cpt-score-${cpt.cptCode}`}>
+                <div className="flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-2">
+                    <Badge variant="outline" className="font-mono text-xs">{cpt.cptCode}</Badge>
+                    <span className="text-sm font-medium">{cpt.label}</span>
+                  </div>
+                  <Badge
+                    variant={cpt.status === "defensible" ? "default" : cpt.status === "warning" ? "secondary" : "destructive"}
+                  >
+                    {cpt.score}%
+                  </Badge>
+                </div>
+                <Progress value={cpt.score} className="h-2" />
+                <div className="flex flex-wrap gap-1">
+                  {cpt.elements.map((el: any, elIdx: number) => (
+                    <span key={elIdx} className={`text-xs px-1.5 py-0.5 rounded ${el.met ? "bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400" : "bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400"}`}>
+                      {el.met ? "✓" : "✗"} {el.description}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            ))
+          ) : (
+            <p className="text-sm text-muted-foreground text-center py-4">
+              Run CPT defensibility evaluation to score documentation against CPT requirements.
+            </p>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* CR-P5: Payor Compliance Panel */}
+      <Card>
+        <CardHeader className="pb-3">
+          <div className="flex items-center justify-between gap-3 flex-wrap">
+            <div className="flex items-center gap-2">
+              <FileCheck className="w-5 h-5" style={{ color: "#277493" }} />
+              <h2 className="text-base font-semibold" data-testid="text-payor-compliance-title">Payor Compliance</h2>
+            </div>
+            <div className="flex items-center gap-2">
+              {payorCompliance && payorCompliance.failCount !== undefined && (
+                <Badge
+                  variant={payorCompliance.failCount === 0 ? "default" : "destructive"}
+                  data-testid="badge-payor-result"
+                >
+                  {payorCompliance.failCount === 0 ? "Compliant" : `${payorCompliance.failCount} issue(s)`}
+                </Badge>
+              )}
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => evaluatePayorComplianceMutation.mutate()}
+                disabled={evaluatePayorComplianceMutation.isPending}
+                data-testid="button-evaluate-payor"
+              >
+                <RefreshCw className={`w-3.5 h-3.5 mr-1 ${evaluatePayorComplianceMutation.isPending ? "animate-spin" : ""}`} />
+                {evaluatePayorComplianceMutation.isPending ? "Evaluating..." : "Check Compliance"}
+              </Button>
+            </div>
+          </div>
+          <p className="text-sm text-muted-foreground">Validates visit against payor-specific billing policies and denial risk</p>
+        </CardHeader>
+        <CardContent>
+          {payorCompliance && payorCompliance.results ? (
+            payorCompliance.results.length > 0 ? (
+              <div className="space-y-2">
+                {payorCompliance.results.map((r: any, idx: number) => (
+                  <div key={idx} className="flex items-center gap-2 p-2 rounded-md border text-sm" data-testid={`payor-result-${idx}`}>
+                    {r.result === "pass" ? (
+                      <CheckCircle2 className="w-4 h-4 text-green-600 flex-shrink-0" />
+                    ) : r.result === "warning" ? (
+                      <AlertTriangle className="w-4 h-4 flex-shrink-0" style={{ color: "#FEA002" }} />
+                    ) : (
+                      <XCircle className="w-4 h-4 text-destructive flex-shrink-0" />
+                    )}
+                    <span>{r.description}</span>
+                    <Badge variant="outline" className="ml-auto text-xs capitalize">{r.policyType}</Badge>
+                  </div>
+                ))}
+                <div className="flex items-center gap-4 text-xs text-muted-foreground pt-1">
+                  <span className="text-green-600">{payorCompliance.passCount} passed</span>
+                  {payorCompliance.warningCount > 0 && <span style={{ color: "#FEA002" }}>{payorCompliance.warningCount} warning(s)</span>}
+                  {payorCompliance.failCount > 0 && <span className="text-destructive">{payorCompliance.failCount} failed</span>}
+                </div>
+              </div>
+            ) : (
+              <p className="text-sm text-muted-foreground text-center py-4">
+                No policy violations detected. Visit is compliant with payor requirements.
+              </p>
+            )
+          ) : (
+            <p className="text-sm text-muted-foreground text-center py-4">
+              Run payor compliance check to evaluate against billing policies.
+            </p>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* CR-P3: Encounter Audit Summary */}
+      <Card>
+        <CardHeader className="pb-3">
+          <div className="flex items-center justify-between gap-3 flex-wrap">
+            <div className="flex items-center gap-2">
+              <ClipboardCheck className="w-5 h-5" style={{ color: "#277493" }} />
+              <h2 className="text-base font-semibold" data-testid="text-encounter-audit-title">Encounter Audit</h2>
+            </div>
+            <div className="flex items-center gap-2">
+              {encounterAudit && encounterAudit.auditResult && (
+                <Badge
+                  variant={encounterAudit.auditResult === "pass" ? "default" : encounterAudit.auditResult === "warning" ? "secondary" : "destructive"}
+                  data-testid="badge-audit-result"
+                >
+                  {encounterAudit.auditResult === "pass" ? "Pass" : encounterAudit.auditResult === "warning" ? "Warning" : "Fail"} ({encounterAudit.overallAuditScore}%)
+                </Badge>
+              )}
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => runEncounterAuditMutation.mutate()}
+                disabled={runEncounterAuditMutation.isPending}
+                data-testid="button-run-audit"
+              >
+                <RefreshCw className={`w-3.5 h-3.5 mr-1 ${runEncounterAuditMutation.isPending ? "animate-spin" : ""}`} />
+                {runEncounterAuditMutation.isPending ? "Auditing..." : "Run Audit"}
+              </Button>
+            </div>
+          </div>
+          <p className="text-sm text-muted-foreground">Automated 100% encounter audit scoring across all compliance dimensions</p>
+        </CardHeader>
+        <CardContent>
+          {encounterAudit && encounterAudit.dimensions ? (
+            <div className="space-y-3">
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                {[
+                  { label: "Completeness", value: encounterAudit.completenessScore },
+                  { label: "Diagnosis Support", value: encounterAudit.diagnosisSupportScore },
+                  { label: "Coding Compliance", value: encounterAudit.codingComplianceScore },
+                  { label: "E/M Defensibility", value: encounterAudit.emDefensibilityScore },
+                  { label: "CPT Defensibility", value: encounterAudit.cptDefensibilityScore },
+                  { label: "Billing Readiness", value: encounterAudit.billingReadinessScore },
+                ].filter(d => d.value !== null && d.value !== undefined).map((dim, idx) => (
+                  <div key={idx} className="text-center p-2 rounded-lg border">
+                    <div className={`text-lg font-bold ${dim.value >= 80 ? "text-green-600" : dim.value >= 60 ? "text-amber-500" : "text-destructive"}`}>
+                      {dim.value}%
+                    </div>
+                    <div className="text-xs text-muted-foreground">{dim.label}</div>
+                  </div>
+                ))}
+              </div>
+              {encounterAudit.qualityFlags && encounterAudit.qualityFlags.length > 0 && (
+                <div className="space-y-1.5">
+                  <span className="text-xs font-medium text-muted-foreground">Quality Flags ({encounterAudit.flagCount})</span>
+                  {encounterAudit.qualityFlags.map((f: any, idx: number) => (
+                    <div key={idx} className="flex items-center gap-2 text-xs">
+                      {f.severity === "error" ? (
+                        <XCircle className="w-3.5 h-3.5 text-destructive flex-shrink-0" />
+                      ) : (
+                        <AlertTriangle className="w-3.5 h-3.5 flex-shrink-0" style={{ color: "#FEA002" }} />
+                      )}
+                      <span>{f.description}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          ) : (
+            <p className="text-sm text-muted-foreground text-center py-4">
+              Run encounter audit to evaluate across all compliance dimensions.
             </p>
           )}
         </CardContent>

@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useRoute, Link, useLocation } from "wouter";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
@@ -138,6 +138,16 @@ export default function ReviewFinalize() {
       setDiagValidation(data);
     },
   });
+
+  const bundleFingerprint = bundle ? JSON.stringify({
+    vitals: bundle.vitals?.id,
+    assessments: bundle.assessmentResponses?.length,
+    meds: bundle.medReconciliation?.length,
+    tasks: bundle.tasks?.length,
+    consents: bundle.consents?.length,
+    note: bundle.clinicalNote?.id,
+    checklist: bundle.checklist?.map((c: any) => c.status).join(","),
+  }) : "";
 
   useEffect(() => {
     if (visitId && codes.length > 0) {
@@ -297,6 +307,30 @@ export default function ReviewFinalize() {
       toast({ title: "Finalization failed", description: err.message, variant: "destructive" });
     },
   });
+
+  const autoTriggerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const lastFingerprintRef = useRef<string>("");
+
+  useEffect(() => {
+    if (!visitId || !bundle || !codes) return;
+    const currentFp = `${bundleFingerprint}-${codes.length}`;
+    if (currentFp === lastFingerprintRef.current) return;
+    lastFingerprintRef.current = currentFp;
+
+    if (autoTriggerRef.current) clearTimeout(autoTriggerRef.current);
+    autoTriggerRef.current = setTimeout(() => {
+      if (!evaluateBillingReadinessMutation.isPending) evaluateBillingReadinessMutation.mutate();
+      if (!evaluateEmMutation.isPending) evaluateEmMutation.mutate();
+      if (!evaluateCptDefensibilityMutation.isPending) evaluateCptDefensibilityMutation.mutate();
+      if (!evaluatePayorComplianceMutation.isPending) evaluatePayorComplianceMutation.mutate();
+      if (!runEncounterAuditMutation.isPending) runEncounterAuditMutation.mutate();
+      if (!runCodeAlignmentMutation.isPending) runCodeAlignmentMutation.mutate();
+    }, 500);
+
+    return () => {
+      if (autoTriggerRef.current) clearTimeout(autoTriggerRef.current);
+    };
+  }, [visitId, bundleFingerprint, codes.length]);
 
   if (isLoading) {
     return (
@@ -1009,6 +1043,19 @@ export default function ReviewFinalize() {
                     </span>
                   ))}
                 </div>
+                {cpt.elements.some((el: any) => !el.met && el.remediation) && (
+                  <div className="mt-2 space-y-1.5 border-t pt-2">
+                    <span className="text-xs font-medium text-muted-foreground flex items-center gap-1">
+                      <Lightbulb className="w-3 h-3" /> How to fix:
+                    </span>
+                    {cpt.elements.filter((el: any) => !el.met && el.remediation).map((el: any, rIdx: number) => (
+                      <div key={rIdx} className="text-xs text-muted-foreground pl-4 flex items-start gap-1.5">
+                        <ArrowRight className="w-3 h-3 mt-0.5 flex-shrink-0" style={{ color: "#FEA002" }} />
+                        <span><strong>{el.description}:</strong> {el.remediation}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             ))
           ) : (
@@ -1138,16 +1185,24 @@ export default function ReviewFinalize() {
                 ))}
               </div>
               {encounterAudit.qualityFlags && encounterAudit.qualityFlags.length > 0 && (
-                <div className="space-y-1.5">
+                <div className="space-y-2">
                   <span className="text-xs font-medium text-muted-foreground">Quality Flags ({encounterAudit.flagCount})</span>
                   {encounterAudit.qualityFlags.map((f: any, idx: number) => (
-                    <div key={idx} className="flex items-center gap-2 text-xs">
-                      {f.severity === "error" ? (
-                        <XCircle className="w-3.5 h-3.5 text-destructive flex-shrink-0" />
-                      ) : (
-                        <AlertTriangle className="w-3.5 h-3.5 flex-shrink-0" style={{ color: "#FEA002" }} />
+                    <div key={idx} className="p-2 rounded-md border space-y-1" data-testid={`audit-flag-${idx}`}>
+                      <div className="flex items-center gap-2 text-xs">
+                        {f.severity === "error" ? (
+                          <XCircle className="w-3.5 h-3.5 text-destructive flex-shrink-0" />
+                        ) : (
+                          <AlertTriangle className="w-3.5 h-3.5 flex-shrink-0" style={{ color: "#FEA002" }} />
+                        )}
+                        <span className="font-medium">{f.description}</span>
+                      </div>
+                      {f.remediation && (
+                        <div className="text-xs text-muted-foreground pl-5 flex items-start gap-1.5">
+                          <Lightbulb className="w-3 h-3 mt-0.5 flex-shrink-0" style={{ color: "#FEA002" }} />
+                          <span>{f.remediation}</span>
+                        </div>
                       )}
-                      <span>{f.description}</span>
                     </div>
                   ))}
                 </div>

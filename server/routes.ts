@@ -2932,7 +2932,25 @@ export async function registerRoutes(
       const rule = await storage.getCptDefensibilityRule(cptCode.code);
       if (!rule) continue;
 
-      const elements: { description: string; weight: number; met: boolean }[] = [];
+      const remediationGuide: Record<string, string> = {
+        vitals: "Go to Intake → Vitals and record complete vital signs (BP, HR, temp, SpO2, RR, weight, height).",
+        assessment: "Go to Intake → Assessments and complete at least one clinical assessment (e.g., PHQ-2, PRAPARE, AWV).",
+        medication_reconciliation: "Go to Intake → Medications and reconcile the patient's current medications.",
+        diagnosis: "Go to Intake → Diagnoses or use auto-coding to document active ICD-10 diagnoses for this visit.",
+        labs: "Review and document lab results in the patient's clinical record. Order labs if not yet done.",
+        hedis_measure: "Go to Intake → Screenings and complete all required HEDIS quality measures or mark as unable to assess with reason.",
+        care_plan: "Go to Intake → Care Plan and create follow-up tasks (referrals, lab orders, follow-ups).",
+        consent: "Go to Intake → Consents and obtain required patient consents and NOPP acknowledgement.",
+        clinical_note: "Go to Intake → Clinical Note and document the visit narrative including findings and plan.",
+      };
+
+      const noteCheckGuide: Record<string, string> = {
+        "Screening results documented in note": "Ensure screening scores and interpretations (e.g., PHQ-2 score, risk level) are documented in the clinical note.",
+        "Social determinants documented in note": "Document social determinant findings from PRAPARE assessment in the clinical note narrative.",
+        "Follow-up care plan if indicated": "Document follow-up plan based on screening results in care plan tasks.",
+      };
+
+      const elements: { description: string; weight: number; met: boolean; remediation?: string }[] = [];
       for (const el of rule.requiredElements) {
         let met = false;
         switch (el.elementType) {
@@ -2948,9 +2966,33 @@ export async function registerRoutes(
           }
           case "care_plan": met = tasks.length > 0; break;
           case "consent": met = consents.length > 0; break;
-          case "clinical_note": met = !!clinicalNote; break;
+          case "clinical_note": {
+            if (el.description.toLowerCase().includes("screening results")) {
+              const hasScreeningNote = clinicalNote && clinicalNote.content && (
+                clinicalNote.content.toLowerCase().includes("phq") ||
+                clinicalNote.content.toLowerCase().includes("screen") ||
+                clinicalNote.content.toLowerCase().includes("score") ||
+                clinicalNote.content.toLowerCase().includes("assessment")
+              );
+              met = !!hasScreeningNote;
+            } else if (el.description.toLowerCase().includes("social determinant")) {
+              const hasSdohNote = clinicalNote && clinicalNote.content && (
+                clinicalNote.content.toLowerCase().includes("social") ||
+                clinicalNote.content.toLowerCase().includes("sdoh") ||
+                clinicalNote.content.toLowerCase().includes("prapare") ||
+                clinicalNote.content.toLowerCase().includes("housing") ||
+                clinicalNote.content.toLowerCase().includes("food") ||
+                clinicalNote.content.toLowerCase().includes("transport")
+              );
+              met = !!hasSdohNote;
+            } else {
+              met = !!clinicalNote;
+            }
+            break;
+          }
         }
-        elements.push({ description: el.description, weight: el.weight, met });
+        const remediation = !met ? (noteCheckGuide[el.description] || remediationGuide[el.elementType] || `Complete the required documentation for: ${el.description}`) : undefined;
+        elements.push({ description: el.description, weight: el.weight, met, remediation });
       }
 
       const totalWeight = elements.reduce((sum, e) => sum + e.weight, 0);
@@ -3396,14 +3438,15 @@ export async function registerRoutes(
       else if (overallAuditScore >= 60) auditResult = "warning";
       else auditResult = "fail";
 
-      const qualityFlags: { flag: string; severity: string; description: string }[] = [];
-      if (unverified > 0) qualityFlags.push({ flag: "unverified_codes", severity: "warning", description: `${unverified} unverified diagnosis code(s)` });
-      if (completenessScore < 80) qualityFlags.push({ flag: "incomplete_documentation", severity: auditResult === "fail" ? "error" : "warning", description: `Documentation completeness at ${completenessScore}%` });
-      if (diagnosisSupportScore < 80) qualityFlags.push({ flag: "low_diagnosis_support", severity: "warning", description: `Diagnosis support score at ${diagnosisSupportScore}%` });
-      if (emEval && emEval.levelMatch === "over_coded") qualityFlags.push({ flag: "em_over_coded", severity: "error", description: `E/M code ${emEval.assignedCpt} may be over-coded` });
+      const qualityFlags: { flag: string; severity: string; description: string; remediation: string }[] = [];
+      if (unverified > 0) qualityFlags.push({ flag: "unverified_codes", severity: "warning", description: `${unverified} unverified diagnosis code(s)`, remediation: "Review each ICD-10 code on this page and click the verify checkmark to confirm accuracy. Remove any codes that are not supported by the clinical documentation." });
+      if (completenessScore < 80) qualityFlags.push({ flag: "incomplete_documentation", severity: auditResult === "fail" ? "error" : "warning", description: `Documentation completeness at ${completenessScore}%`, remediation: "Return to the Intake Dashboard and complete all required sections: vitals, assessments, medications, diagnoses, screenings, consents, and clinical note." });
+      if (diagnosisSupportScore < 80) qualityFlags.push({ flag: "low_diagnosis_support", severity: "warning", description: `Diagnosis support score at ${diagnosisSupportScore}%`, remediation: "Ensure each diagnosis code has supporting clinical documentation. Add assessment findings, vitals, or lab results that substantiate each ICD-10 code." });
+      if (emEval && emEval.levelMatch === "over_coded") qualityFlags.push({ flag: "em_over_coded", severity: "error", description: `E/M code ${emEval.assignedCpt} may be over-coded`, remediation: "The assigned E/M level exceeds what the documentation supports. Either add more clinical detail (problems, data, risk) or select a lower E/M code to match the documented complexity." });
       if (cptDefResult && cptDefResult.cptScores.some((s: any) => s.status === "under_documented")) {
         const underDoc = cptDefResult.cptScores.filter((s: any) => s.status === "under_documented");
-        qualityFlags.push({ flag: "cpt_under_documented", severity: "warning", description: `${underDoc.length} CPT code(s) under-documented` });
+        const underDocCodes = underDoc.map((s: any) => s.cptCode).join(", ");
+        qualityFlags.push({ flag: "cpt_under_documented", severity: "warning", description: `${underDoc.length} CPT code(s) under-documented: ${underDocCodes}`, remediation: "Review the CPT Defensibility section below for specific missing elements per CPT code. Complete the listed documentation requirements to improve defensibility." });
       }
 
       const autoRoutedToReview = auditResult === "fail" || auditResult === "warning";

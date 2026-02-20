@@ -51,6 +51,14 @@ export default function ReviewFinalize() {
   const [showEmOverrideDialog, setShowEmOverrideDialog] = useState(false);
   const [showBillingOverrideDialog, setShowBillingOverrideDialog] = useState(false);
   const [overrideReason, setOverrideReason] = useState("");
+  const [codeSwapDialog, setCodeSwapDialog] = useState<{ codeId: string; oldCode: string; oldDesc: string; oldCodeType: string; suggestedCode?: string; suggestedDesc?: string; reason?: string } | null>(null);
+  const [swapNewCode, setSwapNewCode] = useState("");
+  const [swapNewDesc, setSwapNewDesc] = useState("");
+  const [swapReason, setSwapReason] = useState("");
+  const [addCodeDialog, setAddCodeDialog] = useState<{ condition: string; suggestedCode: string; suggestedDesc?: string } | null>(null);
+  const [addCodeValue, setAddCodeValue] = useState("");
+  const [addCodeType, setAddCodeType] = useState("ICD-10");
+  const [addCodeDesc, setAddCodeDesc] = useState("");
 
   const { data: bundle, isLoading } = useQuery<any>({
     queryKey: ["/api/visits", visitId, "bundle"],
@@ -231,6 +239,53 @@ export default function ReviewFinalize() {
     },
   });
 
+  const swapCodeMutation = useMutation({
+    mutationFn: async ({ codeId, newCode, newDescription, newCodeType, reason }: { codeId: string; newCode: string; newDescription: string; newCodeType?: string; reason?: string }) => {
+      const resp = await apiRequest("POST", `/api/codes/${codeId}/swap`, { newCode, newDescription, newCodeType, reason });
+      return resp.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/visits", visitId, "codes"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/visits", visitId, "code-alignment"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/visits", visitId, "bundle"] });
+      setCodeSwapDialog(null);
+      setSwapNewCode("");
+      setSwapNewDesc("");
+      setSwapReason("");
+      toast({ title: "Code corrected successfully" });
+    },
+  });
+
+  const addCodeMutation = useMutation({
+    mutationFn: async ({ code, codeType, description, reason }: { code: string; codeType: string; description: string; reason?: string }) => {
+      const resp = await apiRequest("POST", `/api/visits/${visitId}/codes/add`, { code, codeType, description, reason });
+      return resp.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/visits", visitId, "codes"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/visits", visitId, "code-alignment"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/visits", visitId, "bundle"] });
+      setAddCodeDialog(null);
+      setAddCodeValue("");
+      setAddCodeDesc("");
+      setAddCodeType("ICD-10");
+      toast({ title: "Code added successfully" });
+    },
+  });
+
+  const removeCodeMutation = useMutation({
+    mutationFn: async (codeId: string) => {
+      const resp = await apiRequest("PATCH", `/api/codes/${codeId}`, { removedByNp: true });
+      return resp.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/visits", visitId, "codes"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/visits", visitId, "code-alignment"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/visits", visitId, "bundle"] });
+      toast({ title: "Code removed" });
+    },
+  });
+
   const billingOverrideMutation = useMutation({
     mutationFn: async (reason: string) => {
       const resp = await apiRequest("POST", `/api/visits/${visitId}/billing-readiness/override`, {
@@ -276,15 +331,6 @@ export default function ReviewFinalize() {
       queryClient.invalidateQueries({ queryKey: ["/api/visits", visitId, "codes"] });
       queryClient.invalidateQueries({ queryKey: ["/api/visits", visitId, "progress-note"] });
       toast({ title: `${data.verified} code(s) verified` });
-    },
-  });
-
-  const removeCodeMutation = useMutation({
-    mutationFn: async (id: string) => {
-      await apiRequest("PATCH", `/api/codes/${id}`, { removedByNp: true });
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/visits", visitId, "codes"] });
     },
   });
 
@@ -1294,16 +1340,60 @@ export default function ReviewFinalize() {
               {codeAlignment.codesWithoutSupport && (codeAlignment.codesWithoutSupport as any[]).length > 0 && (
                 <div className="space-y-1.5">
                   <span className="text-xs font-medium text-muted-foreground">Codes Without Narrative Support ({(codeAlignment.codesWithoutSupport as any[]).length})</span>
-                  {(codeAlignment.codesWithoutSupport as any[]).map((c: any, idx: number) => (
-                    <div key={idx} className="flex items-start gap-2 text-xs p-2 rounded-md border" data-testid={`unsupported-code-${idx}`}>
-                      <XCircle className="w-3.5 h-3.5 text-destructive flex-shrink-0 mt-0.5" />
-                      <div>
-                        <span className="font-mono font-medium">{c.code}</span>
-                        {c.description && <span className="text-muted-foreground ml-1">- {c.description}</span>}
-                        {c.reason && <p className="text-muted-foreground mt-0.5">{c.reason}</p>}
+                  {(codeAlignment.codesWithoutSupport as any[]).map((c: any, idx: number) => {
+                    const matchedVisitCode = codes.find((vc: any) => vc.code === c.code && !vc.removedByNp);
+                    return (
+                      <div key={idx} className="flex items-start gap-2 text-xs p-2 rounded-md border" data-testid={`unsupported-code-${idx}`}>
+                        <XCircle className="w-3.5 h-3.5 text-destructive flex-shrink-0 mt-0.5" />
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center justify-between gap-2 flex-wrap">
+                            <div>
+                              <span className="font-mono font-medium">{c.code}</span>
+                              {c.description && <span className="text-muted-foreground ml-1">- {c.description}</span>}
+                            </div>
+                            {matchedVisitCode && (
+                              <div className="flex items-center gap-1 flex-shrink-0">
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  className="h-6 text-[10px] px-2"
+                                  data-testid={`button-swap-code-${c.code}`}
+                                  onClick={() => {
+                                    setCodeSwapDialog({
+                                      codeId: matchedVisitCode.id,
+                                      oldCode: c.code,
+                                      oldDesc: c.description || "",
+                                      oldCodeType: c.codeType || matchedVisitCode.codeType,
+                                      reason: c.reason,
+                                    });
+                                    setSwapNewCode("");
+                                    setSwapNewDesc("");
+                                    setSwapReason(c.reason || "");
+                                  }}
+                                >
+                                  Swap Code
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="h-6 text-[10px] px-2 text-destructive"
+                                  data-testid={`button-remove-code-${c.code}`}
+                                  onClick={() => {
+                                    if (confirm(`Remove ${c.code} - ${c.description}?`)) {
+                                      removeCodeMutation.mutate(matchedVisitCode.id);
+                                    }
+                                  }}
+                                >
+                                  Remove
+                                </Button>
+                              </div>
+                            )}
+                          </div>
+                          {c.reason && <p className="text-muted-foreground mt-0.5">{c.reason}</p>}
+                        </div>
                       </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               )}
               {codeAlignment.conditionsWithoutCodes && (codeAlignment.conditionsWithoutCodes as any[]).length > 0 && (
@@ -1312,9 +1402,31 @@ export default function ReviewFinalize() {
                   {(codeAlignment.conditionsWithoutCodes as any[]).map((c: any, idx: number) => (
                     <div key={idx} className="flex items-start gap-2 text-xs p-2 rounded-md border" data-testid={`uncoded-condition-${idx}`}>
                       <AlertTriangle className="w-3.5 h-3.5 flex-shrink-0 mt-0.5" style={{ color: "#FEA002" }} />
-                      <div>
-                        <span className="font-medium">{c.condition}</span>
-                        {c.suggestedCode && <span className="font-mono text-muted-foreground ml-1">({c.suggestedCode})</span>}
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center justify-between gap-2 flex-wrap">
+                          <div>
+                            <span className="font-medium">{c.condition}</span>
+                            {c.suggestedCode && <span className="font-mono text-muted-foreground ml-1">({c.suggestedCode})</span>}
+                          </div>
+                          {c.suggestedCode && (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="h-6 text-[10px] px-2 flex-shrink-0"
+                              style={{ borderColor: "#277493", color: "#277493" }}
+                              data-testid={`button-add-code-${idx}`}
+                              onClick={() => {
+                                setAddCodeDialog({ condition: c.condition, suggestedCode: c.suggestedCode, suggestedDesc: c.reason });
+                                setAddCodeValue(c.suggestedCode);
+                                setAddCodeDesc(c.condition);
+                                setAddCodeType(c.suggestedCode.match(/^[A-Z]\d/) ? "ICD-10" : c.suggestedCode.startsWith("G") ? "HCPCS" : "CPT");
+                              }}
+                            >
+                              + Add Code
+                            </Button>
+                          )}
+                        </div>
+                        {c.reason && <p className="text-muted-foreground mt-0.5">{c.reason}</p>}
                       </div>
                     </div>
                   ))}
@@ -1617,6 +1729,142 @@ export default function ReviewFinalize() {
                   data-testid="button-billing-override-confirm"
                 >
                   {billingOverrideMutation.isPending ? <><Loader2 className="w-4 h-4 mr-1 animate-spin" /> Overriding...</> : "Override Gate"}
+                </Button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
+      )}
+
+      {codeSwapDialog && (
+        <Dialog open={true} onOpenChange={() => setCodeSwapDialog(null)}>
+          <DialogContent className="max-w-md">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <ArrowRight className="w-5 h-5" style={{ color: "#277493" }} />
+                Swap Code
+              </DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4">
+              <div className="p-3 rounded-md border bg-muted/50">
+                <p className="text-xs text-muted-foreground">Current code</p>
+                <p className="text-sm font-mono font-medium">{codeSwapDialog.oldCode} <span className="font-sans text-muted-foreground">— {codeSwapDialog.oldDesc}</span></p>
+              </div>
+              {codeSwapDialog.reason && (
+                <p className="text-xs text-muted-foreground">{codeSwapDialog.reason}</p>
+              )}
+              <div className="space-y-2">
+                <Label>New Code</Label>
+                <input
+                  className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm font-mono"
+                  value={swapNewCode}
+                  onChange={(e) => setSwapNewCode(e.target.value)}
+                  placeholder="e.g. G0439"
+                  data-testid="input-swap-new-code"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Description</Label>
+                <input
+                  className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm"
+                  value={swapNewDesc}
+                  onChange={(e) => setSwapNewDesc(e.target.value)}
+                  placeholder="e.g. Annual wellness visit, subsequent"
+                  data-testid="input-swap-new-desc"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Reason for change</Label>
+                <Textarea
+                  value={swapReason}
+                  onChange={(e) => setSwapReason(e.target.value)}
+                  placeholder="Clinical reason for code correction..."
+                  className="min-h-[60px]"
+                  data-testid="input-swap-reason"
+                />
+              </div>
+              <div className="flex gap-2">
+                <Button variant="outline" onClick={() => setCodeSwapDialog(null)} data-testid="button-swap-cancel">Cancel</Button>
+                <Button
+                  onClick={() => swapCodeMutation.mutate({
+                    codeId: codeSwapDialog.codeId,
+                    newCode: swapNewCode,
+                    newDescription: swapNewDesc,
+                    newCodeType: codeSwapDialog.oldCodeType,
+                    reason: swapReason,
+                  })}
+                  disabled={!swapNewCode.trim() || !swapNewDesc.trim() || swapCodeMutation.isPending}
+                  data-testid="button-swap-confirm"
+                >
+                  {swapCodeMutation.isPending ? <><Loader2 className="w-4 h-4 mr-1 animate-spin" /> Swapping...</> : "Swap Code"}
+                </Button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
+      )}
+
+      {addCodeDialog && (
+        <Dialog open={true} onOpenChange={() => setAddCodeDialog(null)}>
+          <DialogContent className="max-w-md">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <Check className="w-5 h-5" style={{ color: "#277493" }} />
+                Add Missing Code
+              </DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4">
+              <p className="text-sm text-muted-foreground">
+                Documented condition: <strong>{addCodeDialog.condition}</strong>
+              </p>
+              <div className="grid grid-cols-3 gap-2">
+                <div className="col-span-1 space-y-2">
+                  <Label>Code Type</Label>
+                  <select
+                    className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm"
+                    value={addCodeType}
+                    onChange={(e) => setAddCodeType(e.target.value)}
+                    data-testid="select-add-code-type"
+                  >
+                    <option value="ICD-10">ICD-10</option>
+                    <option value="CPT">CPT</option>
+                    <option value="HCPCS">HCPCS</option>
+                  </select>
+                </div>
+                <div className="col-span-2 space-y-2">
+                  <Label>Code</Label>
+                  <input
+                    className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm font-mono"
+                    value={addCodeValue}
+                    onChange={(e) => setAddCodeValue(e.target.value)}
+                    placeholder="e.g. E11.9"
+                    data-testid="input-add-code-value"
+                  />
+                </div>
+              </div>
+              <div className="space-y-2">
+                <Label>Description</Label>
+                <input
+                  className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm"
+                  value={addCodeDesc}
+                  onChange={(e) => setAddCodeDesc(e.target.value)}
+                  placeholder="Code description..."
+                  data-testid="input-add-code-desc"
+                />
+              </div>
+              <div className="flex gap-2">
+                <Button variant="outline" onClick={() => setAddCodeDialog(null)} data-testid="button-add-code-cancel">Cancel</Button>
+                <Button
+                  onClick={() => addCodeMutation.mutate({
+                    code: addCodeValue,
+                    codeType: addCodeType,
+                    description: addCodeDesc,
+                    reason: `AI suggested for: ${addCodeDialog.condition}`,
+                  })}
+                  disabled={!addCodeValue.trim() || !addCodeDesc.trim() || addCodeMutation.isPending}
+                  data-testid="button-add-code-confirm"
+                >
+                  {addCodeMutation.isPending ? <><Loader2 className="w-4 h-4 mr-1 animate-spin" /> Adding...</> : "Add Code"}
                 </Button>
               </div>
             </div>

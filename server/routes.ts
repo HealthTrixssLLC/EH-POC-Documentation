@@ -4607,9 +4607,22 @@ Be clinically accurate. Vitals data (e.g., BP readings) supports hypertension co
       const codes: any[] = [];
 
       if (visit.visitType === "annual_wellness") {
+        let hasPriorAwv = false;
+        try {
+          const allVisits = await storage.getVisits();
+          hasPriorAwv = allVisits.some((v: any) =>
+            v.memberId === visit.memberId &&
+            v.id !== visit.id &&
+            v.visitType === "annual_wellness" &&
+            (v.status === "finalized" || v.status === "synced" || v.status === "emr_submitted" || v.status === "export_generated")
+          );
+        } catch (_) {}
+        const awvCode = hasPriorAwv
+          ? { codeType: "HCPCS", code: "G0439", description: "Annual wellness visit, subsequent", source: "visit_type" }
+          : { codeType: "HCPCS", code: "G0438", description: "Annual wellness visit, initial", source: "visit_type" };
         codes.push(
           { codeType: "CPT", code: "99387", description: "Preventive visit, new patient, 65+", source: "visit_type" },
-          { codeType: "HCPCS", code: "G0438", description: "Annual wellness visit, initial", source: "visit_type" },
+          awvCode,
           { codeType: "ICD-10", code: "Z00.00", description: "Encounter for general adult medical exam w/o abnormal findings", source: "visit_type" },
         );
       } else if (visit.visitType === "initial_assessment") {
@@ -4653,7 +4666,20 @@ Be clinically accurate. Vitals data (e.g., BP readings) supports hypertension co
               codes.push({ codeType: "CPT", code: "96160", description: "Patient-focused health risk assessment", source: "assessment" });
             }
             if (item.itemId === "AWV") {
-              codes.push({ codeType: "HCPCS", code: "G0438", description: "Annual wellness visit, initial", source: "assessment" });
+              const alreadyHasAwv = codes.some(c => c.code === "G0438" || c.code === "G0439");
+              if (!alreadyHasAwv) {
+                let hasPriorAwvForAssessment = false;
+                try {
+                  const allVisitsForAwv = await storage.getVisits();
+                  hasPriorAwvForAssessment = allVisitsForAwv.some((v: any) =>
+                    v.memberId === visit.memberId && v.id !== visit.id && v.visitType === "annual_wellness" &&
+                    (v.status === "finalized" || v.status === "synced" || v.status === "emr_submitted" || v.status === "export_generated")
+                  );
+                } catch (_) {}
+                codes.push(hasPriorAwvForAssessment
+                  ? { codeType: "HCPCS", code: "G0439", description: "Annual wellness visit, subsequent", source: "assessment" }
+                  : { codeType: "HCPCS", code: "G0438", description: "Annual wellness visit, initial", source: "assessment" });
+              }
             }
           }
         }
@@ -4740,6 +4766,83 @@ Be clinically accurate. Vitals data (e.g., BP readings) supports hypertension co
     try {
       const updated = await storage.updateVisitCode(req.params.id, req.body);
       return res.json(updated);
+    } catch (err: any) {
+      return res.status(500).json({ message: err.message });
+    }
+  });
+
+  app.post("/api/codes/:id/swap", async (req, res) => {
+    try {
+      const { newCode, newDescription, newCodeType, reason } = req.body;
+      if (!newCode || !newDescription) {
+        return res.status(400).json({ message: "newCode and newDescription are required" });
+      }
+      const existing = await storage.updateVisitCode(req.params.id, { removedByNp: true });
+      const replacement = await storage.createVisitCode({
+        visitId: existing.visitId,
+        codeType: newCodeType || existing.codeType,
+        code: newCode,
+        description: newDescription,
+        source: "np_correction",
+        autoAssigned: false,
+        verified: true,
+        removedByNp: false,
+      });
+
+      try {
+        await storage.createAuditLogEntry({
+          userId: (req as any).session?.userId || "system",
+          action: "code_swap",
+          resourceType: "visit_code",
+          resourceId: existing.visitId,
+          details: {
+            oldCode: existing.code,
+            oldDescription: existing.description,
+            newCode: replacement.code,
+            newDescription: replacement.description,
+            reason: reason || "Code correction via alignment review",
+          },
+        });
+      } catch (_) {}
+
+      return res.json({ removed: existing, added: replacement });
+    } catch (err: any) {
+      return res.status(500).json({ message: err.message });
+    }
+  });
+
+  app.post("/api/visits/:id/codes/add", async (req, res) => {
+    try {
+      const { code, codeType, description } = req.body;
+      if (!code || !codeType || !description) {
+        return res.status(400).json({ message: "code, codeType, and description are required" });
+      }
+      const existingCodes = await storage.getCodesByVisit(req.params.id);
+      const dup = existingCodes.find(c => c.code === code && !c.removedByNp);
+      if (dup) return res.status(409).json({ message: `Code ${code} already assigned` });
+
+      const newCode = await storage.createVisitCode({
+        visitId: req.params.id,
+        codeType,
+        code,
+        description,
+        source: "np_correction",
+        autoAssigned: false,
+        verified: true,
+        removedByNp: false,
+      });
+
+      try {
+        await storage.createAuditLogEntry({
+          userId: (req as any).session?.userId || "system",
+          action: "code_add",
+          resourceType: "visit_code",
+          resourceId: req.params.id,
+          details: { code, codeType, description, reason: req.body.reason || "Added via alignment review" },
+        });
+      } catch (_) {}
+
+      return res.json(newCode);
     } catch (err: any) {
       return res.status(500).json({ message: err.message });
     }

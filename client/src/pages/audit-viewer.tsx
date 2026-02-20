@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
+import { usePlatform } from "@/hooks/use-platform";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Progress } from "@/components/ui/progress";
 import { Separator } from "@/components/ui/separator";
@@ -177,6 +178,7 @@ function AuditDashboard() {
 }
 
 export default function AuditViewer() {
+  const { isMobileLayout } = usePlatform();
   const [search, setSearch] = useState("");
   const [typeFilter, setTypeFilter] = useState("all");
   const [tab, setTab] = useState<"dashboard" | "log">("dashboard");
@@ -192,7 +194,7 @@ export default function AuditViewer() {
   });
 
   return (
-    <div className="space-y-6">
+    <div className={`space-y-6 ${isMobileLayout ? "pb-20" : ""}`}>
       <div>
         <h1 className="text-xl font-bold" data-testid="text-audit-title">Audit & Compliance</h1>
         <p className="text-sm text-muted-foreground mt-1">Automated encounter audits and PHI access compliance tracking</p>

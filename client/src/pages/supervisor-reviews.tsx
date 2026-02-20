@@ -1,6 +1,7 @@
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Link } from "wouter";
 import { Card, CardContent } from "@/components/ui/card";
+import { usePlatform } from "@/hooks/use-platform";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -451,6 +452,7 @@ function ReturnReasonsCard({ visit }: { visit: EnhancedVisit }) {
 }
 
 export default function SupervisorReviews() {
+  const { isMobileLayout } = usePlatform();
   const { data: visits, isLoading } = useQuery<EnhancedVisit[]>({ queryKey: ["/api/reviews/enhanced"] });
   const { toast } = useToast();
   const [reviewVisitId, setReviewVisitId] = useState<string | null>(null);
@@ -539,7 +541,7 @@ export default function SupervisorReviews() {
   }, [visits]);
 
   return (
-    <div className="space-y-6">
+    <div className={`space-y-6 ${isMobileLayout ? "pb-20" : ""}`}>
       <div>
         <h1 className="text-xl font-bold" data-testid="text-review-queue-title">Review Queue</h1>
         <p className="text-sm text-muted-foreground mt-1">

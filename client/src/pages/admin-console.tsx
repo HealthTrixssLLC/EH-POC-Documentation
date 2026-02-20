@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { usePlatform } from "@/hooks/use-platform";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Input } from "@/components/ui/input";
@@ -52,13 +53,14 @@ const SEVERITY_COLORS: Record<string, string> = {
 };
 
 export default function AdminConsole() {
+  const { isMobileLayout } = usePlatform();
   const { data: planPacks, isLoading: loadingPacks } = useQuery<any[]>({ queryKey: ["/api/admin/plan-packs"] });
   const { data: assessments, isLoading: loadingAssessments } = useQuery<any[]>({ queryKey: ["/api/admin/assessment-definitions"] });
   const { data: measures, isLoading: loadingMeasures } = useQuery<any[]>({ queryKey: ["/api/admin/measure-definitions"] });
   const { data: clinicalRules, isLoading: loadingRules } = useQuery<any[]>({ queryKey: ["/api/clinical-rules"] });
 
   return (
-    <div className="space-y-6">
+    <div className={`space-y-6 ${isMobileLayout ? "pb-20" : ""}`}>
       <div>
         <h1 className="text-xl font-bold" data-testid="text-admin-title">Admin Console</h1>
         <p className="text-sm text-muted-foreground mt-1">Configuration management for plan packs, clinical rules, assessments, measures, and AI providers</p>

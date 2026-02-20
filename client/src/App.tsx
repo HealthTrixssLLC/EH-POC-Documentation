@@ -140,10 +140,15 @@ const pageTitles: Record<string, string> = {
   "/visits": "Visits",
   "/visits/active": "Active Visits",
   "/visits/history": "Visit History",
-  "/reviews": "Reviews",
+  "/reviews": "Review Queue",
   "/coordination": "Care Coordination",
   "/admin": "Admin Console",
+  "/admin/fhir": "FHIR Interop",
+  "/admin/tech-docs": "Tech Docs",
   "/audit": "Audit Log",
+  "/audit/queue": "Audit Queue",
+  "/providers/quality": "Provider Quality",
+  "/cocm-time-tracking": "CoCM Billing",
   "/help": "Help & Support",
   "/demo": "Demo Management",
   "/more": "More",
@@ -159,6 +164,7 @@ function getMobileTitle(path: string): string {
   if (path.includes("/intake/voice-capture")) return "Voice Capture";
   if (path.includes("/intake/timeline")) return "Timeline";
   if (path.includes("/intake/careplan")) return "Care Plan";
+  if (path.includes("/intake/consents")) return "Consents";
   if (path.includes("/intake/patient-context")) return "Patient Context";
   if (path.includes("/intake")) return "Visit";
   if (path.includes("/finalize")) return "Finalize";
@@ -171,9 +177,14 @@ function MobileLayout() {
   const [location] = useLocation();
   const [voiceOverlayOpen, setVoiceOverlayOpen] = useState(false);
   const title = getMobileTitle(location);
-  const isSubpage = location !== "/" && location !== "/visits" && location !== "/visits/active" && location !== "/visits/history" && location !== "/more";
-  const isVisitSubpage = location.startsWith("/visits/") && location !== "/visits" && location !== "/visits/active" && location !== "/visits/history";
-  const backTarget = isVisitSubpage
+  const tabRoots = ["/", "/visits", "/visits/active", "/visits/history", "/more"];
+  const moreSubRoutes = ["/reviews", "/providers/quality", "/cocm-time-tracking", "/coordination", "/admin", "/admin/fhir", "/admin/tech-docs", "/audit", "/audit/queue", "/help", "/demo"];
+  const isSubpage = !tabRoots.includes(location);
+  const isVisitSubpage = location.startsWith("/visits/") && !tabRoots.includes(location);
+  const isMoreSubpage = moreSubRoutes.includes(location);
+  const backTarget = isMoreSubpage
+    ? "/more"
+    : isVisitSubpage
     ? (location.match(/\/visits\/[^/]+\/intake/) ? location.replace(/\/intake\/.*/, "/intake") : "/visits")
     : "/";
 

@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { usePlatform } from "@/hooks/use-platform";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Input } from "@/components/ui/input";
@@ -31,6 +32,7 @@ const priorityColors: Record<string, string> = {
 };
 
 export default function CareCoordination() {
+  const { isMobileLayout } = usePlatform();
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const { toast } = useToast();
@@ -63,7 +65,7 @@ export default function CareCoordination() {
   });
 
   return (
-    <div className="space-y-6">
+    <div className={`space-y-6 ${isMobileLayout ? "pb-20" : ""}`}>
       <div>
         <h1 className="text-xl font-bold" data-testid="text-coordination-title">Care Coordination</h1>
         <p className="text-sm text-muted-foreground mt-1">Manage follow-up tasks and referrals</p>

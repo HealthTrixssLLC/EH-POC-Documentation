@@ -301,7 +301,7 @@ export default function CarePlan() {
             return (
               <Card
                 key={task.id}
-                className="cursor-pointer hover:ring-1 hover:ring-primary/30 transition-all"
+                className="cursor-pointer hover:ring-1 hover:ring-primary/30 transition-all mobile-card-press"
                 onClick={() => openEditDialog(task)}
                 data-testid={`card-task-${task.id}`}
               >

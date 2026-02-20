@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { usePlatform } from "@/hooks/use-platform";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -533,6 +534,7 @@ function MonthlySummaryPanel({ memberId }: { memberId: string }) {
 }
 
 export default function CocmTimeTracking() {
+  const { isMobileLayout } = usePlatform();
   const [selectedMemberId, setSelectedMemberId] = useState<string | null>(null);
 
   const { data: members, isLoading: membersLoading } = useQuery<Member[]>({
@@ -545,7 +547,7 @@ export default function CocmTimeTracking() {
     : "";
 
   return (
-    <div className="space-y-6">
+    <div className={`space-y-6 ${isMobileLayout ? "pb-20" : ""}`}>
       <div>
         <h1 className="text-2xl font-bold" data-testid="text-cocm-title" style={{ color: "#002B5C" }}>
           CoCM Time-Based Billing

@@ -2,6 +2,7 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import { useState } from "react";
 import { Link } from "wouter";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { usePlatform } from "@/hooks/use-platform";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -71,6 +72,7 @@ function SeverityLabel({ severity }: { severity: string }) {
 }
 
 export default function AuditQueue() {
+  const { isMobileLayout } = usePlatform();
   const { user } = useAuth();
   const { toast } = useToast();
   const [statusFilter, setStatusFilter] = useState<string>("all");
@@ -160,7 +162,7 @@ export default function AuditQueue() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className={`space-y-6 ${isMobileLayout ? "pb-20" : ""}`}>
       <div className="flex items-center justify-between gap-3 flex-wrap">
         <div>
           <h1 className="text-xl font-bold" data-testid="text-audit-queue-title">Audit Queue</h1>

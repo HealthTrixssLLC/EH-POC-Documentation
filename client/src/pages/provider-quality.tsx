@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { usePlatform } from "@/hooks/use-platform";
 import { Progress } from "@/components/ui/progress";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
@@ -453,10 +454,11 @@ function DetailView({ providerId, onBack }: { providerId: string; onBack: () => 
 }
 
 export default function ProviderQuality() {
+  const { isMobileLayout } = usePlatform();
   const [selectedProviderId, setSelectedProviderId] = useState<string | null>(null);
 
   return (
-    <div className="space-y-6">
+    <div className={`space-y-6 ${isMobileLayout ? "pb-20" : ""}`}>
       <div>
         <h1 className="text-2xl font-bold" data-testid="text-provider-quality-title">
           Provider Quality Dashboard

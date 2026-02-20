@@ -23,6 +23,8 @@ import {
   Activity,
   AlertTriangle,
   User,
+  ScrollText,
+  ListChecks,
 } from "lucide-react";
 
 const stepIcons: Record<string, any> = {
@@ -31,7 +33,8 @@ const stepIcons: Record<string, any> = {
   medications: Pill,
   assessment: ClipboardList,
   measure: Target,
-  careplan: FileText,
+  consents: ScrollText,
+  careplan: ListChecks,
   timeline: Activity,
 };
 
@@ -56,6 +59,16 @@ export default function MobileVisitWizard({ visitId }: { visitId: string }) {
 
   const { data: overview, isLoading } = useQuery<any>({
     queryKey: ["/api/visits", visitId, "overview"],
+    enabled: !!visitId,
+  });
+
+  const { data: consents } = useQuery<any[]>({
+    queryKey: [`/api/visits/${visitId}/consents`],
+    enabled: !!visitId,
+  });
+
+  const { data: tasks } = useQuery<any[]>({
+    queryKey: ["/api/visits", visitId, "tasks"],
     enabled: !!visitId,
   });
 
@@ -122,6 +135,20 @@ export default function MobileVisitWizard({ visitId }: { visitId: string }) {
       status: m.status,
       category: "Measures",
     })),
+    {
+      id: "consents",
+      label: "Visit Consents",
+      href: `/visits/${visitId}/intake/consents`,
+      done: (consents || []).length > 0,
+      category: "Documentation",
+    },
+    {
+      id: "careplan",
+      label: "Care Plan & Tasks",
+      href: `/visits/${visitId}/intake/careplan`,
+      done: (tasks || []).length > 0,
+      category: "Documentation",
+    },
   ];
 
   const getExclusionForObjective = (key: string) =>
@@ -149,7 +176,7 @@ export default function MobileVisitWizard({ visitId }: { visitId: string }) {
     pending: { color: "#94a3b8", bgColor: "#94a3b810", icon: Circle, label: "Pending" },
   };
 
-  const categories = ["Setup", "Clinical", "Assessments", "Measures"];
+  const categories = ["Setup", "Clinical", "Assessments", "Measures", "Documentation"];
   const groupedSteps = categories
     .map((cat) => ({
       category: cat,
@@ -217,7 +244,7 @@ export default function MobileVisitWizard({ visitId }: { visitId: string }) {
 
                 return (
                   <Link key={step.id} href={step.href}>
-                    <Card className="hover-elevate cursor-pointer" data-testid={`mobile-step-${step.id}`}>
+                    <Card className="mobile-card-press cursor-pointer" data-testid={`mobile-step-${step.id}`}>
                       <CardContent className="p-3">
                         <div className="flex items-center gap-3">
                           <div

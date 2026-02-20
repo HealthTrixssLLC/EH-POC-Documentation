@@ -312,6 +312,8 @@
   body {
     -webkit-text-size-adjust: 100%;
     -webkit-tap-highlight-color: transparent;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
   }
 
   input, textarea, select, button {
@@ -322,11 +324,41 @@
     min-height: 44px;
     min-width: 44px;
   }
+
+  [data-radix-popper-content-wrapper] {
+    z-index: 1000 !important;
+  }
+
+  .mobile-card-press {
+    transition: transform 0.1s ease, opacity 0.1s ease;
+  }
+  .mobile-card-press:active {
+    transform: scale(0.98);
+    opacity: 0.85;
+  }
+
+  .mobile-btn-full {
+    width: 100%;
+    min-height: 48px;
+    border-radius: 12px;
+    font-weight: 600;
+  }
+
+  .mobile-section-card {
+    border-radius: 12px;
+    overflow: hidden;
+  }
 }
 
 @media (display-mode: standalone) {
   body {
     overscroll-behavior-y: none;
+    user-select: none;
+    -webkit-user-select: none;
+  }
+
+  a, button {
+    -webkit-touch-callout: none;
   }
 }
 
@@ -338,4 +370,10 @@
 .mobile-content-area {
   -webkit-overflow-scrolling: touch;
   overscroll-behavior-y: contain;
+}
+
+@media (max-width: 768px) {
+  [role="dialog"] > div {
+    border-radius: 16px 16px 0 0;
+  }
 }

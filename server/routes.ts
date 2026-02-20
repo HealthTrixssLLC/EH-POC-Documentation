@@ -1451,6 +1451,12 @@ export async function registerRoutes(
           const visit = await storage.getVisit(req.params.id);
 
           if (branchingRules && visit) {
+            const existingTasks = await storage.getTasksByVisit(req.params.id);
+            const isDuplicateTask = (title: string, taskType: string) =>
+              existingTasks.some(
+                (t: any) => t.title.toLowerCase() === title.toLowerCase() && t.taskType === taskType
+              );
+
             if (branchingRules.conditionalQuestions && Array.isArray(branchingRules.conditionalQuestions)) {
               for (const cq of branchingRules.conditionalQuestions) {
                 const answer = responses[cq.questionId];
@@ -1463,15 +1469,18 @@ export async function registerRoutes(
                   if (matches) {
                     const taskTitle = cq.taskTitle || cq.prompt;
                     const taskType = cq.taskType || "referral";
-                    await storage.createTask({
-                      visitId: req.params.id,
-                      memberId: visit.memberId,
-                      taskType,
-                      title: taskTitle,
-                      description: cq.prompt,
-                      priority: cq.priority || "high",
-                      status: "pending",
-                    });
+                    if (!isDuplicateTask(taskTitle, taskType)) {
+                      await storage.createTask({
+                        visitId: req.params.id,
+                        memberId: visit.memberId,
+                        taskType,
+                        title: taskTitle,
+                        description: cq.prompt,
+                        priority: cq.priority || "high",
+                        status: "pending",
+                      });
+                      existingTasks.push({ title: taskTitle, taskType } as any);
+                    }
                     branchingTriggered.push({
                       type: "conditional_task",
                       questionId: cq.questionId,
@@ -1518,15 +1527,18 @@ export async function registerRoutes(
                 );
                 if (hasCondition) {
                   for (const screening of cs.screenings) {
-                    await storage.createTask({
-                      visitId: req.params.id,
-                      memberId: visit.memberId,
-                      taskType: screening.taskType || "screening",
-                      title: screening.title,
-                      description: screening.description,
-                      priority: screening.priority || "medium",
-                      status: "pending",
-                    });
+                    if (!isDuplicateTask(screening.title, screening.taskType || "screening")) {
+                      await storage.createTask({
+                        visitId: req.params.id,
+                        memberId: visit.memberId,
+                        taskType: screening.taskType || "screening",
+                        title: screening.title,
+                        description: screening.description,
+                        priority: screening.priority || "medium",
+                        status: "pending",
+                      });
+                      existingTasks.push({ title: screening.title, taskType: screening.taskType || "screening" } as any);
+                    }
                     branchingTriggered.push({
                       type: "condition_screening",
                       condition: cs.conditionKeyword,

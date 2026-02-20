@@ -601,7 +601,7 @@ export default function ReviewFinalize() {
                             <XCircle className="w-4 h-4 flex-shrink-0 text-destructive" />
                           )}
                           {item.status === "exception" && (
-                            <AlertTriangle className="w-4 h-4 flex-shrink-0 text-amber-500" />
+                            <MinusCircle className="w-4 h-4 flex-shrink-0 text-amber-500" />
                           )}
                           {item.status === "not_applicable" && (
                             <MinusCircle className="w-4 h-4 flex-shrink-0 text-muted-foreground" />
@@ -611,10 +611,13 @@ export default function ReviewFinalize() {
                             <Badge variant="outline" className="text-xs">Optional</Badge>
                           )}
                           {item.status === "exception" && (
-                            <Badge variant="secondary" className="text-xs">Exception</Badge>
+                            <Badge variant="secondary" className="text-xs bg-amber-50 text-amber-700 border-amber-200">Excluded</Badge>
                           )}
                         </div>
                         <div className="flex items-center gap-2 flex-wrap">
+                          {item.status === "exception" && item.exclusionReason && (
+                            <span className="text-xs text-amber-600 italic">{item.exclusionReason}</span>
+                          )}
                           {item.status === "failed" && item.remediation && (
                             <span className="text-xs text-muted-foreground">{item.remediation}</span>
                           )}

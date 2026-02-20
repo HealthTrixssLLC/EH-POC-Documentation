@@ -1125,6 +1125,7 @@ export async function registerRoutes(
         let status: "passed" | "failed" | "exception" | "not_applicable" = "failed";
         let remediation = "";
         let link = "";
+        let exclusionReason = "";
 
         switch (rule.componentType) {
           case "consent": {
@@ -1176,13 +1177,14 @@ export async function registerRoutes(
           }
           case "assessment": {
             link = `/visits/${visit.id}/intake/assessment/${rule.componentId}`;
-            const checkItem = checklist.find(
+            const checkItemA = checklist.find(
               (c) => c.itemType === "assessment" && c.itemId === rule.componentId
             );
-            if (checkItem?.status === "complete") {
+            if (checkItemA?.status === "complete") {
               status = "passed";
-            } else if (checkItem?.status === "unable_to_assess") {
+            } else if (checkItemA?.status === "unable_to_assess") {
               status = "exception";
+              exclusionReason = (checkItemA as any).unableToAssessReason || "Excluded by provider";
             } else {
               status = "failed";
               remediation = `Complete the ${rule.label} assessment`;
@@ -1191,13 +1193,14 @@ export async function registerRoutes(
           }
           case "measure": {
             link = `/visits/${visit.id}/intake/measure/${rule.componentId}`;
-            const checkItem = checklist.find(
+            const checkItemM = checklist.find(
               (c) => c.itemType === "measure" && c.itemId === rule.componentId
             );
-            if (checkItem?.status === "complete") {
+            if (checkItemM?.status === "complete") {
               status = "passed";
-            } else if (checkItem?.status === "unable_to_assess") {
+            } else if (checkItemM?.status === "unable_to_assess") {
               status = "exception";
+              exclusionReason = (checkItemM as any).unableToAssessReason || "Excluded by provider";
             } else {
               status = "failed";
               remediation = `Complete the ${rule.label} measure`;
@@ -1248,6 +1251,7 @@ export async function registerRoutes(
           exceptionAllowed: rule.exceptionAllowed,
           status,
           remediation,
+          exclusionReason,
           link,
         };
       });

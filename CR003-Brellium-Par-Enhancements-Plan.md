@@ -99,36 +99,36 @@ Columns:
 
 ### 1.3 Backend Implementation
 
-- [ ] Create `billing_readiness_evaluations` table in `shared/schema.ts`
-- [ ] Add billing readiness columns to `visits` table
-- [ ] Add storage interface methods: `createBillingReadinessEvaluation()`, `getBillingReadinessEvaluations(visitId)`
-- [ ] Create `POST /api/visits/:id/billing-readiness` endpoint that evaluates:
+- [x] Create `billing_readiness_evaluations` table in `shared/schema.ts`
+- [x] Add billing readiness columns to `visits` table
+- [x] Add storage interface methods: `createBillingReadinessEvaluation()`, `getBillingReadinessEvaluations(visitId)`
+- [x] Create `POST /api/visits/:id/billing-readiness` endpoint that evaluates:
   - Completeness score (existing engine)
   - Diagnosis support score (existing engine)
   - Coding compliance score (new: unverified codes, unsupported diagnoses, missing MEAT)
   - Composite billing readiness score = weighted average
-- [ ] Create `GET /api/visits/:id/billing-readiness` endpoint to retrieve latest evaluation
-- [ ] Modify `POST /api/visits/:id/export` to enforce billing readiness gate:
+- [x] Create `GET /api/visits/:id/billing-readiness` endpoint to retrieve latest evaluation
+- [x] Modify `POST /api/visits/:id/export` to enforce billing readiness gate:
   - Block export when billingReadinessScore < configurable threshold (default: 80)
   - Allow override with reason and userId logging
   - Log gate pass/fail/override as audit event
-- [ ] Add configurable threshold to admin settings (system_config or similar)
-- [ ] Add audit event types: `billing_gate_pass`, `billing_gate_fail`, `billing_gate_override`
+- [x] Add configurable threshold to admin settings (system_config or similar)
+- [x] Add audit event types: `billing_gate_pass`, `billing_gate_fail`, `billing_gate_override`
 
 ### 1.4 Frontend Implementation
 
-- [ ] Add Billing Readiness panel to review-finalize page showing composite score breakdown
-- [ ] Add visual gate indicator (pass/fail) on visit detail page
-- [ ] Add override dialog with reason capture when billing gate fails
-- [ ] Show billing readiness score on supervisor review queue
-- [ ] Add billing gate status to dashboard visit list
+- [x] Add Billing Readiness panel to review-finalize page showing composite score breakdown
+- [x] Add visual gate indicator (pass/fail) on visit detail page
+- [x] Add override dialog with reason capture when billing gate fails
+- [x] Show billing readiness score on supervisor review queue
+- [x] Add billing gate status to dashboard visit list
 
 ### 1.5 Validation & Testing
 
-- [ ] Verify export is blocked when score < threshold
-- [ ] Verify override flow captures reason and logs audit event
-- [ ] Verify score computation matches expected values for test visits
-- [ ] Verify billing readiness evaluation is logged in audit trail
+- [x] Verify export is blocked when score < threshold
+- [x] Verify override flow captures reason and logs audit event
+- [x] Verify score computation matches expected values for test visits
+- [x] Verify billing readiness evaluation is logged in audit trail
 
 ---
 
@@ -179,42 +179,42 @@ Columns:
 
 ### 2.3 Backend Implementation
 
-- [ ] Create `em_level_rules` table in `shared/schema.ts` with seed data for home visit E/M codes (99341-99345, 99347-99350) and preventive codes (99381-99397)
-- [ ] Create `em_evaluations` table in `shared/schema.ts`
-- [ ] Add storage interface methods: `getEmLevelRule(cptCode)`, `createEmEvaluation()`, `getEmEvaluationByVisit(visitId)`
-- [ ] Implement MDM scoring engine in `server/routes.ts`:
+- [x] Create `em_level_rules` table in `shared/schema.ts` with seed data for home visit E/M codes (99341-99345, 99347-99350) and preventive codes (99381-99397)
+- [x] Create `em_evaluations` table in `shared/schema.ts`
+- [x] Add storage interface methods: `getEmLevelRule(cptCode)`, `createEmEvaluation()`, `getEmEvaluationByVisit(visitId)`
+- [x] Implement MDM scoring engine in `server/routes.ts`:
   - **Problems addressed:** Count active diagnoses, acute/chronic classification, severity
   - **Data reviewed/ordered:** Count labs ordered, imaging, medication changes, external records (HIE data)
   - **Risk of complications:** Evaluate prescription drug management, surgical decisions, hospitalization risk
-- [ ] Create `GET /api/visits/:id/em-evaluation` endpoint that:
+- [x] Create `GET /api/visits/:id/em-evaluation` endpoint that:
   - Identifies the assigned E/M CPT code from visit codes
   - Runs MDM scoring against documented elements
   - Compares calculated MDM level against E/M level rules
   - Returns match/over-coded/under-coded with suggested CPT
-- [ ] Create `POST /api/visits/:id/em-evaluation` to trigger and store evaluation
-- [ ] Add E/M Defensibility Score to adjudication summary endpoint
-- [ ] Add E/M mismatch as a quality flag (severity: "error" for over-coding, "warning" for under-coding)
-- [ ] Extend finalization gating to warn on E/M mismatch (soft gate with override)
-- [ ] Seed `em_level_rules` with CMS 2021 E/M guideline requirements
+- [x] Create `POST /api/visits/:id/em-evaluation` to trigger and store evaluation
+- [x] Add E/M Defensibility Score to adjudication summary endpoint
+- [x] Add E/M mismatch as a quality flag (severity: "error" for over-coding, "warning" for under-coding)
+- [x] Extend finalization gating to warn on E/M mismatch (soft gate with override)
+- [x] Seed `em_level_rules` with CMS 2021 E/M guideline requirements
 
 ### 2.4 Frontend Implementation
 
-- [ ] Add E/M Validation panel to review-finalize page showing:
+- [x] Add E/M Validation panel to review-finalize page showing:
   - Assigned E/M level vs. calculated MDM level
   - Problem/data/risk score breakdown
   - Match indicator (green check / red warning)
   - Suggested CPT if mismatch detected
-- [ ] Add E/M defensibility score to adjudication scorecard on supervisor review
-- [ ] Show E/M mismatch warnings on intake dashboard (CDS alerts panel)
-- [ ] Add E/M override dialog if NP disagrees with calculated level
+- [x] Add E/M defensibility score to adjudication scorecard on supervisor review
+- [x] Show E/M mismatch warnings on intake dashboard (CDS alerts panel)
+- [x] Add E/M override dialog if NP disagrees with calculated level
 
 ### 2.5 Validation & Testing
 
-- [ ] Verify MDM scoring correctly classifies test cases across all 4 MDM levels
-- [ ] Verify over-coding detection for visits with high E/M code but low documentation
-- [ ] Verify under-coding detection for visits with rich documentation but low E/M code
-- [ ] Verify E/M evaluation is included in adjudication summary
-- [ ] Verify finalization gating warns on E/M mismatch
+- [x] Verify MDM scoring correctly classifies test cases across all 4 MDM levels
+- [x] Verify over-coding detection for visits with high E/M code but low documentation
+- [x] Verify under-coding detection for visits with rich documentation but low E/M code
+- [x] Verify E/M evaluation is included in adjudication summary
+- [x] Verify finalization gating warns on E/M mismatch
 
 ---
 

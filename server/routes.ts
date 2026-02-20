@@ -1879,10 +1879,16 @@ export async function registerRoutes(
 
   app.patch("/api/tasks/:id", async (req, res) => {
     try {
-      const { status, outcome, outcomeNotes } = req.body;
-      const updates: any = { status };
-      if (outcome) updates.outcome = outcome;
-      if (outcomeNotes) updates.outcomeNotes = outcomeNotes;
+      const { title, description, taskType, priority, dueDate, status, outcome, outcomeNotes } = req.body;
+      const updates: any = {};
+      if (title !== undefined) updates.title = title;
+      if (description !== undefined) updates.description = description;
+      if (taskType !== undefined) updates.taskType = taskType;
+      if (priority !== undefined) updates.priority = priority;
+      if (dueDate !== undefined) updates.dueDate = dueDate;
+      if (status !== undefined) updates.status = status;
+      if (outcome !== undefined) updates.outcome = outcome;
+      if (outcomeNotes !== undefined) updates.outcomeNotes = outcomeNotes;
       if (status === "completed") updates.completedAt = new Date().toISOString();
 
       const updated = await storage.updateTask(req.params.id, updates);
@@ -1890,9 +1896,24 @@ export async function registerRoutes(
         eventType: "task_updated",
         resourceType: "task",
         resourceId: req.params.id,
-        details: `Task updated to ${status}`,
+        details: `Task updated: ${Object.keys(updates).join(", ")}`,
       });
       return res.json(updated);
+    } catch (err: any) {
+      return res.status(500).json({ message: err.message });
+    }
+  });
+
+  app.delete("/api/tasks/:id", async (req, res) => {
+    try {
+      await storage.deleteTask(req.params.id);
+      await storage.createAuditEvent({
+        eventType: "task_deleted",
+        resourceType: "task",
+        resourceId: req.params.id,
+        details: `Task ${req.params.id} deleted`,
+      });
+      return res.json({ success: true });
     } catch (err: any) {
       return res.status(500).json({ message: err.message });
     }

@@ -147,6 +147,7 @@ export interface IStorage {
   getAllTasks(): Promise<CarePlanTask[]>;
   createTask(task: InsertCarePlanTask): Promise<CarePlanTask>;
   updateTask(id: string, updates: Partial<CarePlanTask>): Promise<CarePlanTask | undefined>;
+  deleteTask(id: string): Promise<void>;
 
   getReviewsByVisit(visitId: string): Promise<ReviewDecision[]>;
   createReview(review: InsertReviewDecision): Promise<ReviewDecision>;
@@ -560,6 +561,10 @@ export class DatabaseStorage implements IStorage {
   async updateTask(id: string, updates: Partial<CarePlanTask>) {
     const [updated] = await db.update(carePlanTasks).set(updates).where(eq(carePlanTasks.id, id)).returning();
     return updated;
+  }
+
+  async deleteTask(id: string) {
+    await db.delete(carePlanTasks).where(eq(carePlanTasks.id, id));
   }
 
   async getReviewsByVisit(visitId: string) {

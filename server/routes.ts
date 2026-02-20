@@ -349,7 +349,7 @@ export async function registerRoutes(
         storage.getAllTasks(),
         storage.getAllMembers(),
       ]);
-      const openTasks = tasks.filter((t) => t.status === "pending" || t.status === "in_progress").length;
+      const openTasks = tasks.filter((t) => t.status === "pending" || t.status === "in_progress" || t.status === "ordered" || t.status === "deferred").length;
       const completedTasks = tasks.filter((t) => t.status === "completed").length;
       return res.json({ openTasks, dueToday: 0, completedTasks, totalMembers: allMembers.length });
     } catch (err: any) {
@@ -778,15 +778,22 @@ export async function registerRoutes(
         const coordParts: string[] = [];
         for (const [type, typeTasks] of Object.entries(tasksByType)) {
           const typeLabel = type === "referral" ? "Referrals" : type === "follow_up" ? "Follow-Up" : type === "lab_order" ? "Lab Orders" : type === "medication" ? "Medication Orders" : type === "social_services" ? "Social Services" : "Other";
-          coordParts.push(`${typeLabel}: ${typeTasks.map(t => `${t.title} (${t.priority}${t.status !== "pending" ? `, ${t.status}` : ""})`).join("; ")}`);
+          coordParts.push(`${typeLabel}: ${typeTasks.map(t => {
+            const statusLabel = t.status === "ordered" ? "Ordered - Awaiting Results" : t.status === "deferred" ? "Deferred to Follow-Up" : t.status !== "pending" ? t.status : "";
+            return `${t.title} (${t.priority}${statusLabel ? `, ${statusLabel}` : ""})`;
+          }).join("; ")}`);
         }
+        const orderedOrDeferred = tasks.filter(t => t.status === "ordered" || t.status === "deferred");
+        const pendingTasks = tasks.filter(t => t.status === "pending");
+        const allResolved = pendingTasks.length === 0;
         progressNote.push({
           section: "Care Coordination & Follow-Up",
           category: "plan",
-          content: coordParts.join("\n"),
+          content: coordParts.join("\n") + (orderedOrDeferred.length > 0 ? `\n\nNote: ${orderedOrDeferred.length} task(s) awaiting external results or deferred to follow-up visit.` : ""),
           hasFlags: tasks.some(t => t.priority === "urgent" || t.priority === "high"),
           meatTags: ["Treat"],
-          completeness: "Complete",
+          completeness: allResolved ? "Complete" : "Incomplete",
+          completenessReason: !allResolved ? `${pendingTasks.length} task(s) still pending action` : undefined,
           provenance: "Structured Entry",
         });
       }

@@ -10,7 +10,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
-import { ChevronLeft, FileText, Plus, CheckCircle2, Circle, Clock, Pencil, Trash2 } from "lucide-react";
+import { ChevronLeft, FileText, Plus, CheckCircle2, Circle, Clock, Pencil, Trash2, Send, PauseCircle } from "lucide-react";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { usePlatform } from "@/hooks/use-platform";
@@ -27,6 +27,8 @@ const taskTypes = [
 
 const statusOptions = [
   { value: "pending", label: "Pending" },
+  { value: "ordered", label: "Ordered / Awaiting Results" },
+  { value: "deferred", label: "Deferred to Follow-Up" },
   { value: "in_progress", label: "In Progress" },
   { value: "completed", label: "Completed" },
 ];
@@ -47,8 +49,18 @@ const priorityLabels: Record<string, string> = {
 
 const statusIcons: Record<string, any> = {
   pending: Circle,
+  ordered: Send,
+  deferred: PauseCircle,
   in_progress: Clock,
   completed: CheckCircle2,
+};
+
+const statusColors: Record<string, string> = {
+  pending: "#ABAFA5",
+  ordered: "#FEA002",
+  deferred: "#8B5CF6",
+  in_progress: "#3B82F6",
+  completed: "#277493",
 };
 
 export default function CarePlan() {
@@ -305,7 +317,7 @@ export default function CarePlan() {
               >
                 <CardContent className="p-4">
                   <div className="flex items-start gap-3">
-                    <StatusIcon className="w-5 h-5 flex-shrink-0 mt-0.5" style={{ color: task.status === "completed" ? "#277493" : "#ABAFA5" }} />
+                    <StatusIcon className="w-5 h-5 flex-shrink-0 mt-0.5" style={{ color: statusColors[task.status] || "#ABAFA5" }} />
                     <div className="flex-1 min-w-0 space-y-1">
                       <div className="flex items-center justify-between gap-2 flex-wrap">
                         <div className="flex items-center gap-2 min-w-0">

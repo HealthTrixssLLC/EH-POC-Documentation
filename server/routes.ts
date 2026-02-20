@@ -2461,7 +2461,24 @@ export async function registerRoutes(
               case "hedis_measure": { const hi = checklist.filter(c => c.itemType === "measure"); met = hi.length > 0 && hi.every(c => c.status === "complete" || c.status === "unable_to_assess"); break; }
               case "care_plan": met = defTasks.length > 0; break;
               case "consent": met = defConsents.length > 0; break;
-              case "clinical_note": met = !!defNote; break;
+              case "clinical_note": {
+                if (el.description.toLowerCase().includes("screening results")) {
+                  met = assessmentResponses.some((ar: any) => ar.status === "complete" && (
+                    (ar.instrumentId || "").toLowerCase().includes("phq") ||
+                    (ar.instrumentId || "").toLowerCase().includes("screening") ||
+                    (ar.instrumentId || "").toLowerCase().includes("awv")
+                  )) || !!(defNote && [defNote.assessmentNotes, defNote.assessmentMeasuresSummary].filter(Boolean).join(" ").toLowerCase().match(/phq|screen|score/));
+                } else if (el.description.toLowerCase().includes("social determinant")) {
+                  met = assessmentResponses.some((ar: any) => ar.status === "complete" && (
+                    (ar.instrumentId || "").toLowerCase().includes("prapare") ||
+                    (ar.instrumentId || "").toLowerCase().includes("sdoh") ||
+                    (ar.instrumentId || "").toLowerCase().includes("social")
+                  )) || !!(defNote && [defNote.assessmentNotes, defNote.planNotes].filter(Boolean).join(" ").toLowerCase().match(/social|sdoh|prapare|housing|food|transport/));
+                } else {
+                  met = !!defNote;
+                }
+                break;
+              }
             }
             if (met) metWeight += el.weight;
           }
@@ -2967,24 +2984,44 @@ export async function registerRoutes(
           case "care_plan": met = tasks.length > 0; break;
           case "consent": met = consents.length > 0; break;
           case "clinical_note": {
+            const allNoteText = clinicalNote ? [
+              clinicalNote.chiefComplaint,
+              clinicalNote.hpiNotes,
+              clinicalNote.rosNotes,
+              clinicalNote.examNotes,
+              clinicalNote.assessmentNotes,
+              clinicalNote.planNotes,
+              clinicalNote.assessmentMeasuresSummary,
+            ].filter(Boolean).join(" ").toLowerCase() : "";
+
             if (el.description.toLowerCase().includes("screening results")) {
-              const hasScreeningNote = clinicalNote && clinicalNote.content && (
-                clinicalNote.content.toLowerCase().includes("phq") ||
-                clinicalNote.content.toLowerCase().includes("screen") ||
-                clinicalNote.content.toLowerCase().includes("score") ||
-                clinicalNote.content.toLowerCase().includes("assessment")
+              const hasCompletedScreening = assessmentResponses.some((ar: any) =>
+                ar.status === "complete" && (
+                  (ar.instrumentId || "").toLowerCase().includes("phq") ||
+                  (ar.instrumentId || "").toLowerCase().includes("screening") ||
+                  (ar.instrumentId || "").toLowerCase().includes("awv")
+                )
               );
-              met = !!hasScreeningNote;
+              const hasScreeningInNote = allNoteText.includes("phq") ||
+                allNoteText.includes("screen") ||
+                allNoteText.includes("score") ||
+                allNoteText.includes("assessment");
+              met = hasCompletedScreening || hasScreeningInNote;
             } else if (el.description.toLowerCase().includes("social determinant")) {
-              const hasSdohNote = clinicalNote && clinicalNote.content && (
-                clinicalNote.content.toLowerCase().includes("social") ||
-                clinicalNote.content.toLowerCase().includes("sdoh") ||
-                clinicalNote.content.toLowerCase().includes("prapare") ||
-                clinicalNote.content.toLowerCase().includes("housing") ||
-                clinicalNote.content.toLowerCase().includes("food") ||
-                clinicalNote.content.toLowerCase().includes("transport")
+              const hasCompletedPrapare = assessmentResponses.some((ar: any) =>
+                ar.status === "complete" && (
+                  (ar.instrumentId || "").toLowerCase().includes("prapare") ||
+                  (ar.instrumentId || "").toLowerCase().includes("sdoh") ||
+                  (ar.instrumentId || "").toLowerCase().includes("social")
+                )
               );
-              met = !!hasSdohNote;
+              const hasSdohInNote = allNoteText.includes("social") ||
+                allNoteText.includes("sdoh") ||
+                allNoteText.includes("prapare") ||
+                allNoteText.includes("housing") ||
+                allNoteText.includes("food") ||
+                allNoteText.includes("transport");
+              met = hasCompletedPrapare || hasSdohInNote;
             } else {
               met = !!clinicalNote;
             }

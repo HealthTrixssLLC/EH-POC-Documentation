@@ -1260,8 +1260,36 @@ export default function ReviewFinalize() {
         <CardContent>
           {codeAlignment && codeAlignment.alignmentScore !== undefined ? (
             <div className="space-y-3">
-              {codeAlignment.modelUsed && (
-                <Badge variant="outline" className="text-xs">{codeAlignment.modelUsed}</Badge>
+              <div className="flex items-center gap-2 flex-wrap">
+                {codeAlignment.modelUsed && (
+                  <Badge
+                    variant={codeAlignment.modelUsed === "gpt-4o" ? "default" : "outline"}
+                    className="text-xs"
+                    style={codeAlignment.modelUsed === "gpt-4o" ? { backgroundColor: "#277493" } : undefined}
+                    data-testid="badge-model-used"
+                  >
+                    {codeAlignment.modelUsed === "gpt-4o" ? "AI-Assisted (GPT-4o)" : "Keyword Matching (Fallback)"}
+                  </Badge>
+                )}
+                {codeAlignment.status && (
+                  <Badge
+                    variant={codeAlignment.status === "final" ? "default" : "secondary"}
+                    className="text-xs"
+                    data-testid="badge-alignment-status"
+                  >
+                    {codeAlignment.status === "final" ? "Final" : "Draft"}
+                  </Badge>
+                )}
+              </div>
+              {codeAlignment.fallbackReason && (
+                <div className="p-2 rounded-md bg-amber-50 dark:bg-amber-900/20 text-xs text-amber-800 dark:text-amber-200" data-testid="text-fallback-reason">
+                  <strong>AI unavailable:</strong> {codeAlignment.fallbackReason}
+                </div>
+              )}
+              {codeAlignment.analysisDetails?.clinicalDataSources && (codeAlignment.analysisDetails.clinicalDataSources as string[]).length > 0 && (
+                <div className="text-xs text-muted-foreground">
+                  Data sources analyzed: {(codeAlignment.analysisDetails.clinicalDataSources as string[]).join(", ")}
+                </div>
               )}
               {codeAlignment.codesWithoutSupport && (codeAlignment.codesWithoutSupport as any[]).length > 0 && (
                 <div className="space-y-1.5">

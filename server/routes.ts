@@ -3918,18 +3918,99 @@ export async function registerRoutes(
     }
   });
 
-  // CR-P8: NLP Code Alignment
+  // CR-P8: NLP Code Alignment — comprehensive clinical text assembler + AI + improved fallback
   app.post("/api/visits/:id/code-alignment", async (req, res) => {
     try {
       const visit = await storage.getVisit(req.params.id);
       if (!visit) return res.status(404).json({ message: "Visit not found" });
 
-      const clinicalNote = await storage.getClinicalNote(visit.id);
-      const codes = await storage.getCodesByVisit(visit.id);
+      const [clinicalNote, codes, vitals, assessmentResponses, tasks, measureResults] = await Promise.all([
+        storage.getClinicalNote(visit.id),
+        storage.getCodesByVisit(visit.id),
+        storage.getVitalsByVisit(visit.id),
+        storage.getAssessmentResponsesByVisit(visit.id),
+        storage.getTasksByVisit(visit.id),
+        storage.getMeasureResultsByVisit(visit.id),
+      ]);
 
-      const noteText = clinicalNote
-        ? [clinicalNote.chiefComplaint, clinicalNote.hpiNotes, clinicalNote.rosNotes, clinicalNote.examNotes, clinicalNote.assessmentNotes, clinicalNote.planNotes].filter(Boolean).join("\n")
-        : "";
+      let meds: any[] = [];
+      try { meds = await storage.getMedicationHistoryByMember(visit.memberId); } catch (_) {}
+
+      const sections: string[] = [];
+
+      if (clinicalNote) {
+        const noteFields = [
+          clinicalNote.chiefComplaint ? `Chief Complaint: ${clinicalNote.chiefComplaint}` : null,
+          clinicalNote.hpiNotes ? `HPI: ${clinicalNote.hpiNotes}` : null,
+          clinicalNote.rosNotes ? `Review of Systems: ${clinicalNote.rosNotes}` : null,
+          clinicalNote.examNotes ? `Physical Exam: ${clinicalNote.examNotes}` : null,
+          clinicalNote.assessmentNotes ? `Assessment: ${clinicalNote.assessmentNotes}` : null,
+          clinicalNote.planNotes ? `Plan: ${clinicalNote.planNotes}` : null,
+          clinicalNote.assessmentMeasuresSummary ? `Assessment Measures: ${clinicalNote.assessmentMeasuresSummary}` : null,
+        ].filter(Boolean);
+        if (noteFields.length > 0) sections.push("=== CLINICAL NOTE ===\n" + noteFields.join("\n"));
+      }
+
+      if (vitals) {
+        const vParts: string[] = [];
+        if (vitals.systolic && vitals.diastolic) vParts.push(`Blood pressure: ${vitals.systolic}/${vitals.diastolic} mmHg`);
+        if (vitals.heartRate) vParts.push(`Heart rate: ${vitals.heartRate} bpm`);
+        if (vitals.respiratoryRate) vParts.push(`Respiratory rate: ${vitals.respiratoryRate}`);
+        if (vitals.temperature) vParts.push(`Temperature: ${vitals.temperature}°F`);
+        if (vitals.oxygenSaturation) vParts.push(`O2 saturation: ${vitals.oxygenSaturation}%`);
+        if (vitals.weight) vParts.push(`Weight: ${vitals.weight} lbs`);
+        if (vitals.height) vParts.push(`Height: ${vitals.height} in`);
+        if (vitals.bmi) vParts.push(`BMI: ${vitals.bmi}`);
+        if (vitals.painLevel != null) vParts.push(`Pain level: ${vitals.painLevel}/10`);
+        if (vitals.notes) vParts.push(`Vitals notes: ${vitals.notes}`);
+        if (vParts.length > 0) sections.push("=== VITALS ===\n" + vParts.join("\n"));
+      }
+
+      if (assessmentResponses.length > 0) {
+        const aLines = assessmentResponses.map(a => {
+          const parts = [`Assessment: ${a.instrumentId} (status: ${a.status})`];
+          if (a.computedScore != null) parts.push(`Score: ${a.computedScore}`);
+          if (a.interpretation) parts.push(`Interpretation: ${a.interpretation}`);
+          if (a.responses && typeof a.responses === "object") {
+            try {
+              const respObj = a.responses as Record<string, any>;
+              const respText = Object.entries(respObj).map(([k, v]) => `  ${k}: ${JSON.stringify(v)}`).join("\n");
+              if (respText) parts.push(`Responses:\n${respText}`);
+            } catch (_) {}
+          }
+          return parts.join("\n");
+        });
+        sections.push("=== COMPLETED ASSESSMENTS ===\n" + aLines.join("\n\n"));
+      }
+
+      if (meds.length > 0) {
+        const activeMeds = meds.filter((m: any) => m.status === "active" || !m.status);
+        if (activeMeds.length > 0) {
+          const mLines = activeMeds.map((m: any) =>
+            `${m.medicationName || m.genericName}${m.dosage ? ` ${m.dosage}` : ""}${m.frequency ? ` ${m.frequency}` : ""}${m.reason ? ` (for: ${m.reason})` : ""}`
+          );
+          sections.push("=== MEDICATIONS ===\n" + mLines.join("\n"));
+        }
+      }
+
+      if (measureResults.length > 0) {
+        const completed = measureResults.filter(m => m.status === "met" || m.status === "completed" || m.result);
+        if (completed.length > 0) {
+          const mLines = completed.map(m =>
+            `HEDIS Measure: ${m.measureId} — Status: ${m.status}${m.result ? `, Result: ${m.result}` : ""}${m.value ? `, Value: ${m.value}` : ""}${m.captureMethod ? `, Method: ${m.captureMethod}` : ""}`
+          );
+          sections.push("=== HEDIS/QUALITY MEASURES ===\n" + mLines.join("\n"));
+        }
+      }
+
+      if (tasks.length > 0) {
+        const tLines = tasks.map(t =>
+          `Task: ${t.title} (type: ${t.taskType}, status: ${t.status})${t.description ? ` — ${t.description}` : ""}${t.outcome ? ` Outcome: ${t.outcome}` : ""}`
+        );
+        sections.push("=== CARE PLAN TASKS ===\n" + tLines.join("\n"));
+      }
+
+      const assembledText = sections.join("\n\n");
 
       const icdCodes = codes.filter(c => c.codeType === "ICD-10" && !c.removedByNp).map(c => ({ code: c.code, description: c.description }));
       const cptCodes = codes.filter(c => (c.codeType === "CPT" || c.codeType === "HCPCS") && !c.removedByNp).map(c => ({ code: c.code, description: c.description }));
@@ -3939,10 +4020,21 @@ export async function registerRoutes(
       let alignmentScore = 100;
       let modelUsed = "deterministic-fallback";
       let analysisDetails: any = {};
+      let fallbackReason: string | null = null;
+      const isVisitSigned = visit.status === "finalized" || visit.status === "ready_for_review" || visit.status === "synced" || visit.status === "emr_submitted";
+      const resultStatus = isVisitSigned ? "final" : "draft";
 
       const apiKey = process.env.OPENAI_API_KEY;
-      if (apiKey && noteText.length > 0) {
+      if (!apiKey) {
+        fallbackReason = "OpenAI API key not configured";
+      } else if (icdCodes.length === 0 && cptCodes.length === 0) {
+        fallbackReason = "No codes assigned to visit";
+      } else {
         try {
+          const clinicalContent = assembledText.length > 0
+            ? assembledText
+            : "No clinical documentation available. Visit data has not been entered yet.";
+
           const response = await fetch("https://api.openai.com/v1/chat/completions", {
             method: "POST",
             headers: { "Content-Type": "application/json", "Authorization": `Bearer ${apiKey}` },
@@ -3951,14 +4043,22 @@ export async function registerRoutes(
               messages: [
                 {
                   role: "system",
-                  content: "You are a medical coding auditor. Analyze the clinical documentation and assigned codes. Return a JSON object with: codesWithoutSupport (array of {code, codeType, description, reason} for codes not supported by documentation), conditionsWithoutCodes (array of {condition, suggestedCode, reason} for documented conditions without assigned codes), and alignmentScore (0-100 integer)."
+                  content: `You are a medical coding auditor for in-home clinical visits (Medicare Advantage / ACA plans). Analyze the clinical documentation below — which includes structured data (vitals, assessments, medications, HEDIS measures, care plan tasks) as well as any free-text clinical notes — and compare against the assigned ICD-10 and CPT/HCPCS codes.
+
+Return a JSON object with exactly these fields:
+- codesWithoutSupport: array of {code, codeType, description, reason} for assigned codes that lack sufficient documentation support. codeType should be "ICD-10", "CPT", or "HCPCS". reason should explain what documentation is missing.
+- conditionsWithoutCodes: array of {condition, suggestedCode, reason} for documented clinical findings that could support additional codes not yet assigned.
+- alignmentScore: integer 0-100 representing overall alignment. 100 = all codes are well-supported. 0 = no codes have support.
+
+Be clinically accurate. Vitals data (e.g., BP readings) supports hypertension codes. Completed PHQ-2/PHQ-9 assessments support depression screening codes. Completed PRAPARE supports social determinants codes. AWV assessments support wellness visit codes. Medication lists support related diagnosis codes. HEDIS measure results support screening procedure codes.`
                 },
                 {
                   role: "user",
-                  content: `Clinical Documentation:\n${noteText}\n\nAssigned ICD-10 Codes:\n${icdCodes.map(c => `${c.code}: ${c.description}`).join("\n")}\n\nAssigned CPT/HCPCS Codes:\n${cptCodes.map(c => `${c.code}: ${c.description}`).join("\n")}\n\nAnalyze code-documentation alignment and return JSON.`
+                  content: `${clinicalContent}\n\n=== ASSIGNED ICD-10 CODES ===\n${icdCodes.map(c => `${c.code}: ${c.description}`).join("\n") || "(none)"}\n\n=== ASSIGNED CPT/HCPCS CODES ===\n${cptCodes.map(c => `${c.code}: ${c.description}`).join("\n") || "(none)"}\n\nAnalyze code-documentation alignment and return JSON.`
                 }
               ],
               response_format: { type: "json_object" },
+              temperature: 0.1,
             }),
           });
 
@@ -3967,35 +4067,104 @@ export async function registerRoutes(
             const parsed = JSON.parse(data.choices[0].message.content);
             codesWithoutSupport = parsed.codesWithoutSupport || [];
             conditionsWithoutCodes = parsed.conditionsWithoutCodes || [];
-            alignmentScore = typeof parsed.alignmentScore === "number" ? parsed.alignmentScore : 100;
+            alignmentScore = typeof parsed.alignmentScore === "number" ? Math.min(100, Math.max(0, parsed.alignmentScore)) : 100;
             modelUsed = "gpt-4o";
-            analysisDetails = { rawResponse: parsed };
+            analysisDetails = { rawResponse: parsed, clinicalDataSources: sections.map(s => s.split("\n")[0].replace(/=== | ===/g, "").trim()) };
+          } else {
+            const errBody = await response.text();
+            console.error("OpenAI code alignment API error:", response.status, errBody);
+            fallbackReason = `OpenAI API returned ${response.status}: ${errBody.substring(0, 200)}`;
           }
-        } catch (aiErr) {
-          console.error("OpenAI code alignment call failed, using fallback:", aiErr);
+        } catch (aiErr: any) {
+          console.error("OpenAI code alignment call failed:", aiErr);
+          fallbackReason = `OpenAI call failed: ${aiErr.message || "Unknown error"}`;
         }
       }
 
       if (modelUsed === "deterministic-fallback") {
-        const noteWords = noteText.toLowerCase();
+        const clinicalKeywordMap: Record<string, string[]> = {
+          "I10": ["hypertension", "blood pressure", "bp ", "antihypertensive", "systolic", "diastolic", "htn", "elevated bp", "lisinopril", "amlodipine", "losartan", "metoprolol", "hydrochlorothiazide"],
+          "I11": ["hypertensive heart", "heart disease", "hypertension with heart"],
+          "E11": ["diabetes", "diabetic", "glucose", "a1c", "hba1c", "metformin", "insulin", "type 2", "type ii", "hyperglycemia", "blood sugar"],
+          "E78": ["hyperlipidemia", "cholesterol", "lipid", "statin", "ldl", "hdl", "triglyceride", "atorvastatin", "simvastatin", "rosuvastatin"],
+          "F32": ["depression", "depressive", "depressed", "phq-2", "phq-9", "phq2", "phq9", "mood", "antidepressant", "ssri", "sertraline", "fluoxetine", "major depressive"],
+          "F33": ["depression", "depressive", "recurrent", "phq-2", "phq-9", "phq2", "phq9", "mood disorder"],
+          "F41": ["anxiety", "anxious", "generalized anxiety", "gad", "panic", "worry"],
+          "J44": ["copd", "chronic obstructive", "bronchitis", "emphysema", "inhaler", "albuterol"],
+          "J45": ["asthma", "wheezing", "bronchospasm", "inhaler", "albuterol"],
+          "K21": ["gerd", "reflux", "heartburn", "acid reflux", "omeprazole", "pantoprazole"],
+          "M54": ["back pain", "low back", "lumbar", "spine", "backache"],
+          "N18": ["kidney disease", "ckd", "chronic kidney", "renal", "gfr", "creatinine"],
+          "Z00": ["wellness", "preventive", "annual", "general exam", "well visit", "checkup", "health exam", "examination", "encounter for general"],
+          "Z12": ["screening", "cancer screening", "colonoscopy", "mammogram", "colon", "breast cancer"],
+          "Z13": ["screening", "risk assessment", "health risk"],
+          "Z23": ["vaccination", "immunization", "vaccine", "flu shot"],
+          "Z87": ["history", "personal history", "past medical"],
+          "99387": ["preventive", "wellness", "new patient", "comprehensive", "annual wellness", "examination", "well visit", "65+", "initial"],
+          "99397": ["preventive", "wellness", "established", "annual", "periodic", "well visit", "examination"],
+          "G0438": ["annual wellness", "awv", "initial", "wellness visit", "health risk assessment", "personalized prevention"],
+          "G0439": ["annual wellness", "awv", "subsequent", "wellness visit"],
+          "G0121": ["colorectal", "colon", "colonoscopy", "cancer screening", "fecal", "fit test", "stool"],
+          "G0101": ["cervical", "pelvic", "breast", "screening"],
+          "G8476": ["hypertension", "bp controlled", "blood pressure", "controlled"],
+          "G8477": ["hypertension", "bp not controlled", "blood pressure", "uncontrolled"],
+          "96127": ["emotional", "behavioral", "phq", "depression screening", "brief assessment", "mood", "phq-2", "phq-9", "screening tool"],
+          "96160": ["health risk", "risk assessment", "prapare", "sdoh", "social determinants", "patient-focused"],
+          "96161": ["caregiver", "risk assessment"],
+          "77067": ["mammogram", "mammography", "breast screening", "breast cancer"],
+          "99490": ["chronic care", "ccm", "care management", "chronic condition"],
+        };
+
+        const allText = assembledText.toLowerCase();
+        const matchedCodes = new Set<string>();
+
         for (const icd of icdCodes) {
-          const descWords = icd.description.toLowerCase().split(/\s+/).filter(w => w.length > 3);
-          const found = descWords.some(w => noteWords.includes(w));
-          if (!found) {
-            codesWithoutSupport.push({ code: icd.code, codeType: "ICD-10", description: icd.description, reason: "No matching keywords found in clinical documentation" });
+          const codePrefix = icd.code.split(".")[0];
+          const keywords = clinicalKeywordMap[icd.code] || clinicalKeywordMap[codePrefix] || [];
+          const descWords = icd.description.toLowerCase().split(/[\s,/]+/).filter(w => w.length > 3);
+          const allKeywords = [...new Set([...keywords, ...descWords])];
+
+          const found = allKeywords.some(kw => allText.includes(kw));
+          if (found) {
+            matchedCodes.add(icd.code);
+          } else {
+            codesWithoutSupport.push({
+              code: icd.code, codeType: "ICD-10", description: icd.description,
+              reason: keywords.length > 0
+                ? `No matches for clinical keywords: ${keywords.slice(0, 5).join(", ")}`
+                : "No matching keywords found in clinical documentation"
+            });
           }
         }
         for (const cpt of cptCodes) {
-          const descWords = cpt.description.toLowerCase().split(/\s+/).filter(w => w.length > 3);
-          const found = descWords.some(w => noteWords.includes(w));
-          if (!found) {
-            codesWithoutSupport.push({ code: cpt.code, codeType: "CPT", description: cpt.description, reason: "No matching keywords found in clinical documentation" });
+          const keywords = clinicalKeywordMap[cpt.code] || [];
+          const descWords = cpt.description.toLowerCase().split(/[\s,/]+/).filter(w => w.length > 3);
+          const allKeywords = [...new Set([...keywords, ...descWords])];
+
+          const found = allKeywords.some(kw => allText.includes(kw));
+          if (found) {
+            matchedCodes.add(cpt.code);
+          } else {
+            codesWithoutSupport.push({
+              code: cpt.code, codeType: cpt.code.startsWith("G") ? "HCPCS" : "CPT", description: cpt.description,
+              reason: keywords.length > 0
+                ? `No matches for clinical keywords: ${keywords.slice(0, 5).join(", ")}`
+                : "No matching keywords found in clinical documentation"
+            });
           }
         }
+
         const totalCodes = icdCodes.length + cptCodes.length;
         const unsupported = codesWithoutSupport.length;
         alignmentScore = totalCodes > 0 ? Math.round(((totalCodes - unsupported) / totalCodes) * 100) : 100;
-        analysisDetails = { method: "keyword-matching", totalCodes, unsupported };
+        analysisDetails = {
+          method: "keyword-matching",
+          totalCodes,
+          unsupported,
+          matched: matchedCodes.size,
+          clinicalDataSources: sections.map(s => s.split("\n")[0].replace(/=== | ===/g, "").trim()),
+          fallbackReason: fallbackReason || undefined,
+        };
       }
 
       const result = await storage.createNlpCodeAlignmentResult({
@@ -4006,6 +4175,8 @@ export async function registerRoutes(
         alignmentScore,
         analysisDetails,
         modelUsed,
+        status: resultStatus,
+        fallbackReason,
       });
 
       return res.json(result);

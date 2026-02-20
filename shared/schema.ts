@@ -1172,6 +1172,8 @@ export const nlpCodeAlignmentResults = pgTable("nlp_code_alignment_results", {
   alignmentScore: integer("alignment_score").notNull(),
   analysisDetails: jsonb("analysis_details"),
   modelUsed: text("model_used").notNull(),
+  status: text("status").notNull().default("draft"),
+  fallbackReason: text("fallback_reason"),
 });
 
 export const insertNlpCodeAlignmentResultSchema = createInsertSchema(nlpCodeAlignmentResults).omit({ id: true });

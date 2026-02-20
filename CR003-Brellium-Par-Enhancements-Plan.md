@@ -856,3 +856,23 @@ Columns:
 | CPT defensibility scoring | All auto-generated CPT codes evaluated against defensibility rules |
 | Provider quality visibility | Rolling quality scores available for all active providers |
 | Documentation change tracking | All clinical field mutations captured with before/after values |
+| FHIR inbound parity | CarePlan and PractitionerRole ingestion with duplicate detection |
+| CoCM billing coverage | Time entry, monthly summary, CPT threshold, duplication detection |
+
+---
+
+## Change Log
+
+| Date | Phase | Change | Details |
+|------|-------|--------|---------|
+| Feb 20, 2026 | Phase 1 | CR-P1 IMPLEMENTED | Pre-Claim Compliance Gate — Billing Readiness Score (0-100) with completeness (40%), diagnosis support (35%), coding compliance (25%). Export blocked below 80 threshold. Audit trail for gate pass/fail/override. Tables: `billing_readiness_evaluations`. |
+| Feb 20, 2026 | Phase 1 | CR-P2 IMPLEMENTED | E/M Level + MDM Validation Engine — CMS 2021 MDM guidelines scoring (problems addressed, data reviewed, risk). Over/under-coding detection with suggested CPT codes. Finalization soft gate for E/M mismatch. Tables: `em_level_rules`, `em_evaluations`. |
+| Feb 20, 2026 | Phase 2 | CR-P3 IMPLEMENTED | Automated 100% Encounter Audit Engine — Audit pipeline at finalization evaluating 6 dimensions (completeness, diagnosis support, coding compliance, E/M defensibility, CPT defensibility, billing readiness). Overall audit score with pass/warning/fail. Auto-routes to supervisor review. Audit Dashboard with aggregate metrics. Tables: `encounter_audit_reports`. |
+| Feb 20, 2026 | Phase 2 | CR-P4 IMPLEMENTED | CPT Defensibility Scoring — 9 element types evaluated per CPT code with weighted scoring and remediation instructions. Configurable rules per CPT category. Tables: `cpt_defensibility_rules`. |
+| Feb 20, 2026 | Phase 2 | CR-P5 IMPLEMENTED | Payor-Specific Billing Policy Engine — 5 policy types (frequency limits, LCD/NCD, modifier rules, prior auth, ABN). Per-payor rule evaluation. Tables: `payor_policies`, `payor_policy_evaluations`. |
+| Feb 20, 2026 | Phase 3 | CR-P6 IMPLEMENTED | Provider Quality Trending Dashboard — Org-wide averages, provider ranking, rolling metrics with drill-down by provider. Tables: `provider_quality_snapshots`. Pages: `provider-quality.tsx`. |
+| Feb 20, 2026 | Phase 3 | CR-P7 IMPLEMENTED | Field-Level Documentation Change Tracking — Before/after values on vitals and mutation endpoints. Remediation linkage. Change history panel on visit-detail and review-finalize pages. Tables: `documentation_changes`. |
+| Feb 20, 2026 | Phase 3 | CR-P8 IMPLEMENTED | NLP-Based Code Alignment — OpenAI GPT-4o with deterministic keyword-matching fallback. Identifies unsupported codes and uncoded conditions. Alignment score/panel on review-finalize. Alignment badge on supervisor scorecard. Tables: `nlp_code_alignment_results`. |
+| Feb 20, 2026 | Phase 4 | CR-P9 IMPLEMENTED | Inbound FHIR CarePlan + PractitionerRole Processing — CarePlan activities mapped to care_plan_tasks with source="external" and externalId deduplication. PractitionerRole mapped to users by NPI. FHIR Playground test payloads. External badges on care plan page. Schema: `source`/`externalId` columns on `care_plan_tasks`, `npi` column on `users`. |
+| Feb 20, 2026 | Phase 4 | CR-P10 IMPLEMENTED | CoCM Time-Based Billing Module — Time entry CRUD (5 activity types), monthly summary with CMS CPT thresholds (99492 initial 70min, 99493 subsequent 60min, 99494 add-on 30min), cross-role duplication detection, provider breakdown. Tables: `cocm_time_entries`, `cocm_monthly_summaries`. Pages: `cocm-time-tracking.tsx`. Sidebar nav for supervisor/admin. |
+| Feb 20, 2026 | Post-CR003 | Gap Analysis Published | Post-CR003-Brellium-Gap-Analysis.md — 31/37 gaps closed (84%), 3 partially closed, 3 remaining. All CRITICAL/HIGH gaps closed. Brellium core parity achieved. |

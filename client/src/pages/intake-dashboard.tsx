@@ -1148,7 +1148,7 @@ export default function IntakeDashboard() {
                       {previsitSummary.suspectedDiagnoses.items.map((cond: any) => (
                         <div
                           key={cond.id}
-                          className="flex items-center justify-between gap-2 p-2 rounded-md border text-sm"
+                          className="flex items-center justify-between gap-2 p-2 rounded-md border border-l-[3px] border-l-orange-500 dark:border-l-orange-400 text-sm"
                           data-testid={`suspected-condition-${cond.id}`}
                         >
                           <div className="flex-1 min-w-0">

@@ -10,10 +10,11 @@ import { Textarea } from "@/components/ui/textarea";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
-import { ChevronLeft, FileText, Plus, CheckCircle2, Circle, Clock, Pencil, Trash2, Mic } from "lucide-react";
+import { ChevronLeft, FileText, Plus, CheckCircle2, Circle, Clock, Pencil, Trash2 } from "lucide-react";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { usePlatform } from "@/hooks/use-platform";
+import { SourceBadge, SourceBorderClass, SourceLegend } from "@/components/source-indicator";
 
 const taskTypes = [
   { value: "referral", label: "Referral" },
@@ -218,13 +219,8 @@ export default function CarePlan() {
           {editingTask && (
             <>
               <div className="flex items-center gap-2 flex-wrap">
-                {editingTask.source === "voice_capture" && (
-                  <Badge variant="secondary" className="text-xs" data-testid="badge-voice-source">
-                    <Mic className="w-3 h-3 mr-1" /> From Voice Capture
-                  </Badge>
-                )}
-                {editingTask.source === "external" && (
-                  <Badge variant="default" className="text-xs bg-blue-600 dark:bg-blue-500" data-testid="badge-external-source">External</Badge>
+                {(editingTask.source === "voice_capture" || editingTask.source === "external") && (
+                  <SourceBadge source={editingTask.source} />
                 )}
                 {editingTask.createdAt && (
                   <span className="text-xs text-muted-foreground">
@@ -292,6 +288,8 @@ export default function CarePlan() {
         </DialogContent>
       </Dialog>
 
+      <SourceLegend className="px-1" />
+
       <div className="space-y-3">
         {loadingTasks ? (
           Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-20 w-full" />)
@@ -301,7 +299,7 @@ export default function CarePlan() {
             return (
               <Card
                 key={task.id}
-                className="cursor-pointer hover:ring-1 hover:ring-primary/30 transition-all mobile-card-press"
+                className={`cursor-pointer hover:ring-1 hover:ring-primary/30 transition-all mobile-card-press ${SourceBorderClass(task.source)}`}
                 onClick={() => openEditDialog(task)}
                 data-testid={`card-task-${task.id}`}
               >
@@ -312,13 +310,8 @@ export default function CarePlan() {
                       <div className="flex items-center justify-between gap-2 flex-wrap">
                         <div className="flex items-center gap-2 min-w-0">
                           <span className="text-sm font-semibold" data-testid={`text-task-title-${task.id}`}>{task.title}</span>
-                          {task.source === "external" && (
-                            <Badge variant="default" className="text-xs bg-blue-600 dark:bg-blue-500" data-testid={`badge-external-task-${task.id}`}>External</Badge>
-                          )}
-                          {task.source === "voice_capture" && (
-                            <Badge variant="secondary" className="text-xs" data-testid={`badge-voice-task-${task.id}`}>
-                              <Mic className="w-3 h-3 mr-1" /> Voice
-                            </Badge>
+                          {(task.source === "external" || task.source === "voice_capture") && (
+                            <SourceBadge source={task.source} />
                           )}
                         </div>
                         <div className="flex items-center gap-2">

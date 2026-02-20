@@ -143,6 +143,7 @@ export interface IStorage {
   createClinicalNote(note: InsertClinicalNote): Promise<ClinicalNote>;
   updateClinicalNote(id: string, updates: Partial<ClinicalNote>): Promise<ClinicalNote | undefined>;
 
+  getTask(id: string): Promise<CarePlanTask | undefined>;
   getTasksByVisit(visitId: string): Promise<CarePlanTask[]>;
   getAllTasks(): Promise<CarePlanTask[]>;
   createTask(task: InsertCarePlanTask): Promise<CarePlanTask>;
@@ -189,6 +190,7 @@ export interface IStorage {
 
   getMeasureResultsByVisit(visitId: string): Promise<MeasureResult[]>;
 
+  getMedReconciliationById(id: string): Promise<MedReconciliation | undefined>;
   getMedReconciliationByVisit(visitId: string): Promise<MedReconciliation[]>;
   createMedReconciliation(med: InsertMedReconciliation): Promise<MedReconciliation>;
   updateMedReconciliation(id: string, updates: Partial<MedReconciliation>): Promise<MedReconciliation | undefined>;
@@ -553,6 +555,11 @@ export class DatabaseStorage implements IStorage {
     return db.select().from(carePlanTasks).orderBy(desc(carePlanTasks.createdAt));
   }
 
+  async getTask(id: string) {
+    const [task] = await db.select().from(carePlanTasks).where(eq(carePlanTasks.id, id));
+    return task;
+  }
+
   async createTask(task: InsertCarePlanTask) {
     const [created] = await db.insert(carePlanTasks).values(task).returning();
     return created;
@@ -753,6 +760,11 @@ export class DatabaseStorage implements IStorage {
   async updateVitalsHistory(id: string, data: Partial<InsertVitalsHistory>) {
     const [updated] = await db.update(vitalsHistory).set(data).where(eq(vitalsHistory.id, id)).returning();
     return updated;
+  }
+
+  async getMedReconciliationById(id: string) {
+    const [med] = await db.select().from(medReconciliation).where(eq(medReconciliation.id, id));
+    return med;
   }
 
   async getMedReconciliationByVisit(visitId: string) {

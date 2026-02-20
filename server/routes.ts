@@ -1920,6 +1920,16 @@ export async function registerRoutes(
       if (outcomeNotes !== undefined) updates.outcomeNotes = outcomeNotes;
       if (status === "completed") updates.completedAt = new Date().toISOString();
 
+      const existingTask = await storage.getTask(req.params.id);
+      if (existingTask && (existingTask.source === "voice_capture" || existingTask.source === "external")) {
+        const contentChanged = (title !== undefined && title !== existingTask.title) ||
+          (description !== undefined && description !== existingTask.description) ||
+          (taskType !== undefined && taskType !== existingTask.taskType);
+        if (contentChanged) {
+          updates.source = "internal";
+        }
+      }
+
       const updated = await storage.updateTask(req.params.id, updates);
       await storage.createAuditEvent({
         eventType: "task_updated",
@@ -4610,6 +4620,19 @@ export async function registerRoutes(
 
   app.put("/api/visits/:visitId/med-reconciliation/:id", async (req, res) => {
     try {
+      const existing = await storage.getMedReconciliationById(req.params.id);
+      if (existing && existing.source === "external") {
+        const { medicationName, genericName, dosage, frequency, route, notes } = req.body;
+        const contentChanged = (medicationName !== undefined && medicationName !== existing.medicationName) ||
+          (genericName !== undefined && genericName !== existing.genericName) ||
+          (dosage !== undefined && dosage !== existing.dosage) ||
+          (frequency !== undefined && frequency !== existing.frequency) ||
+          (route !== undefined && route !== existing.route) ||
+          (notes !== undefined && notes !== existing.notes);
+        if (contentChanged) {
+          req.body.source = "practice";
+        }
+      }
       const updated = await storage.updateMedReconciliation(req.params.id, req.body);
       if (!updated) return res.status(404).json({ message: "Not found" });
       await syncMedReconToTimeline(updated);

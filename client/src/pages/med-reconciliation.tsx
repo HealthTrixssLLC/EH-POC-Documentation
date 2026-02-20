@@ -47,6 +47,7 @@ import {
   CalendarIcon,
 } from "lucide-react";
 import { apiRequest, queryClient } from "@/lib/queryClient";
+import { SourceBorderClass, SourceLegend } from "@/components/source-indicator";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/lib/auth";
 import type { MedReconciliation, MedicationHistory, Member } from "@shared/schema";
@@ -193,11 +194,11 @@ const STATUS_COLORS: Record<string, string> = {
 
 const SOURCE_COLORS: Record<string, string> = {
   history: "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300",
-  home: "bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-300",
-  chart: "bg-teal-100 text-teal-800 dark:bg-teal-900/30 dark:text-teal-300",
-  practice: "bg-indigo-100 text-indigo-800 dark:bg-indigo-900/30 dark:text-indigo-300",
-  external: "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300",
-  patient_report: "bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300",
+  home: "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300",
+  chart: "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300",
+  practice: "bg-slate-100 text-slate-800 dark:bg-slate-800 dark:text-slate-200",
+  external: "bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-300",
+  patient_report: "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300",
 };
 
 const SOURCE_LABELS: Record<string, string> = {
@@ -685,7 +686,7 @@ export default function MedReconciliation() {
                   <Activity className="w-5 h-5" style={{ color: "#277493" }} />
                   <h2 className="text-base font-semibold">Reconciliation List</h2>
                   {hiePendingCount > 0 && (
-                    <Badge variant="outline" className="text-xs no-default-hover-elevate no-default-active-elevate border-blue-500 text-blue-700 dark:text-blue-400" data-testid="badge-hie-pending-count">
+                    <Badge variant="outline" className="text-xs no-default-hover-elevate no-default-active-elevate border-orange-500 text-orange-700 dark:text-orange-400" data-testid="badge-hie-pending-count">
                       {hiePendingCount} from HIE pending review
                     </Badge>
                   )}
@@ -696,6 +697,7 @@ export default function MedReconciliation() {
               </div>
             </CardHeader>
             <CardContent className="space-y-2">
+              <SourceLegend sources={["clinic", "hie"]} className="pb-1" />
               {reconciledMeds.length === 0 ? (
                 <div className="text-center py-8 text-muted-foreground text-sm">
                   No medications reconciled yet. Add from patient history or enter new medications.
@@ -709,7 +711,7 @@ export default function MedReconciliation() {
                   const isEditing = editingId === med.id;
 
                   return (
-                    <div key={med.id} className="border rounded-md p-3 space-y-2" data-testid={`card-reconciled-med-${med.id}`}>
+                    <div key={med.id} className={`border rounded-md p-3 space-y-2 ${SourceBorderClass(med.source)}`} data-testid={`card-reconciled-med-${med.id}`}>
                       <div className="flex items-start justify-between gap-2">
                         <div className="flex flex-col gap-1 min-w-0 flex-1">
                           <div className="flex items-center gap-2 flex-wrap">

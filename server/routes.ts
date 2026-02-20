@@ -1992,15 +1992,21 @@ export async function registerRoutes(
         return res.status(400).json({ message: "Vitals not recorded" });
       }
       const checklist = await storage.getChecklistByVisit(req.params.id);
+      const { signature, attestationText, acknowledgeEmMismatch, labsPendingAddendum, labsPendingNote } = req.body;
+      const labMeasureIds = ["CDC-A1C", "LDL", "A1C", "HBA1C"];
       const incomplete = checklist.filter((c) => c.status !== "complete" && c.status !== "unable_to_assess");
       if (incomplete.length > 0) {
-        return res.status(400).json({
-          message: `${incomplete.length} required item(s) not completed`,
-          incompleteItems: incomplete.map((c) => c.itemName),
-        });
+        const allLabsPending = incomplete.every((c) =>
+          c.itemType === "measure" && labMeasureIds.some(id => (c.itemId || "").toUpperCase().includes(id))
+        );
+        if (!allLabsPending || !labsPendingAddendum) {
+          return res.status(400).json({
+            message: `${incomplete.length} required item(s) not completed`,
+            incompleteItems: incomplete.map((c) => c.itemName),
+            labsPendingEligible: allLabsPending,
+          });
+        }
       }
-
-      const { signature, attestationText, acknowledgeEmMismatch } = req.body;
       const now = new Date().toISOString();
 
       // CR-P2: E/M mismatch soft gate
@@ -2088,11 +2094,21 @@ export async function registerRoutes(
         finalizedAt: now,
       });
 
+      if (labsPendingAddendum && incomplete.length > 0) {
+        const pendingLabNames = incomplete.map((c) => c.itemName).join(", ");
+        await storage.createAuditEvent({
+          eventType: "labs_pending_addendum",
+          visitId: visit.id,
+          patientId: visit.memberId,
+          details: `Visit signed with labs-pending addendum. Pending: ${pendingLabNames}. Note: ${labsPendingNote || "Results pending at time of visit."}`,
+        });
+      }
+
       await storage.createAuditEvent({
         eventType: "visit_finalized",
         visitId: visit.id,
         patientId: visit.memberId,
-        details: `Visit finalized and signed by ${signature}`,
+        details: `Visit finalized and signed by ${signature}${labsPendingAddendum ? " (with labs-pending addendum)" : ""}`,
       });
 
       // CR-P3: Trigger automated encounter audit

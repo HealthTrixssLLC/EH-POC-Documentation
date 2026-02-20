@@ -34,6 +34,7 @@ import {
   ClipboardCheck,
   GitCompareArrows,
   History,
+  FileText,
 } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Progress } from "@/components/ui/progress";
@@ -59,6 +60,8 @@ export default function ReviewFinalize() {
   const [addCodeValue, setAddCodeValue] = useState("");
   const [addCodeType, setAddCodeType] = useState("ICD-10");
   const [addCodeDesc, setAddCodeDesc] = useState("");
+  const [showLabsPendingDialog, setShowLabsPendingDialog] = useState(false);
+  const [labsPendingNote, setLabsPendingNote] = useState("Results pending at time of visit. Will follow up when results are available.");
 
   const { data: bundle, isLoading } = useQuery<any>({
     queryKey: ["/api/visits", visitId, "bundle"],
@@ -360,6 +363,27 @@ export default function ReviewFinalize() {
           }
         }
       } catch {}
+      toast({ title: "Finalization failed", description: err.message, variant: "destructive" });
+    },
+  });
+
+  const labsPendingFinalizeMutation = useMutation({
+    mutationFn: async () => {
+      const resp = await apiRequest("POST", `/api/visits/${visitId}/finalize`, {
+        signature,
+        attestationText: "I attest that the information documented in this visit record is accurate and complete to the best of my professional knowledge. Lab results are pending and will be addressed via addendum.",
+        labsPendingAddendum: true,
+        labsPendingNote,
+      });
+      return resp.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/visits"] });
+      toast({ title: "Visit finalized with labs-pending addendum" });
+      setShowLabsPendingDialog(false);
+      setLocation("/visits");
+    },
+    onError: (err: any) => {
       toast({ title: "Finalization failed", description: err.message, variant: "destructive" });
     },
   });
@@ -1483,21 +1507,65 @@ export default function ReviewFinalize() {
         </Card>
       )}
 
-      {!completenessOk && failedRequired.length > 0 && (
-        <Card className="border-destructive/30">
-          <CardContent className="p-4 flex items-start gap-3">
-            <AlertTriangle className="w-5 h-5 flex-shrink-0 text-destructive mt-0.5" />
-            <div>
-              <span className="text-sm font-medium text-destructive" data-testid="text-gating-warning">
-                Cannot finalize - {failedRequired.length} required item{failedRequired.length !== 1 ? "s" : ""} incomplete
-              </span>
-              <p className="text-xs text-muted-foreground mt-0.5">
-                Complete all required items or provide structured unable-to-assess reasons before signing.
-              </p>
-            </div>
-          </CardContent>
-        </Card>
-      )}
+      {!completenessOk && failedRequired.length > 0 && (() => {
+        const labMeasureIds = ["CDC-A1C", "LDL", "A1C", "HBA1C"];
+        const isLabPending = failedRequired.every((i: any) =>
+          i.componentType === "measure" && labMeasureIds.some(id => (i.componentId || "").toUpperCase().includes(id))
+        );
+        return (
+          <Card className={isLabPending ? "border-amber-400/50 bg-amber-50/30 dark:bg-amber-900/10" : "border-destructive/30"}>
+            <CardContent className="p-4 space-y-3">
+              <div className="flex items-start gap-3">
+                <AlertTriangle className={`w-5 h-5 flex-shrink-0 mt-0.5 ${isLabPending ? "text-amber-500" : "text-destructive"}`} />
+                <div className="flex-1 min-w-0">
+                  <span className={`text-sm font-medium ${isLabPending ? "text-amber-700 dark:text-amber-300" : "text-destructive"}`} data-testid="text-gating-warning">
+                    {isLabPending
+                      ? `Pending lab result${failedRequired.length > 1 ? "s" : ""} — finalize with addendum`
+                      : `Cannot finalize — ${failedRequired.length} required item${failedRequired.length !== 1 ? "s" : ""} incomplete`}
+                  </span>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    {isLabPending
+                      ? "Lab results are still pending. You may sign now with a labs-pending addendum, and update the visit when results arrive."
+                      : "Complete the items below or provide structured unable-to-assess reasons before signing."}
+                  </p>
+                </div>
+              </div>
+              <div className="space-y-1.5 ml-8">
+                {failedRequired.map((item: any) => (
+                  <div key={item.ruleId} className="flex items-center justify-between gap-2 p-2 rounded-md border bg-background text-xs" data-testid={`gating-item-${item.ruleId}`}>
+                    <div className="flex items-center gap-2 min-w-0">
+                      <XCircle className={`w-3.5 h-3.5 flex-shrink-0 ${isLabPending ? "text-amber-500" : "text-destructive"}`} />
+                      <span className="font-medium truncate">{item.label}</span>
+                      {item.remediation && <span className="text-muted-foreground hidden sm:inline">— {item.remediation}</span>}
+                    </div>
+                    {item.link && (
+                      <Link href={item.link}>
+                        <Button variant="outline" size="sm" className="h-6 text-[10px] px-2 flex-shrink-0" data-testid={`gating-fix-${item.componentId || item.ruleId}`}>
+                          Go Fix <ArrowRight className="w-3 h-3 ml-1" />
+                        </Button>
+                      </Link>
+                    )}
+                  </div>
+                ))}
+              </div>
+              {isLabPending && (
+                <div className="ml-8">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="text-xs border-amber-400 text-amber-700 dark:text-amber-300 hover:bg-amber-50 dark:hover:bg-amber-900/20"
+                    data-testid="button-labs-pending-addendum"
+                    onClick={() => setShowLabsPendingDialog(true)}
+                  >
+                    <FileText className="w-3.5 h-3.5 mr-1" />
+                    Sign with Labs-Pending Addendum
+                  </Button>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        );
+      })()}
 
       {(noteEdits.length > 0 || noteSignatures.length > 0) && (
         <Card>
@@ -1653,7 +1721,7 @@ export default function ReviewFinalize() {
           </div>
           <Button
             className="w-full"
-            onClick={() => finalizeMutation.mutate()}
+            onClick={() => finalizeMutation.mutate(undefined)}
             disabled={!canFinalize || finalizeMutation.isPending}
             data-testid="button-finalize-visit"
           >
@@ -1797,6 +1865,60 @@ export default function ReviewFinalize() {
                   data-testid="button-swap-confirm"
                 >
                   {swapCodeMutation.isPending ? <><Loader2 className="w-4 h-4 mr-1 animate-spin" /> Swapping...</> : "Swap Code"}
+                </Button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
+      )}
+
+      {showLabsPendingDialog && (
+        <Dialog open={true} onOpenChange={() => setShowLabsPendingDialog(false)}>
+          <DialogContent className="max-w-md">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <FileText className="w-5 h-5 text-amber-500" />
+                Sign with Labs-Pending Addendum
+              </DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4">
+              <div className="p-3 rounded-md border border-amber-200 bg-amber-50/50 dark:bg-amber-900/20 text-sm">
+                <p className="font-medium text-amber-800 dark:text-amber-200 mb-1.5">Pending Lab Results</p>
+                <ul className="space-y-1 text-xs text-amber-700 dark:text-amber-300">
+                  {failedRequired.map((item: any) => (
+                    <li key={item.ruleId} className="flex items-center gap-1.5">
+                      <MinusCircle className="w-3 h-3 flex-shrink-0" />
+                      {item.label}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+              <div className="space-y-2">
+                <Label>Addendum Note</Label>
+                <Textarea
+                  value={labsPendingNote}
+                  onChange={(e) => setLabsPendingNote(e.target.value)}
+                  className="min-h-[80px]"
+                  placeholder="Results pending at time of visit..."
+                  data-testid="input-labs-pending-note"
+                />
+                <p className="text-[10px] text-muted-foreground">This note will be attached to the clinical record. Update the visit when results arrive.</p>
+              </div>
+              {!signature.trim() && (
+                <div className="p-2 rounded-md border border-destructive/30 bg-destructive/5 text-xs text-destructive flex items-center gap-2">
+                  <AlertTriangle className="w-3.5 h-3.5 flex-shrink-0" />
+                  Enter your signature below before signing with addendum.
+                </div>
+              )}
+              <div className="flex gap-2">
+                <Button variant="outline" onClick={() => setShowLabsPendingDialog(false)} data-testid="button-labs-pending-cancel">Cancel</Button>
+                <Button
+                  onClick={() => labsPendingFinalizeMutation.mutate()}
+                  disabled={!signature.trim() || !labsPendingNote.trim() || labsPendingFinalizeMutation.isPending}
+                  className="bg-amber-600 hover:bg-amber-700 text-white"
+                  data-testid="button-labs-pending-confirm"
+                >
+                  {labsPendingFinalizeMutation.isPending ? <><Loader2 className="w-4 h-4 mr-1 animate-spin" /> Signing...</> : "Sign with Addendum"}
                 </Button>
               </div>
             </div>

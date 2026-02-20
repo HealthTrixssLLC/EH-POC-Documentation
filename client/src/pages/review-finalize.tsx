@@ -247,6 +247,18 @@ export default function ReviewFinalize() {
     },
   });
 
+  const verifyAllCodesMutation = useMutation({
+    mutationFn: async () => {
+      const resp = await apiRequest("POST", `/api/visits/${visitId}/codes/verify-all`, {});
+      return resp.json();
+    },
+    onSuccess: (data: any) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/visits", visitId, "codes"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/visits", visitId, "progress-note"] });
+      toast({ title: `${data.verified} code(s) verified` });
+    },
+  });
+
   const removeCodeMutation = useMutation({
     mutationFn: async (id: string) => {
       await apiRequest("PATCH", `/api/codes/${id}`, { removedByNp: true });
@@ -387,16 +399,30 @@ export default function ReviewFinalize() {
               <Code2 className="w-5 h-5" style={{ color: "#277493" }} />
               <h2 className="text-base font-semibold" data-testid="text-coding-title">Auto-Generated Codes</h2>
             </div>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => generateCodesMutation.mutate()}
-              disabled={generateCodesMutation.isPending}
-              data-testid="button-regenerate-codes"
-            >
-              <RefreshCw className="w-3.5 h-3.5 mr-1" />
-              {generateCodesMutation.isPending ? "Generating..." : "Regenerate"}
-            </Button>
+            <div className="flex items-center gap-2 flex-wrap">
+              {activeCodes.some((c: any) => !c.verified) && (
+                <Button
+                  variant="default"
+                  size="sm"
+                  onClick={() => verifyAllCodesMutation.mutate()}
+                  disabled={verifyAllCodesMutation.isPending}
+                  data-testid="button-verify-all-codes"
+                >
+                  <Check className="w-3.5 h-3.5 mr-1" />
+                  {verifyAllCodesMutation.isPending ? "Verifying..." : `Verify All (${activeCodes.filter((c: any) => !c.verified).length})`}
+                </Button>
+              )}
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => generateCodesMutation.mutate()}
+                disabled={generateCodesMutation.isPending}
+                data-testid="button-regenerate-codes"
+              >
+                <RefreshCw className="w-3.5 h-3.5 mr-1" />
+                {generateCodesMutation.isPending ? "Generating..." : "Regenerate"}
+              </Button>
+            </div>
           </div>
           <p className="text-sm text-muted-foreground">
             Review and verify codes before finalizing. Codes are auto-assigned based on visit data.

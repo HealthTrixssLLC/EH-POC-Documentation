@@ -792,6 +792,18 @@ export async function registerRoutes(
       }
 
       // === PLAN: Clinical Decision Support ===
+      // Auto-resolve PHQ-2 escalation if PHQ-9 is already completed
+      const phq9Done = assessmentResponses.some((ar: any) => ar.instrumentId === "PHQ-9" && ar.status === "complete");
+      if (phq9Done) {
+        const phq2EscRec = recommendations.find((r: any) => r.ruleId === "PHQ2_TO_PHQ9" && r.status === "pending");
+        if (phq2EscRec) {
+          await storage.updateRecommendation(phq2EscRec.id, {
+            status: "resolved",
+            resolvedAt: new Date().toISOString(),
+          });
+          phq2EscRec.status = "resolved";
+        }
+      }
       const pendingRecs = recommendations.filter(r => r.status === "pending");
       const acceptedRecs = recommendations.filter(r => r.status === "accepted");
       const dismissedRecs = recommendations.filter(r => r.status === "dismissed");
@@ -1411,6 +1423,19 @@ export async function registerRoutes(
         if (status === "complete") {
           await handleAssessmentCompletion(req.params.id, instrumentId, computedScore ?? null);
         }
+      }
+
+      if (status === "complete" && instrumentId === "PHQ-9") {
+        try {
+          const recs = await storage.getRecommendationsByVisit(req.params.id);
+          const phq2Rec = recs.find((r: any) => r.ruleId === "PHQ2_TO_PHQ9" && r.status === "pending");
+          if (phq2Rec) {
+            await storage.updateRecommendation(phq2Rec.id, {
+              status: "resolved",
+              resolvedAt: new Date().toISOString(),
+            });
+          }
+        } catch (_e) {}
       }
 
       let branchingTriggered: any[] = [];
@@ -4333,6 +4358,21 @@ export async function registerRoutes(
     try {
       const updated = await storage.updateVisitCode(req.params.id, req.body);
       return res.json(updated);
+    } catch (err: any) {
+      return res.status(500).json({ message: err.message });
+    }
+  });
+
+  app.post("/api/visits/:id/codes/verify-all", async (req, res) => {
+    try {
+      const codes = await storage.getCodesByVisit(req.params.id);
+      const unverified = codes.filter((c: any) => !c.removedByNp && !c.verified);
+      const results = [];
+      for (const code of unverified) {
+        const updated = await storage.updateVisitCode(code.id, { verified: true });
+        results.push(updated);
+      }
+      return res.json({ verified: results.length, total: codes.filter((c: any) => !c.removedByNp).length });
     } catch (err: any) {
       return res.status(500).json({ message: err.message });
     }

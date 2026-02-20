@@ -830,14 +830,31 @@ function TranscriptCard({ transcript, onExtract, extractPending, aiConfigured }:
 function ExtractedFieldsPanel({ visitId, fields, transcripts, isLoading, user, aiConfigured }: any) {
   const { toast } = useToast();
 
+  const hasPlanFields = (fieldIds?: string[]) => {
+    const relevantFields = fieldIds
+      ? fields.filter((f: any) => fieldIds.includes(f.id))
+      : fields;
+    return relevantFields.some((f: any) => f.category === "plan");
+  };
+
+  const invalidateTaskCaches = () => {
+    queryClient.invalidateQueries({ queryKey: [`/api/visits/${visitId}/tasks`] });
+    queryClient.invalidateQueries({ queryKey: ["/api/tasks"] });
+  };
+
   const updateFieldMutation = useMutation({
     mutationFn: async ({ fieldId, updates }: { fieldId: string; updates: any }) => {
       return apiRequest("PATCH", `/api/extracted-fields/${fieldId}`, updates);
     },
-    onSuccess: () => {
+    onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: [`/api/visits/${visitId}/extracted-fields`] });
       queryClient.invalidateQueries({ queryKey: ["/api/visits", visitId, "bundle"] });
       queryClient.invalidateQueries({ queryKey: ["/api/visits", visitId, "overview"] });
+      const field = fields.find((f: any) => f.id === variables.fieldId);
+      if (field?.category === "plan" && (variables.updates.status === "accepted" || variables.updates.status === "edited")) {
+        invalidateTaskCaches();
+        toast({ title: "Provider Task created", description: `"${field.proposedValue || field.fieldLabel}" added to care plan tasks` });
+      }
     },
     onError: (err: any) => {
       toast({ title: "Update failed", description: err.message, variant: "destructive" });
@@ -852,11 +869,17 @@ function ExtractedFieldsPanel({ visitId, fields, transcripts, isLoading, user, a
         acceptedByName: user?.fullName,
       });
     },
-    onSuccess: () => {
+    onSuccess: (_data, fieldIds) => {
       queryClient.invalidateQueries({ queryKey: [`/api/visits/${visitId}/extracted-fields`] });
       queryClient.invalidateQueries({ queryKey: ["/api/visits", visitId, "bundle"] });
       queryClient.invalidateQueries({ queryKey: ["/api/visits", visitId, "overview"] });
-      toast({ title: "Fields accepted and applied to forms" });
+      if (hasPlanFields(fieldIds)) {
+        invalidateTaskCaches();
+        const planCount = fields.filter((f: any) => fieldIds.includes(f.id) && f.category === "plan").length;
+        toast({ title: "Fields accepted and applied", description: `${planCount} referral/follow-up task${planCount !== 1 ? "s" : ""} added to Provider Tasks` });
+      } else {
+        toast({ title: "Fields accepted and applied to forms" });
+      }
     },
     onError: (err: any) => {
       toast({ title: "Bulk accept failed", description: err.message, variant: "destructive" });
@@ -1055,10 +1078,28 @@ function ExtractedFieldRow({ field, onAccept, onReject, onEdit, isPending }: any
               </div>
             )}
 
-            {field.sourceSnippet && (
-              <p className="text-xs text-muted-foreground italic">
-                Source: &ldquo;{field.sourceSnippet.substring(0, 150)}{field.sourceSnippet.length > 150 ? "..." : ""}&rdquo;
-              </p>
+            {field.sourceSnippet && (() => {
+              let displaySnippet = field.sourceSnippet;
+              try {
+                const parsed = JSON.parse(field.sourceSnippet);
+                if (parsed.snippet) displaySnippet = parsed.snippet;
+              } catch {}
+              return displaySnippet ? (
+                <p className="text-xs text-muted-foreground italic">
+                  Source: &ldquo;{displaySnippet.substring(0, 150)}{displaySnippet.length > 150 ? "..." : ""}&rdquo;
+                </p>
+              ) : null;
+            })()}
+
+            {field.category === "plan" && (
+              <div className="flex items-center gap-1.5 text-xs" data-testid={`plan-task-hint-${field.id}`}>
+                <FileText className="w-3 h-3" style={{ color: "#277493" }} />
+                <span className="text-muted-foreground">
+                  {field.status === "accepted" || field.status === "edited"
+                    ? "Added to Provider Tasks"
+                    : "Accepting will create a Provider Task"}
+                </span>
+              </div>
             )}
           </div>
 

@@ -6951,6 +6951,63 @@ export async function registerRoutes(
       });
     }
 
+    const referralPatterns = [
+      /(?:refer(?:ral)?|consult)\s+(?:to\s+|for\s+)?(?:a\s+)?([^.,;]+?)(?:\s+for\s+([^.,;]+))?(?:\.|,|;|$)/gi,
+      /(?:send|sending)\s+(?:patient|pt)?\s*(?:to\s+)([^.,;]+?)(?:\s+for\s+([^.,;]+))?(?:\.|,|;|$)/gi,
+      /(?:recommend(?:ing)?|need(?:s)?)\s+(?:a\s+)?(?:referral\s+)?(?:to\s+)([^.,;]+?)(?:\s+for\s+([^.,;]+))?(?:\.|,|;|$)/gi,
+    ];
+    for (const pat of referralPatterns) {
+      let m;
+      while ((m = pat.exec(text)) !== null) {
+        const specialist = m[1].trim();
+        const reason = m[2]?.trim() || "";
+        if (specialist.length > 2 && specialist.length < 100) {
+          const title = reason ? `Refer to ${specialist} for ${reason}` : `Refer to ${specialist}`;
+          fields.push({
+            fieldKey: "plan.referral", fieldLabel: `Referral: ${specialist}`, category: "plan",
+            proposedValue: title, confidence: 0.8,
+            sourceSnippet: JSON.stringify({ snippet: m[0].trim(), taskPriority: "medium", taskDescription: title }),
+          });
+        }
+      }
+    }
+
+    const followUpPatterns = [
+      /(?:follow[\s-]?up)\s+(?:in\s+|within\s+)?([^.,;]+?)(?:\.|,|;|$)/gi,
+      /(?:return|come\s+back|see\s+(?:me|us|doctor|provider))\s+(?:in\s+|within\s+)?([^.,;]+?)(?:\.|,|;|$)/gi,
+      /(?:schedule|scheduling)\s+(?:a\s+)?(?:follow[\s-]?up|appointment|visit)\s*(?:in\s+|for\s+)?([^.,;]+?)(?:\.|,|;|$)/gi,
+    ];
+    for (const pat of followUpPatterns) {
+      let m;
+      while ((m = pat.exec(text)) !== null) {
+        const detail = m[1].trim();
+        if (detail.length > 2 && detail.length < 120) {
+          fields.push({
+            fieldKey: "plan.follow_up", fieldLabel: `Follow-up: ${detail}`, category: "plan",
+            proposedValue: `Follow-up ${detail}`, confidence: 0.75,
+            sourceSnippet: JSON.stringify({ snippet: m[0].trim(), taskPriority: "medium", taskDescription: `Follow-up ${detail}` }),
+          });
+        }
+      }
+    }
+
+    const labOrderPatterns = [
+      /(?:order(?:ing)?|get(?:ting)?|draw)\s+(?:a\s+)?(?:lab(?:s)?|blood\s*work|CBC|CMP|BMP|A1[cC]|lipid\s+panel|TSH|metabolic\s+panel|hemoglobin|hematocrit)\s*([^.,;]*?)(?:\.|,|;|$)/gi,
+    ];
+    for (const pat of labOrderPatterns) {
+      let m;
+      while ((m = pat.exec(text)) !== null) {
+        const labDetail = m[0].trim();
+        if (labDetail.length > 5) {
+          fields.push({
+            fieldKey: "plan.lab_order", fieldLabel: `Lab Order`, category: "plan",
+            proposedValue: labDetail, confidence: 0.8,
+            sourceSnippet: JSON.stringify({ snippet: labDetail, taskPriority: "medium", taskDescription: labDetail }),
+          });
+        }
+      }
+    }
+
     return fields;
   }
 
@@ -6985,13 +7042,20 @@ export async function registerRoutes(
         const extractionPrompt = `You are a clinical data extraction assistant for in-home NP visits. Extract structured clinical data from the following visit transcript.
 
 Return a JSON array of extracted fields. Each field should have:
-- "fieldKey": a machine-readable key (e.g., "vitals.systolicBp", "vitals.diastolicBp", "vitals.heartRate", "vitals.temperature", "vitals.oxygenSaturation", "vitals.respiratoryRate", "vitals.weight", "vitals.height", "vitals.bmi", "vitals.painLevel", "assessment.phq2Score", "assessment.generalNotes", "medication.name", "condition.name", "screening.colonoscopy", "screening.mammogram", "screening.col", "screening.bcs")
-- "fieldLabel": a human-readable label (e.g., "Systolic Blood Pressure", "Colonoscopy Screening")
+- "fieldKey": a machine-readable key (e.g., "vitals.systolicBp", "vitals.diastolicBp", "vitals.heartRate", "vitals.temperature", "vitals.oxygenSaturation", "vitals.respiratoryRate", "vitals.weight", "vitals.height", "vitals.bmi", "vitals.painLevel", "assessment.phq2Score", "assessment.generalNotes", "medication.name", "condition.name", "screening.colonoscopy", "screening.mammogram", "screening.col", "screening.bcs", "plan.referral", "plan.follow_up", "plan.lab_order", "plan.medication_order", "plan.social_services")
+- "fieldLabel": a human-readable label (e.g., "Systolic Blood Pressure", "Colonoscopy Screening", "Referral to Cardiology", "Follow-up in 2 weeks")
 - "category": one of "vitals", "assessment", "medication", "condition", "screening", "social", "plan"
 - For screening fields (colonoscopy, mammogram, etc.), include the type of screening, date if mentioned, and any results/findings in the proposedValue
+- For plan-category fields (referrals, follow-ups, lab orders, social services), use:
+  - "fieldKey": "plan.referral" for specialist referrals, "plan.follow_up" for follow-up appointments/instructions, "plan.lab_order" for lab/test orders, "plan.medication_order" for medication orders/changes, "plan.social_services" for social service referrals
+  - "proposedValue": a concise title for the task (e.g., "Refer to cardiology for chest pain evaluation", "Follow-up visit in 2 weeks for BP recheck", "Order CBC and CMP labs")
+  - "taskPriority": one of "low", "medium", "high", "urgent" based on clinical urgency
+  - "taskDescription": a longer description including relevant clinical context from the transcript
 - "proposedValue": the extracted value as a string
 - "confidence": confidence score 0.0-1.0
 - "sourceSnippet": the relevant text snippet from the transcript
+
+Pay special attention to any mentions of referrals, specialist consultations, follow-up appointments, lab orders, imaging orders, medication changes, and social service needs — extract each as a separate plan-category field.
 
 Only extract data that is clearly stated. Do not infer or guess values. Return ONLY the JSON array, no other text.
 
@@ -7070,17 +7134,27 @@ ${transcript.text}`;
           console.log(`AI returned 0 fields, fallback extracted ${fieldsData.length} fields`);
         }
 
-        const insertFields = fieldsData.map((f: any) => ({
-          visitId: req.params.id,
-          transcriptId,
-          fieldKey: f.fieldKey || "unknown",
-          fieldLabel: f.fieldLabel || f.fieldKey || "Unknown Field",
-          category: f.category || "other",
-          proposedValue: String(f.proposedValue || ""),
-          confidence: f.confidence || 0.5,
-          sourceSnippet: f.sourceSnippet || "",
-          status: "pending" as const,
-        }));
+        const insertFields = fieldsData.map((f: any) => {
+          let sourceSnippet = f.sourceSnippet || "";
+          if (f.category === "plan" && (f.taskPriority || f.taskDescription)) {
+            sourceSnippet = JSON.stringify({
+              snippet: f.sourceSnippet || "",
+              taskPriority: f.taskPriority || "medium",
+              taskDescription: f.taskDescription || "",
+            });
+          }
+          return {
+            visitId: req.params.id,
+            transcriptId,
+            fieldKey: f.fieldKey || "unknown",
+            fieldLabel: f.fieldLabel || f.fieldKey || "Unknown Field",
+            category: f.category || "other",
+            proposedValue: String(f.proposedValue || ""),
+            confidence: f.confidence || 0.5,
+            sourceSnippet,
+            status: "pending" as const,
+          };
+        });
 
         const created = insertFields.length > 0 ? await storage.createExtractedFields(insertFields) : [];
 
@@ -7623,6 +7697,47 @@ Return ONLY the JSON object, no other text.`;
       }
 
       console.log(`Voice capture: ${measureId} measure result saved with screening type ${screeningType}, result: ${screeningResult || "not specified"}`);
+    }
+
+    if (field.category === "plan" && field.fieldKey) {
+      const visit = await storage.getVisit(field.visitId);
+      if (!visit) return;
+
+      const fieldKeyToTaskType: Record<string, string> = {
+        "plan.referral": "referral",
+        "plan.follow_up": "follow_up",
+        "plan.lab_order": "lab_order",
+        "plan.medication_order": "medication",
+        "plan.social_services": "social_services",
+      };
+      const taskType = fieldKeyToTaskType[field.fieldKey] || "follow_up";
+
+      let taskPriority = "medium";
+      let taskDescription = value;
+      try {
+        const parsed = JSON.parse(field.sourceSnippet || "{}");
+        if (parsed.taskPriority) taskPriority = parsed.taskPriority;
+        if (parsed.taskDescription) taskDescription = parsed.taskDescription;
+      } catch {}
+
+      const existingTasks = await storage.getTasksByVisit(field.visitId);
+      const duplicate = existingTasks.some(
+        (t: any) => t.title.toLowerCase() === value.toLowerCase() && t.taskType === taskType
+      );
+
+      if (!duplicate) {
+        await storage.createTask({
+          visitId: field.visitId,
+          memberId: visit.memberId,
+          taskType,
+          title: value,
+          description: taskDescription !== value ? `${taskDescription}\n\nSource: Voice capture (confidence: ${field.confidence})` : `Source: Voice capture (confidence: ${field.confidence})`,
+          priority: taskPriority,
+          status: "pending",
+          source: "voice_capture",
+        });
+        console.log(`Voice capture: Created ${taskType} care plan task "${value}" for visit ${field.visitId}`);
+      }
     }
   }
 

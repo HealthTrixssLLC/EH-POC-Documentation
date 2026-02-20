@@ -51,6 +51,7 @@ import VisitActive from "@/pages/visit-active";
 import PrivacyPolicy from "@/pages/privacy-policy";
 import ProductDescription from "@/pages/product-description";
 import ProviderQuality from "@/pages/provider-quality";
+import CocmTimeTracking from "@/pages/cocm-time-tracking";
 import { useQuery as useQueryHook } from "@tanstack/react-query";
 
 function DemoWatermark() {
@@ -101,6 +102,7 @@ function Router() {
       <Route path="/audit" component={AuditViewer} />
       <Route path="/audit/queue" component={AuditQueue} />
       <Route path="/providers/quality" component={ProviderQuality} />
+      <Route path="/cocm-time-tracking" component={CocmTimeTracking} />
       <Route path="/help" component={HelpSupport} />
       <Route path="/demo" component={DemoManagement} />
       <Route component={NotFound} />

@@ -29,6 +29,7 @@ import {
   Database,
   ClipboardCheck,
   TrendingUp,
+  Clock,
 } from "lucide-react";
 
 const roleMenus: Record<string, Array<{ title: string; url: string; icon: any }>> = {
@@ -40,6 +41,7 @@ const roleMenus: Record<string, Array<{ title: string; url: string; icon: any }>
     { title: "Dashboard", url: "/", icon: LayoutDashboard },
     { title: "Review Queue", url: "/reviews", icon: CheckSquare },
     { title: "Provider Quality", url: "/providers/quality", icon: TrendingUp },
+    { title: "CoCM Billing", url: "/cocm-time-tracking", icon: Clock },
     { title: "All Visits", url: "/visits", icon: ClipboardList },
   ],
   care_coordinator: [
@@ -51,6 +53,7 @@ const roleMenus: Record<string, Array<{ title: string; url: string; icon: any }>
     { title: "Dashboard", url: "/", icon: LayoutDashboard },
     { title: "Admin Console", url: "/admin", icon: Settings },
     { title: "Provider Quality", url: "/providers/quality", icon: TrendingUp },
+    { title: "CoCM Billing", url: "/cocm-time-tracking", icon: Clock },
     { title: "FHIR Interop", url: "/admin/fhir", icon: FileJson },
     { title: "Tech Docs", url: "/admin/tech-docs", icon: FileText },
     { title: "All Visits", url: "/visits", icon: ClipboardList },

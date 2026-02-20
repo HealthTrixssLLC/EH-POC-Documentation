@@ -231,7 +231,12 @@ export default function VisitDetail() {
               <Card key={t.id}>
                 <CardContent className="p-3">
                   <div className="flex items-center justify-between gap-2 flex-wrap">
-                    <span className="text-sm font-medium">{t.title}</span>
+                    <div className="flex items-center gap-2 min-w-0">
+                      <span className="text-sm font-medium">{t.title}</span>
+                      {t.source === "external" && (
+                        <Badge variant="default" className="text-xs bg-blue-600 dark:bg-blue-500" data-testid={`badge-external-${t.id}`}>External</Badge>
+                      )}
+                    </div>
                     <div className="flex items-center gap-2">
                       <Badge variant="secondary" className="text-xs capitalize">{t.taskType.replace(/_/g, " ")}</Badge>
                       <Badge variant="outline" className="text-xs capitalize">{t.status}</Badge>

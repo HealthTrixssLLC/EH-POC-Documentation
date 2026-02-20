@@ -5,7 +5,7 @@
 **System:** Easy Health Point of Care Application
 **Requestor:** Jay Baker
 **Date:** February 20, 2026
-**Status:** Phase 1 IMPLEMENTED (Feb 20, 2026) - Phase 2 IMPLEMENTED (Feb 20, 2026) - Phase 3 IMPLEMENTED (Feb 20, 2026) - Phase 4 Planning
+**Status:** Phase 1 IMPLEMENTED (Feb 20, 2026) - Phase 2 IMPLEMENTED (Feb 20, 2026) - Phase 3 IMPLEMENTED (Feb 20, 2026) - Phase 4 IMPLEMENTED (Feb 20, 2026)
 **Source:** Brellium Comparison Analysis (`attached_assets/eh-brellium_comparison_1771595118054.md`)
 
 ---
@@ -812,25 +812,25 @@ Columns:
   - [x] Frontend: code alignment panel on review-finalize, alignment badge on supervisor reviews
   - [x] Testing & validation
 
-### Phase 4 - Low/Conditional (CR-P9, CR-P10)
+### Phase 4 - Low/Conditional (CR-P9, CR-P10) ✅ IMPLEMENTED
 
-- [ ] CR-P9: Inbound FHIR CarePlan and PractitionerRole Processing
-  - [ ] CarePlan resource processor
-  - [ ] PractitionerRole resource processor
-  - [ ] Duplicate detection
-  - [ ] FHIR Playground test payloads
-  - [ ] Frontend: external source badges, playground updates
-  - [ ] Testing & validation
+- [x] CR-P9: Inbound FHIR CarePlan and PractitionerRole Processing
+  - [x] CarePlan resource processor
+  - [x] PractitionerRole resource processor
+  - [x] Duplicate detection (externalId-based)
+  - [x] FHIR Playground test payloads
+  - [x] Frontend: external source badges, playground updates
+  - [x] Testing & validation
 
-- [ ] CR-P10: CoCM Time-Based Billing Module (Conditional)
-  - [ ] Data model (cocm_time_entries, cocm_monthly_summaries tables)
-  - [ ] Storage interface methods
-  - [ ] Time entry endpoints
-  - [ ] Monthly summary computation with CPT thresholds
-  - [ ] Cross-role duplication detection
-  - [ ] Pre-claim gate integration (CR-P1)
-  - [ ] Frontend: time tracking page, monthly summary, duplication warnings
-  - [ ] Testing & validation
+- [x] CR-P10: CoCM Time-Based Billing Module
+  - [x] Data model (cocm_time_entries, cocm_monthly_summaries tables)
+  - [x] Storage interface methods
+  - [x] Time entry CRUD endpoints
+  - [x] Monthly summary computation with CPT thresholds (99492/99493/99494)
+  - [x] Cross-role duplication detection
+  - [x] Frontend: time tracking page, monthly summary, duplication warnings
+  - [x] Sidebar navigation (supervisor, admin roles)
+  - [x] Testing & validation
 
 ---
 

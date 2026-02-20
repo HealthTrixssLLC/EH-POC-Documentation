@@ -3767,6 +3767,144 @@ export async function registerRoutes(
     }
   });
 
+  // CR-P10: CoCM Time-Based Billing
+  app.post("/api/cocm/time-entries", async (req, res) => {
+    try {
+      const { visitId, memberId, providerId, activityType, durationMinutes, activityDate, notes } = req.body;
+      if (!memberId || !providerId || !activityType || !durationMinutes || !activityDate) {
+        return res.status(400).json({ message: "memberId, providerId, activityType, durationMinutes, activityDate are required" });
+      }
+      const validTypes = ["care_plan_dev", "consultation", "assessment", "coordination", "review"];
+      if (!validTypes.includes(activityType)) {
+        return res.status(400).json({ message: `activityType must be one of: ${validTypes.join(", ")}` });
+      }
+      const entry = await storage.createCocmTimeEntry({
+        visitId: visitId || null,
+        memberId,
+        providerId,
+        activityType,
+        durationMinutes,
+        activityDate,
+        notes: notes || null,
+        createdAt: new Date().toISOString(),
+      });
+      return res.status(201).json(entry);
+    } catch (err: any) {
+      return res.status(500).json({ message: err.message });
+    }
+  });
+
+  app.get("/api/cocm/time-entries", async (req, res) => {
+    try {
+      const { memberId, providerId, month } = req.query;
+      if (memberId) {
+        const entries = await storage.getCocmTimeEntries(memberId as string, month as string | undefined);
+        return res.json(entries);
+      }
+      if (providerId) {
+        const entries = await storage.getCocmTimeEntriesByProvider(providerId as string, month as string | undefined);
+        return res.json(entries);
+      }
+      return res.status(400).json({ message: "memberId or providerId query parameter required" });
+    } catch (err: any) {
+      return res.status(500).json({ message: err.message });
+    }
+  });
+
+  app.delete("/api/cocm/time-entries/:id", async (req, res) => {
+    try {
+      await storage.deleteCocmTimeEntry(req.params.id);
+      return res.json({ success: true });
+    } catch (err: any) {
+      return res.status(500).json({ message: err.message });
+    }
+  });
+
+  app.post("/api/cocm/monthly-summary", async (req, res) => {
+    try {
+      const { memberId, month } = req.body;
+      if (!memberId || !month) {
+        return res.status(400).json({ message: "memberId and month (YYYY-MM) are required" });
+      }
+
+      const entries = await storage.getCocmTimeEntries(memberId);
+      const monthEntries = entries.filter(e => e.activityDate.startsWith(month));
+      const totalMinutes = monthEntries.reduce((sum, e) => sum + e.durationMinutes, 0);
+
+      const providerMap: Record<string, number> = {};
+      for (const entry of monthEntries) {
+        providerMap[entry.providerId] = (providerMap[entry.providerId] || 0) + entry.durationMinutes;
+      }
+
+      const duplications: any[] = [];
+      const providerIds = Object.keys(providerMap);
+      for (let i = 0; i < providerIds.length; i++) {
+        for (let j = i + 1; j < providerIds.length; j++) {
+          const p1Entries = monthEntries.filter(e => e.providerId === providerIds[i]);
+          const p2Entries = monthEntries.filter(e => e.providerId === providerIds[j]);
+          for (const e1 of p1Entries) {
+            for (const e2 of p2Entries) {
+              if (e1.activityDate === e2.activityDate && e1.activityType === e2.activityType) {
+                duplications.push({
+                  date: e1.activityDate,
+                  activityType: e1.activityType,
+                  providers: [providerIds[i], providerIds[j]],
+                  minutes: [e1.durationMinutes, e2.durationMinutes],
+                });
+              }
+            }
+          }
+        }
+      }
+
+      const existingSummaries = await storage.getCocmMonthlySummaries(memberId);
+      const isInitialMonth = !existingSummaries.some(
+        s => s.billingMonth < month && s.qualifyingCpt !== "none"
+      );
+
+      let qualifyingCpt = "none";
+      const baseThreshold = isInitialMonth ? 70 : 60;
+      const baseCode = isInitialMonth ? "99492" : "99493";
+
+      if (totalMinutes >= baseThreshold) {
+        qualifyingCpt = baseCode;
+        const excessMinutes = totalMinutes - baseThreshold;
+        if (excessMinutes >= 30) {
+          qualifyingCpt = `${baseCode}+99494`;
+        }
+      }
+
+      const summary = await storage.createCocmMonthlySummary({
+        memberId,
+        billingMonth: month,
+        totalMinutes,
+        qualifyingCpt,
+        providerBreakdown: providerMap,
+        duplicationsDetected: duplications,
+        evaluatedAt: new Date().toISOString(),
+      });
+      return res.status(201).json(summary);
+    } catch (err: any) {
+      return res.status(500).json({ message: err.message });
+    }
+  });
+
+  app.get("/api/cocm/monthly-summary", async (req, res) => {
+    try {
+      const { memberId, month } = req.query;
+      if (!memberId) return res.status(400).json({ message: "memberId query parameter required" });
+      if (month) {
+        const summary = await storage.getCocmMonthlySummary(memberId as string, month as string);
+        if (!summary) return res.status(404).json({ message: "No summary found for this month" });
+        return res.json(summary);
+      }
+      const summaries = await storage.getCocmMonthlySummaries(memberId as string);
+      return res.json(summaries);
+    } catch (err: any) {
+      return res.status(500).json({ message: err.message });
+    }
+  });
+
   // Export (with billing readiness gate - CR-P1)
   app.post("/api/visits/:id/export", async (req, res) => {
     try {
@@ -5191,6 +5329,108 @@ export async function registerRoutes(
             }
 
             results.push({ resourceType: "Encounter", action: "created", id: created.id });
+          } else if (resource.resourceType === "CarePlan") {
+            const subjectRef = resource.subject?.reference;
+            const memberId = createdMember?.id || (subjectRef ? subjectRef.replace("Patient/", "") : null);
+            if (!memberId) {
+              errors.push({ severity: "warning", code: "invalid", diagnostics: "CarePlan has no subject reference and no Patient in bundle" });
+              continue;
+            }
+            const allVisits = await storage.getAllVisits();
+            const memberVisits = allVisits.filter(v => v.memberId === memberId);
+            const targetVisit = memberVisits.length > 0 ? memberVisits[memberVisits.length - 1] : null;
+            if (!targetVisit) {
+              errors.push({ severity: "warning", code: "not-found", diagnostics: "No visit found for CarePlan subject; skipping" });
+              continue;
+            }
+
+            let importedCount = 0;
+            const activities = resource.activity || [];
+            for (const activity of activities) {
+              const detail = activity.detail || {};
+              const activityDesc = detail.description || activity.outcomeReference?.[0]?.display || "Imported care plan activity";
+              const externalId = resource.id ? `${resource.id}-${importedCount}` : null;
+
+              if (externalId) {
+                const existing = await storage.getTaskByExternalId(externalId);
+                if (existing) {
+                  importedCount++;
+                  continue;
+                }
+              }
+
+              const taskType = detail.code?.coding?.[0]?.code || "care_coordination";
+              const priority = detail.priority || "routine";
+              const priorityMap: Record<string, string> = { urgent: "high", asap: "high", routine: "medium", stat: "high" };
+
+              await storage.createTask({
+                visitId: targetVisit.id,
+                memberId,
+                taskType,
+                title: activityDesc.substring(0, 200),
+                description: detail.goal?.[0]?.display || detail.reasonReference?.[0]?.display || null,
+                priority: priorityMap[priority] || "medium",
+                status: detail.status === "completed" ? "completed" : "pending",
+                dueDate: detail.scheduledPeriod?.end || detail.scheduledString || null,
+                source: "external",
+                externalId,
+              });
+              importedCount++;
+            }
+            results.push({ resourceType: "CarePlan", action: "created", tasksImported: importedCount });
+
+            await storage.createAuditEvent({
+              eventType: "fhir_careplan_ingested",
+              details: `FHIR CarePlan ingested: ${importedCount} activities imported for member ${memberId}`,
+            });
+
+          } else if (resource.resourceType === "PractitionerRole") {
+            const practitioner = resource.practitioner || {};
+            const npiIdentifier = resource.identifier?.find((i: any) => i.system === "http://hl7.org/fhir/sid/us-npi") ||
+                                  practitioner.identifier?.find((i: any) => i.system === "http://hl7.org/fhir/sid/us-npi");
+            const npi = npiIdentifier?.value;
+            const practName = practitioner.display || resource.practitioner?.display || "Unknown Practitioner";
+            const roleCode = resource.code?.[0]?.coding?.[0]?.code || "np";
+            const roleMap: Record<string, string> = { nurse: "np", physician: "supervisor", "nurse-practitioner": "np", "care-coordinator": "care_coordinator" };
+            const role = roleMap[roleCode] || "np";
+            const phone = resource.telecom?.find((t: any) => t.system === "phone")?.value;
+            const email = resource.telecom?.find((t: any) => t.system === "email")?.value;
+
+            if (npi) {
+              const existingUser = await storage.getUserByNpi(npi);
+              if (existingUser) {
+                await storage.updateUser(existingUser.id, {
+                  fullName: practName !== "Unknown Practitioner" ? practName : existingUser.fullName,
+                  ...(phone && { phone }),
+                  ...(email && { email }),
+                });
+                results.push({ resourceType: "PractitionerRole", action: "updated", id: existingUser.id, npi });
+                await storage.createAuditEvent({
+                  eventType: "fhir_practitionerrole_ingested",
+                  details: `FHIR PractitionerRole updated: ${practName} (NPI: ${npi})`,
+                });
+                continue;
+              }
+            }
+
+            const username = `fhir_${npi || Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
+            const created = await storage.createUser({
+              username,
+              password: "$fhir_imported$",
+              fullName: practName,
+              role,
+              email: email || null,
+              phone: phone || null,
+              npi: npi || null,
+              active: true,
+            });
+            results.push({ resourceType: "PractitionerRole", action: "created", id: created.id, npi });
+
+            await storage.createAuditEvent({
+              eventType: "fhir_practitionerrole_ingested",
+              details: `FHIR PractitionerRole created: ${practName} (NPI: ${npi || "none"}, role: ${role})`,
+            });
+
           } else {
             results.push({ resourceType: resource.resourceType, action: "skipped", reason: "unsupported resource type" });
           }

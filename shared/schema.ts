@@ -11,6 +11,7 @@ export const users = pgTable("users", {
   role: text("role").notNull().default("np"),
   email: text("email"),
   phone: text("phone"),
+  npi: text("npi"),
   mfaEnabled: boolean("mfa_enabled").default(false),
   biometricEnabled: boolean("biometric_enabled").default(false),
   active: boolean("active").notNull().default(true),
@@ -244,6 +245,8 @@ export const carePlanTasks = pgTable("care_plan_tasks", {
   outcome: text("outcome"),
   outcomeNotes: text("outcome_notes"),
   completedAt: text("completed_at"),
+  source: text("source").default("internal"),
+  externalId: text("external_id"),
   createdAt: timestamp("created_at").defaultNow(),
 });
 
@@ -1154,6 +1157,37 @@ export const nlpCodeAlignmentResults = pgTable("nlp_code_alignment_results", {
 export const insertNlpCodeAlignmentResultSchema = createInsertSchema(nlpCodeAlignmentResults).omit({ id: true });
 export type InsertNlpCodeAlignmentResult = z.infer<typeof insertNlpCodeAlignmentResultSchema>;
 export type NlpCodeAlignmentResult = typeof nlpCodeAlignmentResults.$inferSelect;
+
+export const cocmTimeEntries = pgTable("cocm_time_entries", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  visitId: varchar("visit_id"),
+  memberId: varchar("member_id").notNull(),
+  providerId: varchar("provider_id").notNull(),
+  activityType: text("activity_type").notNull(),
+  durationMinutes: integer("duration_minutes").notNull(),
+  activityDate: text("activity_date").notNull(),
+  notes: text("notes"),
+  createdAt: text("created_at").notNull(),
+});
+
+export const insertCocmTimeEntrySchema = createInsertSchema(cocmTimeEntries).omit({ id: true });
+export type InsertCocmTimeEntry = z.infer<typeof insertCocmTimeEntrySchema>;
+export type CocmTimeEntry = typeof cocmTimeEntries.$inferSelect;
+
+export const cocmMonthlySummaries = pgTable("cocm_monthly_summaries", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  memberId: varchar("member_id").notNull(),
+  billingMonth: text("billing_month").notNull(),
+  totalMinutes: integer("total_minutes").notNull(),
+  qualifyingCpt: text("qualifying_cpt").notNull(),
+  providerBreakdown: jsonb("provider_breakdown"),
+  duplicationsDetected: jsonb("duplications_detected"),
+  evaluatedAt: text("evaluated_at").notNull(),
+});
+
+export const insertCocmMonthlySummarySchema = createInsertSchema(cocmMonthlySummaries).omit({ id: true });
+export type InsertCocmMonthlySummary = z.infer<typeof insertCocmMonthlySummarySchema>;
+export type CocmMonthlySummary = typeof cocmMonthlySummaries.$inferSelect;
 
 export const AUDIT_FINDING_CATEGORIES = [
   { code: "documentation_quality", label: "Documentation Quality", description: "Completeness and accuracy of clinical documentation" },

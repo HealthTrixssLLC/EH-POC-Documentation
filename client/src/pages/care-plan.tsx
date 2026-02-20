@@ -201,7 +201,12 @@ export default function CarePlan() {
                     <StatusIcon className="w-5 h-5 flex-shrink-0 mt-0.5" style={{ color: task.status === "completed" ? "#277493" : "#ABAFA5" }} />
                     <div className="flex-1 min-w-0 space-y-1">
                       <div className="flex items-center justify-between gap-2 flex-wrap">
-                        <span className="text-sm font-semibold" data-testid={`text-task-title-${task.id}`}>{task.title}</span>
+                        <div className="flex items-center gap-2 min-w-0">
+                          <span className="text-sm font-semibold" data-testid={`text-task-title-${task.id}`}>{task.title}</span>
+                          {task.source === "external" && (
+                            <Badge variant="default" className="text-xs bg-blue-600 dark:bg-blue-500" data-testid={`badge-external-task-${task.id}`}>External</Badge>
+                          )}
+                        </div>
                         <div className="flex items-center gap-2">
                           <Badge variant="secondary" className="text-xs capitalize">{task.taskType.replace(/_/g, " ")}</Badge>
                           <div className="w-2 h-2 rounded-full" style={{ backgroundColor: priorityColors[task.priority] || "#ABAFA5" }} />

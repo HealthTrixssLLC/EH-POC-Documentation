@@ -87,6 +87,10 @@ import {
   type DocumentationChange, type InsertDocumentationChange,
   nlpCodeAlignmentResults,
   type NlpCodeAlignmentResult, type InsertNlpCodeAlignmentResult,
+  cocmTimeEntries,
+  type CocmTimeEntry, type InsertCocmTimeEntry,
+  cocmMonthlySummaries,
+  type CocmMonthlySummary, type InsertCocmMonthlySummary,
 } from "@shared/schema";
 
 export interface IStorage {
@@ -337,6 +341,19 @@ export interface IStorage {
   // CR-P8: NLP Code Alignment
   createNlpCodeAlignmentResult(result: InsertNlpCodeAlignmentResult): Promise<NlpCodeAlignmentResult>;
   getNlpCodeAlignmentResult(visitId: string): Promise<NlpCodeAlignmentResult | undefined>;
+
+  // CR-P9: FHIR helpers
+  getUserByNpi(npi: string): Promise<User | undefined>;
+  getTaskByExternalId(externalId: string): Promise<CarePlanTask | undefined>;
+
+  // CR-P10: CoCM Time Tracking
+  createCocmTimeEntry(entry: InsertCocmTimeEntry): Promise<CocmTimeEntry>;
+  getCocmTimeEntries(memberId: string, month?: string): Promise<CocmTimeEntry[]>;
+  getCocmTimeEntriesByProvider(providerId: string, month?: string): Promise<CocmTimeEntry[]>;
+  deleteCocmTimeEntry(id: string): Promise<void>;
+  createCocmMonthlySummary(summary: InsertCocmMonthlySummary): Promise<CocmMonthlySummary>;
+  getCocmMonthlySummary(memberId: string, month: string): Promise<CocmMonthlySummary | undefined>;
+  getCocmMonthlySummaries(memberId: string): Promise<CocmMonthlySummary[]>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -1266,6 +1283,61 @@ export class DatabaseStorage implements IStorage {
   async getNlpCodeAlignmentResult(visitId: string) {
     const [result] = await db.select().from(nlpCodeAlignmentResults).where(eq(nlpCodeAlignmentResults.visitId, visitId)).orderBy(desc(nlpCodeAlignmentResults.analyzedAt)).limit(1);
     return result;
+  }
+
+  // CR-P9: FHIR helpers
+  async getUserByNpi(npi: string) {
+    const [user] = await db.select().from(users).where(eq(users.npi, npi));
+    return user;
+  }
+
+  async getTaskByExternalId(externalId: string) {
+    const [task] = await db.select().from(carePlanTasks).where(eq(carePlanTasks.externalId, externalId));
+    return task;
+  }
+
+  // CR-P10: CoCM Time Tracking
+  async createCocmTimeEntry(entry: InsertCocmTimeEntry) {
+    const [created] = await db.insert(cocmTimeEntries).values(entry).returning();
+    return created;
+  }
+
+  async getCocmTimeEntries(memberId: string, month?: string) {
+    if (month) {
+      return db.select().from(cocmTimeEntries).where(
+        and(eq(cocmTimeEntries.memberId, memberId), eq(cocmTimeEntries.activityDate, month))
+      ).orderBy(desc(cocmTimeEntries.activityDate));
+    }
+    return db.select().from(cocmTimeEntries).where(eq(cocmTimeEntries.memberId, memberId)).orderBy(desc(cocmTimeEntries.activityDate));
+  }
+
+  async getCocmTimeEntriesByProvider(providerId: string, month?: string) {
+    if (month) {
+      return db.select().from(cocmTimeEntries).where(
+        and(eq(cocmTimeEntries.providerId, providerId), eq(cocmTimeEntries.activityDate, month))
+      ).orderBy(desc(cocmTimeEntries.activityDate));
+    }
+    return db.select().from(cocmTimeEntries).where(eq(cocmTimeEntries.providerId, providerId)).orderBy(desc(cocmTimeEntries.activityDate));
+  }
+
+  async deleteCocmTimeEntry(id: string) {
+    await db.delete(cocmTimeEntries).where(eq(cocmTimeEntries.id, id));
+  }
+
+  async createCocmMonthlySummary(summary: InsertCocmMonthlySummary) {
+    const [created] = await db.insert(cocmMonthlySummaries).values(summary).returning();
+    return created;
+  }
+
+  async getCocmMonthlySummary(memberId: string, month: string) {
+    const [result] = await db.select().from(cocmMonthlySummaries).where(
+      and(eq(cocmMonthlySummaries.memberId, memberId), eq(cocmMonthlySummaries.billingMonth, month))
+    );
+    return result;
+  }
+
+  async getCocmMonthlySummaries(memberId: string) {
+    return db.select().from(cocmMonthlySummaries).where(eq(cocmMonthlySummaries.memberId, memberId)).orderBy(desc(cocmMonthlySummaries.billingMonth));
   }
 }
 

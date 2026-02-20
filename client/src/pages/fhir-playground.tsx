@@ -70,6 +70,71 @@ const SAMPLE_BUNDLE = {
   ],
 };
 
+const SAMPLE_CAREPLAN_BUNDLE = {
+  resourceType: "Bundle",
+  type: "transaction",
+  entry: [
+    {
+      resource: {
+        resourceType: "CarePlan",
+        id: "cp-demo-001",
+        status: "active",
+        intent: "plan",
+        title: "Post-Visit Care Plan",
+        subject: { reference: "Patient/FHIR-DEMO-001" },
+        activity: [
+          {
+            detail: {
+              description: "Schedule follow-up appointment with PCP within 2 weeks",
+              status: "scheduled",
+              code: { coding: [{ code: "follow_up", display: "Follow-up" }] },
+              priority: "routine",
+              scheduledPeriod: { end: new Date(Date.now() + 14 * 86400000).toISOString().split("T")[0] },
+            },
+          },
+          {
+            detail: {
+              description: "Complete A1c lab test per annual diabetes monitoring",
+              status: "in-progress",
+              code: { coding: [{ code: "lab_order", display: "Lab Order" }] },
+              priority: "urgent",
+              goal: [{ display: "Diabetes management" }],
+            },
+          },
+          {
+            detail: {
+              description: "Refer to podiatry for diabetic foot exam",
+              status: "scheduled",
+              code: { coding: [{ code: "referral", display: "Referral" }] },
+              priority: "routine",
+              reasonReference: [{ display: "Diabetes mellitus type 2" }],
+            },
+          },
+        ],
+      },
+    },
+  ],
+};
+
+const SAMPLE_PRACTITIONERROLE_BUNDLE = {
+  resourceType: "Bundle",
+  type: "transaction",
+  entry: [
+    {
+      resource: {
+        resourceType: "PractitionerRole",
+        identifier: [{ system: "http://hl7.org/fhir/sid/us-npi", value: "1234567890" }],
+        practitioner: { display: "Dr. Maria Santos" },
+        code: [{ coding: [{ code: "nurse-practitioner", display: "Nurse Practitioner" }] }],
+        telecom: [
+          { system: "phone", value: "555-0177" },
+          { system: "email", value: "maria.santos@easyhealth.example.com" },
+        ],
+      },
+    },
+  ],
+};
+
 type EndpointType = "patient" | "encounter" | "observation" | "condition" | "bundle";
 
 const ENDPOINT_OPTIONS: { value: EndpointType; label: string; description: string }[] = [
@@ -258,7 +323,7 @@ function ExportTab() {
 
 function ImportTab() {
   const [jsonInput, setJsonInput] = useState("");
-  const [importType, setImportType] = useState<"patient" | "bundle">("bundle");
+  const [importType, setImportType] = useState<"patient" | "bundle" | "careplan" | "practitioner">("bundle");
   const [result, setResult] = useState<any>(null);
   const [demoBundleLoading, setDemoBundleLoading] = useState(false);
   const [demoBundleLoaded, setDemoBundleLoaded] = useState(false);
@@ -294,6 +359,10 @@ function ImportTab() {
   const loadSample = () => {
     if (importType === "patient") {
       setJsonInput(JSON.stringify(SAMPLE_PATIENT, null, 2));
+    } else if (importType === "careplan") {
+      setJsonInput(JSON.stringify(SAMPLE_CAREPLAN_BUNDLE, null, 2));
+    } else if (importType === "practitioner") {
+      setJsonInput(JSON.stringify(SAMPLE_PRACTITIONERROLE_BUNDLE, null, 2));
     } else {
       setJsonInput(JSON.stringify(SAMPLE_BUNDLE, null, 2));
     }
@@ -383,6 +452,8 @@ function ImportTab() {
                 <SelectContent>
                   <SelectItem value="patient">FHIR Patient</SelectItem>
                   <SelectItem value="bundle">FHIR Bundle</SelectItem>
+                  <SelectItem value="careplan">CarePlan Bundle</SelectItem>
+                  <SelectItem value="practitioner">PractitionerRole Bundle</SelectItem>
                 </SelectContent>
               </Select>
             </div>

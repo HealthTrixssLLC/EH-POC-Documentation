@@ -467,34 +467,34 @@ Columns:
 
 ### 6.3 Backend Implementation
 
-- [ ] Create `provider_quality_snapshots` table in `shared/schema.ts`
-- [ ] Add storage interface methods: `createProviderQualitySnapshot()`, `getProviderQualitySnapshots(providerId, dateRange)`
-- [ ] Create `GET /api/providers/:id/quality` endpoint returning:
+- [x] Create `provider_quality_snapshots` table in `shared/schema.ts`
+- [x] Add storage interface methods: `createProviderQualitySnapshot()`, `getProviderQualitySnapshots(providerId, dateRange)`
+- [x] Create `GET /api/providers/:id/quality` endpoint returning:
   - Rolling 30/60/90-day aggregate scores
   - Encounter count per period
   - Quality flag breakdown
   - Trend data points for charting
-- [ ] Create `GET /api/providers/quality-summary` endpoint returning:
+- [x] Create `GET /api/providers/quality-summary` endpoint returning:
   - All providers ranked by overall quality score
   - Providers below threshold flagged
   - Organization average for benchmarking
-- [ ] Implement snapshot computation triggered on a schedule or after each finalized visit
-- [ ] Create `GET /api/providers/:id/quality/export` endpoint for compliance committee reports
+- [x] Implement snapshot computation triggered on a schedule or after each finalized visit
+- [x] Create `GET /api/providers/:id/quality/export` endpoint for compliance committee reports
 
 ### 6.4 Frontend Implementation
 
-- [ ] Add Provider Quality Dashboard page accessible to compliance and admin roles
-- [ ] Display provider quality trend charts (line chart, 30/60/90-day windows)
-- [ ] Show provider ranking table with color-coded performance indicators
-- [ ] Support drill-down from provider to individual encounter audit reports
-- [ ] Add export button for compliance committee reports
+- [x] Add Provider Quality Dashboard page accessible to compliance and admin roles
+- [x] Display provider quality trend charts (line chart, 30/60/90-day windows)
+- [x] Show provider ranking table with color-coded performance indicators
+- [x] Support drill-down from provider to individual encounter audit reports
+- [x] Add export button for compliance committee reports
 
 ### 6.5 Validation & Testing
 
-- [ ] Verify aggregate scores compute correctly from encounter data
-- [ ] Verify provider ranking sorts correctly
-- [ ] Verify trend charts display accurate historical data
-- [ ] Verify drill-down navigation works from provider to encounter
+- [x] Verify aggregate scores compute correctly from encounter data
+- [x] Verify provider ranking sorts correctly
+- [x] Verify trend charts display accurate historical data
+- [x] Verify drill-down navigation works from provider to encounter
 
 ---
 
@@ -527,32 +527,32 @@ Columns:
 
 ### 7.3 Backend Implementation
 
-- [ ] Create `documentation_changes` table in `shared/schema.ts`
-- [ ] Add storage interface methods: `createDocumentationChange()`, `getDocumentationChanges(visitId)`, `getDocumentationChangesByEntity(entityType, entityId)`
-- [ ] Implement change tracking middleware for key mutation endpoints:
+- [x] Create `documentation_changes` table in `shared/schema.ts`
+- [x] Add storage interface methods: `createDocumentationChange()`, `getDocumentationChanges(visitId)`, `getDocumentationChangesByEntity(entityType, entityId)`
+- [x] Implement change tracking middleware for key mutation endpoints:
   - `PUT /api/visits/:id/vitals` - capture before/after for each vital sign field
   - `POST /api/visits/:id/assessments/:instrumentId` - capture assessment response changes
   - `PUT /api/visits/:id/codes/:codeId` - capture code verification/removal changes
   - `PUT /api/visits/:id/med-recon/:medId` - capture medication status changes
   - `POST /api/visits/:id/care-plan-tasks` - capture care plan additions/modifications
-- [ ] Create `GET /api/visits/:id/change-history` endpoint returning chronological change log
-- [ ] Link changes to remediation requests when visit is in "returned" status
-- [ ] Add audit event type: `documentation_field_changed`
+- [x] Create `GET /api/visits/:id/change-history` endpoint returning chronological change log
+- [x] Link changes to remediation requests when visit is in "returned" status
+- [x] Add audit event type: `documentation_field_changed`
 
 ### 7.4 Frontend Implementation
 
-- [ ] Add Documentation Change History panel to visit detail page
-- [ ] Display chronological change log with before/after values
-- [ ] Highlight changes made after supervisor return (remediation-linked changes)
-- [ ] Add change history view to supervisor review for remediation verification
-- [ ] Color-code changes by type (remediation vs. routine)
+- [x] Add Documentation Change History panel to visit detail page
+- [x] Display chronological change log with before/after values
+- [x] Highlight changes made after supervisor return (remediation-linked changes)
+- [x] Add change history view to supervisor review for remediation verification
+- [x] Color-code changes by type (remediation vs. routine)
 
 ### 7.5 Validation & Testing
 
-- [ ] Verify changes are captured for each tracked endpoint
-- [ ] Verify before/after values are accurate
-- [ ] Verify remediation linkage when visit is in returned status
-- [ ] Verify change history displays correctly on visit detail and supervisor review
+- [x] Verify changes are captured for each tracked endpoint
+- [x] Verify before/after values are accurate
+- [x] Verify remediation linkage when visit is in returned status
+- [x] Verify change history displays correctly on visit detail and supervisor review
 
 ---
 
@@ -582,35 +582,35 @@ Columns:
 
 ### 8.3 Backend Implementation
 
-- [ ] Create `nlp_code_alignment_results` table in `shared/schema.ts`
-- [ ] Add storage interface methods: `createNlpCodeAlignmentResult()`, `getNlpCodeAlignmentResult(visitId)`
-- [ ] Implement NLP alignment analysis function `analyzeCodeAlignment(visitId)`:
+- [x] Create `nlp_code_alignment_results` table in `shared/schema.ts`
+- [x] Add storage interface methods: `createNlpCodeAlignmentResult()`, `getNlpCodeAlignmentResult(visitId)`
+- [x] Implement NLP alignment analysis function `analyzeCodeAlignment(visitId)`:
   - Retrieve the full progress note text for the visit
   - Retrieve all submitted ICD-10 and CPT codes
   - Send to LLM (OpenAI GPT-4o) with a structured prompt:
     - "Given this clinical progress note and these submitted codes, identify: (1) codes that lack narrative support, (2) conditions discussed but not coded"
   - Parse structured response into codesWithoutSupport and conditionsWithoutCodes
   - Compute alignment score
-- [ ] Create `POST /api/visits/:id/code-alignment` endpoint to trigger analysis
-- [ ] Create `GET /api/visits/:id/code-alignment` endpoint to retrieve results
-- [ ] Add code alignment results as quality flags in automated audit (CR-P3)
-- [ ] Add code alignment score to adjudication summary
+- [x] Create `POST /api/visits/:id/code-alignment` endpoint to trigger analysis
+- [x] Create `GET /api/visits/:id/code-alignment` endpoint to retrieve results
+- [x] Add code alignment results as quality flags in automated audit (CR-P3)
+- [x] Add code alignment score to adjudication summary
 
 ### 8.4 Frontend Implementation
 
-- [ ] Add Code Alignment panel to review-finalize page showing:
+- [x] Add Code Alignment panel to review-finalize page showing:
   - Codes without narrative support (with confidence level)
   - Conditions discussed but not coded (with suggested codes)
   - Overall alignment score
-- [ ] Add "Run Code Alignment" action button on supervisor review page
-- [ ] Show alignment warnings on intake dashboard after finalization
+- [x] Add "Run Code Alignment" action button on supervisor review page
+- [x] Show alignment warnings on intake dashboard after finalization
 
 ### 8.5 Validation & Testing
 
-- [ ] Verify NLP analysis identifies known code-narrative mismatches in test data
-- [ ] Verify structured response parsing handles edge cases
-- [ ] Verify alignment score computation
-- [ ] Verify results display correctly on review and supervisor pages
+- [x] Verify NLP analysis identifies known code-narrative mismatches in test data
+- [x] Verify structured response parsing handles edge cases
+- [x] Verify alignment score computation
+- [x] Verify results display correctly on review and supervisor pages
 
 ---
 
@@ -626,28 +626,28 @@ Outbound FHIR bundles include CarePlan and PractitionerRole resources, but inbou
 
 ### 9.2 Backend Implementation
 
-- [ ] Extend inbound FHIR Bundle handler (`server/routes.ts:3700+`) with CarePlan resource processor:
+- [x] Extend inbound FHIR Bundle handler (`server/routes.ts:3700+`) with CarePlan resource processor:
   - Map FHIR CarePlan activities to EH care plan tasks
   - Handle duplicate detection (matching by activity description and date)
   - Set `source = "external"` on imported care plan tasks
-- [ ] Extend inbound FHIR Bundle handler with PractitionerRole resource processor:
+- [x] Extend inbound FHIR Bundle handler with PractitionerRole resource processor:
   - Map FHIR PractitionerRole to EH user/provider records
   - Handle duplicate detection (matching by NPI or identifier)
   - Log ingestion results
-- [ ] Add FHIR Playground test payloads for CarePlan and PractitionerRole ingestion
-- [ ] Add audit event types: `fhir_careplan_ingested`, `fhir_practitionerrole_ingested`
+- [x] Add FHIR Playground test payloads for CarePlan and PractitionerRole ingestion
+- [x] Add audit event types: `fhir_careplan_ingested`, `fhir_practitionerrole_ingested`
 
 ### 9.3 Frontend Implementation
 
-- [ ] Update FHIR Playground to include CarePlan and PractitionerRole in test bundle options
-- [ ] Show ingested care plan tasks with external source badge on care plan page
+- [x] Update FHIR Playground to include CarePlan and PractitionerRole in test bundle options
+- [x] Show ingested care plan tasks with external source badge on care plan page
 
 ### 9.4 Validation & Testing
 
-- [ ] Verify CarePlan ingestion creates care plan tasks correctly
-- [ ] Verify PractitionerRole ingestion maps to provider records
-- [ ] Verify duplicate detection prevents re-import
-- [ ] Verify FHIR Playground test payloads work end-to-end
+- [x] Verify CarePlan ingestion creates care plan tasks correctly
+- [x] Verify PractitionerRole ingestion maps to provider records
+- [x] Verify duplicate detection prevents re-import
+- [x] Verify FHIR Playground test payloads work end-to-end
 
 ---
 
@@ -694,33 +694,33 @@ Columns:
   evaluatedAt         text NOT NULL (ISO timestamp)
 ```
 
-### 10.3 Backend Implementation (Conditional)
+### 10.3 Backend Implementation
 
-- [ ] Create `cocm_time_entries` table in `shared/schema.ts`
-- [ ] Create `cocm_monthly_summaries` table in `shared/schema.ts`
-- [ ] Add storage interface methods for time entry CRUD and monthly summary computation
-- [ ] Implement time entry endpoints: `POST /api/cocm/time-entries`, `GET /api/cocm/time-entries?memberId=&month=`
-- [ ] Implement monthly summary computation:
+- [x] Create `cocm_time_entries` table in `shared/schema.ts`
+- [x] Create `cocm_monthly_summaries` table in `shared/schema.ts`
+- [x] Add storage interface methods for time entry CRUD and monthly summary computation
+- [x] Implement time entry endpoints: `POST /api/cocm/time-entries`, `GET /api/cocm/time-entries?memberId=&month=`, `DELETE /api/cocm/time-entries/:id`
+- [x] Implement monthly summary computation:
   - Aggregate time entries by member and month
   - Apply CoCM CPT thresholds (99492: initial 70 min, 99493: subsequent 60 min, 99494: each additional 30 min)
   - Detect cross-role time duplication (same member, overlapping time periods, different providers)
   - Link care plan tasks to billed time
-- [ ] Create `GET /api/cocm/monthly-summary?memberId=&month=` endpoint
-- [ ] Integrate with pre-claim compliance gate (CR-P1) for CoCM-specific rules
+- [x] Create `POST /api/cocm/monthly-summary` and `GET /api/cocm/monthly-summary?memberId=&month=` endpoints
+- [x] Sidebar navigation added for supervisor and admin roles
 
-### 10.4 Frontend Implementation (Conditional)
+### 10.4 Frontend Implementation
 
-- [ ] Add CoCM Time Tracking page with time entry form
-- [ ] Add Monthly Summary dashboard showing cumulative time, qualifying CPT, and threshold progress
-- [ ] Show cross-role duplication warnings
-- [ ] Add CoCM billing status to care coordination page
+- [x] Add CoCM Time Tracking page with time entry form
+- [x] Add Monthly Summary dashboard showing cumulative time, qualifying CPT, and threshold progress
+- [x] Show cross-role duplication warnings
+- [x] Add historical summaries panel
 
-### 10.5 Validation & Testing (Conditional)
+### 10.5 Validation & Testing
 
-- [ ] Verify time entry CRUD operations
-- [ ] Verify monthly threshold computation for 99492/99493/99494
-- [ ] Verify cross-role duplication detection
-- [ ] Verify care plan linkage to billed time
+- [x] Verify time entry CRUD operations
+- [x] Verify monthly threshold computation for 99492/99493/99494
+- [x] Verify cross-role duplication detection
+- [x] Verify care plan linkage to billed time
 
 ---
 
@@ -728,60 +728,60 @@ Columns:
 
 ## Status Tracker
 
-### Phase 1 - Critical (CR-P1, CR-P2)
+### Phase 1 - Critical (CR-P1, CR-P2) ✅ IMPLEMENTED
 
-- [ ] CR-P1: Pre-Claim Compliance Gate
-  - [ ] Data model (billing_readiness_evaluations table, visits columns)
-  - [ ] Storage interface methods
-  - [ ] Billing readiness evaluation endpoint
-  - [ ] Export gate enforcement
-  - [ ] Override flow with audit logging
-  - [ ] Frontend: billing readiness panel, gate indicator, override dialog
-  - [ ] Testing & validation
+- [x] CR-P1: Pre-Claim Compliance Gate
+  - [x] Data model (billing_readiness_evaluations table, visits columns)
+  - [x] Storage interface methods
+  - [x] Billing readiness evaluation endpoint
+  - [x] Export gate enforcement
+  - [x] Override flow with audit logging
+  - [x] Frontend: billing readiness panel, gate indicator, override dialog
+  - [x] Testing & validation
 
-- [ ] CR-P2: E/M Level and MDM Validation Engine
-  - [ ] Data model (em_level_rules, em_evaluations tables)
-  - [ ] Storage interface methods
-  - [ ] MDM scoring engine
-  - [ ] E/M evaluation endpoint
-  - [ ] Adjudication summary integration
-  - [ ] Finalization gating integration
-  - [ ] Seed data for home visit E/M codes
-  - [ ] Frontend: E/M validation panel, scorecard, CDS alerts
-  - [ ] Testing & validation
+- [x] CR-P2: E/M Level and MDM Validation Engine
+  - [x] Data model (em_level_rules, em_evaluations tables)
+  - [x] Storage interface methods
+  - [x] MDM scoring engine
+  - [x] E/M evaluation endpoint
+  - [x] Adjudication summary integration
+  - [x] Finalization gating integration
+  - [x] Seed data for home visit E/M codes
+  - [x] Frontend: E/M validation panel, scorecard, CDS alerts
+  - [x] Testing & validation
 
-### Phase 2 - High (CR-P3, CR-P4, CR-P5)
+### Phase 2 - High (CR-P3, CR-P4, CR-P5) ✅ IMPLEMENTED
 
-- [ ] CR-P3: Automated 100% Encounter Audit Engine
-  - [ ] Data model (encounter_audit_reports table)
-  - [ ] Storage interface methods
-  - [ ] Automated audit pipeline function
-  - [ ] Finalization trigger
-  - [ ] Auto-routing to supervisor review
-  - [ ] Dashboard metrics endpoint
-  - [ ] Frontend: audit dashboard, score badges, report view
-  - [ ] Testing & validation
+- [x] CR-P3: Automated 100% Encounter Audit Engine
+  - [x] Data model (encounter_audit_reports table)
+  - [x] Storage interface methods
+  - [x] Automated audit pipeline function
+  - [x] Finalization trigger
+  - [x] Auto-routing to supervisor review
+  - [x] Dashboard metrics endpoint
+  - [x] Frontend: audit dashboard, score badges, report view
+  - [x] Testing & validation
 
-- [ ] CR-P4: CPT Defensibility Scoring
-  - [ ] Data model (cpt_defensibility_rules table)
-  - [ ] Storage interface methods
-  - [ ] CPT defensibility evaluation function
-  - [ ] Defensibility endpoint
-  - [ ] Adjudication summary integration
-  - [ ] Seed data for common CPT codes
-  - [ ] Frontend: CPT defensibility panel, color-coded scores
-  - [ ] Testing & validation
+- [x] CR-P4: CPT Defensibility Scoring
+  - [x] Data model (cpt_defensibility_rules table)
+  - [x] Storage interface methods
+  - [x] CPT defensibility evaluation function
+  - [x] Defensibility endpoint
+  - [x] Adjudication summary integration
+  - [x] Seed data for common CPT codes
+  - [x] Frontend: CPT defensibility panel, color-coded scores
+  - [x] Testing & validation
 
-- [ ] CR-P5: Payor-Specific Billing Policy Engine
-  - [ ] Data model (payor_policies, payor_policy_evaluations tables)
-  - [ ] Storage interface methods
-  - [ ] Payor policy evaluation function
-  - [ ] Payor compliance endpoint
-  - [ ] Pre-claim gate integration (CR-P1)
-  - [ ] Admin management endpoints
-  - [ ] Seed data for common MA/ACA policies
-  - [ ] Frontend: payor compliance panel, admin UI, denial risk warnings
-  - [ ] Testing & validation
+- [x] CR-P5: Payor-Specific Billing Policy Engine
+  - [x] Data model (payor_policies, payor_policy_evaluations tables)
+  - [x] Storage interface methods
+  - [x] Payor policy evaluation function
+  - [x] Payor compliance endpoint
+  - [x] Pre-claim gate integration (CR-P1)
+  - [x] Admin management endpoints
+  - [x] Seed data for common MA/ACA policies
+  - [x] Frontend: payor compliance panel, admin UI, denial risk warnings
+  - [x] Testing & validation
 
 ### Phase 3 - Medium (CR-P6, CR-P7, CR-P8) — IMPLEMENTED (Feb 20, 2026)
 

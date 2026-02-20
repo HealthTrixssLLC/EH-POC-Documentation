@@ -908,29 +908,6 @@ export async function seedDatabase() {
   await storage.createPlanTarget({ memberId: member3.id, targetType: "care_gap", description: "Mammogram not on file for past 2 years", priority: "high", source: "claims" });
   await storage.createPlanTarget({ memberId: member3.id, targetType: "suspecting", description: "Anxiety management review", priority: "medium", source: "clinical" });
 
-  // Sample care plan tasks
-  await storage.createTask({
-    visitId: visit1.id,
-    memberId: member1.id,
-    taskType: "lab_order",
-    title: "Order HbA1c lab test",
-    description: "Schedule HbA1c testing for diabetes management follow-up",
-    priority: "high",
-    status: "pending",
-    dueDate: nextWeek,
-  });
-
-  await storage.createTask({
-    visitId: visit1.id,
-    memberId: member1.id,
-    taskType: "referral",
-    title: "Refer to podiatrist",
-    description: "Referral for diabetic foot exam due to suspected neuropathy",
-    priority: "medium",
-    status: "pending",
-    dueDate: nextWeek,
-  });
-
   // Clinical decision rules
   await storage.createClinicalRule({
     ruleId: "PHQ2_TO_PHQ9",

@@ -77,6 +77,16 @@ export default function ReviewFinalize() {
     enabled: !!visitId,
   });
 
+  const { data: visitTasks = [] } = useQuery<any[]>({
+    queryKey: ["/api/visits", visitId, "tasks"],
+    enabled: !!visitId,
+  });
+
+  const { data: noteAddenda = [] } = useQuery<any[]>({
+    queryKey: ["/api/visits", visitId, "note-addenda"],
+    enabled: !!visitId,
+  });
+
   const { data: recommendations = [] } = useQuery<any[]>({
     queryKey: ["/api/visits", visitId, "recommendations"],
     enabled: !!visitId,
@@ -1396,6 +1406,85 @@ export default function ReviewFinalize() {
                 </div>
               </div>
             )}
+          </CardContent>
+        </Card>
+      )}
+
+      {(() => {
+        const orderedLabs = visitTasks.filter((t: any) => t.status === "ordered" && (t.taskType === "lab_order" || t.taskType === "lab" || t.description?.toLowerCase().includes("lab")));
+        const deferredItems = visitTasks.filter((t: any) => t.status === "deferred");
+        if (orderedLabs.length === 0 && deferredItems.length === 0) return null;
+        return (
+          <Card className="border-amber-200 dark:border-amber-800" data-testid="labs-pending-banner">
+            <CardContent className="p-4 space-y-3">
+              {orderedLabs.length > 0 && (
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2">
+                    <Activity className="w-4 h-4" style={{ color: "#FEA002" }} />
+                    <span className="text-sm font-semibold">Labs Pending — {orderedLabs.length} ordered lab(s) awaiting results</span>
+                  </div>
+                  <div className="text-xs text-muted-foreground space-y-1 pl-6">
+                    {orderedLabs.map((t: any) => (
+                      <div key={t.id} className="flex items-center gap-1.5">
+                        <span className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ backgroundColor: "#FEA002" }} />
+                        <span>{t.title}{t.description ? `: ${t.description}` : ""}</span>
+                      </div>
+                    ))}
+                  </div>
+                  <div className="p-2 rounded-md bg-amber-50 dark:bg-amber-900/20 text-xs text-amber-800 dark:text-amber-200">
+                    <strong>Compliance Note:</strong> This visit can be signed with "Labs Pending" documented in the plan.
+                    When results return, use <strong>Complete with Results</strong> on the Care Plan to create a dated, signed addendum
+                    to the original note. This is the recommended practice per Medicare/HIM guidance.
+                  </div>
+                </div>
+              )}
+              {deferredItems.length > 0 && (
+                <div className="space-y-1">
+                  <div className="flex items-center gap-2">
+                    <Info className="w-4 h-4 text-purple-500" />
+                    <span className="text-sm font-semibold">{deferredItems.length} item(s) deferred to follow-up</span>
+                  </div>
+                  <div className="text-xs text-muted-foreground pl-6">
+                    {deferredItems.map((t: any) => (
+                      <div key={t.id} className="flex items-center gap-1.5">
+                        <span className="w-1.5 h-1.5 rounded-full flex-shrink-0 bg-purple-400" />
+                        <span>{t.title}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        );
+      })()}
+
+      {noteAddenda.length > 0 && (
+        <Card data-testid="note-addenda-section">
+          <CardHeader className="pb-3">
+            <div className="flex items-center gap-2">
+              <FileCheck className="w-5 h-5" style={{ color: "#277493" }} />
+              <h2 className="text-base font-semibold">Note Addenda ({noteAddenda.length})</h2>
+            </div>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            {noteAddenda.map((a: any) => (
+              <div key={a.id} className="p-3 rounded-md border space-y-2" data-testid={`review-addendum-${a.id}`}>
+                <div className="flex items-center justify-between gap-2 flex-wrap">
+                  <div className="flex items-center gap-2">
+                    <Badge variant="outline" className="text-xs capitalize">{(a.addendumType || "").replace(/_/g, " ")}</Badge>
+                    {a.signedAt ? (
+                      <Badge variant="default" className="text-xs" style={{ backgroundColor: "#277493" }}>Signed</Badge>
+                    ) : (
+                      <Badge variant="secondary" className="text-xs">Unsigned</Badge>
+                    )}
+                  </div>
+                  <span className="text-xs text-muted-foreground">{new Date(a.createdAt).toLocaleString()}</span>
+                </div>
+                <p className="text-sm whitespace-pre-wrap">{a.content}</p>
+                <p className="text-xs text-muted-foreground">By: {a.authorName}</p>
+              </div>
+            ))}
           </CardContent>
         </Card>
       )}

@@ -10,7 +10,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
-import { ChevronLeft, FileText, Plus, CheckCircle2, Circle, Clock, Pencil, Trash2, Send, PauseCircle } from "lucide-react";
+import { ChevronLeft, FileText, Plus, CheckCircle2, Circle, Clock, Pencil, Trash2, Send, PauseCircle, ClipboardCheck, FlaskConical } from "lucide-react";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { usePlatform } from "@/hooks/use-platform";
@@ -71,6 +71,13 @@ export default function CarePlan() {
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [editingTask, setEditingTask] = useState<any>(null);
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
+  const [resultsTask, setResultsTask] = useState<any>(null);
+  const [resultsForm, setResultsForm] = useState({
+    resultSummary: "",
+    clinicalInterpretation: "",
+    treatmentChanges: "",
+    createAddendum: true,
+  });
 
   const [newTask, setNewTask] = useState({
     taskType: "follow_up",
@@ -149,6 +156,43 @@ export default function CarePlan() {
     },
     onError: (err: any) => {
       toast({ title: "Failed to delete", description: err.message, variant: "destructive" });
+    },
+  });
+
+  const completeWithResultsMutation = useMutation({
+    mutationFn: async () => {
+      if (!resultsTask) return;
+      await apiRequest("PATCH", `/api/tasks/${resultsTask.id}`, { status: "completed" });
+      if (resultsForm.createAddendum && visitId) {
+        const user = bundle?.visit?.npUserId;
+        await apiRequest("POST", `/api/visits/${visitId}/note-addenda`, {
+          authorId: user || "system",
+          authorName: bundle?.npName || "Provider",
+          addendumType: "lab_results",
+          content: [
+            `ADDENDUM — Lab Results Review for: ${resultsTask.title}`,
+            "",
+            `Results: ${resultsForm.resultSummary}`,
+            resultsForm.clinicalInterpretation ? `Clinical Interpretation: ${resultsForm.clinicalInterpretation}` : "",
+            resultsForm.treatmentChanges ? `Treatment Changes: ${resultsForm.treatmentChanges}` : "",
+          ].filter(Boolean).join("\n"),
+          resultSummary: resultsForm.resultSummary,
+          clinicalInterpretation: resultsForm.clinicalInterpretation || null,
+          treatmentChanges: resultsForm.treatmentChanges || null,
+          relatedTaskId: resultsTask.id,
+          signImmediately: true,
+        });
+      }
+    },
+    onSuccess: () => {
+      invalidateTasks();
+      queryClient.invalidateQueries({ queryKey: ["/api/visits", visitId, "note-addenda"] });
+      toast({ title: resultsForm.createAddendum ? "Task completed & addendum created" : "Task completed" });
+      setResultsTask(null);
+      setResultsForm({ resultSummary: "", clinicalInterpretation: "", treatmentChanges: "", createAddendum: true });
+    },
+    onError: (err: any) => {
+      toast({ title: "Failed", description: err.message, variant: "destructive" });
     },
   });
 
@@ -255,6 +299,20 @@ export default function CarePlan() {
                 >
                   <Trash2 className="w-3 h-3 mr-1" /> Remove
                 </Button>
+                {editingTask.status === "ordered" && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="text-teal-700 border-teal-300 hover:bg-teal-50 dark:text-teal-400 dark:border-teal-700 dark:hover:bg-teal-900/20"
+                    onClick={() => {
+                      setResultsTask(editingTask);
+                      setEditingTask(null);
+                    }}
+                    data-testid="button-complete-with-results"
+                  >
+                    <FlaskConical className="w-3 h-3 mr-1" /> Complete with Results
+                  </Button>
+                )}
                 <div className="flex-1" />
                 <Button
                   variant="outline"
@@ -297,6 +355,87 @@ export default function CarePlan() {
               {deleteMutation.isPending ? "Removing..." : "Remove Task"}
             </Button>
           </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={!!resultsTask} onOpenChange={(open) => { if (!open) setResultsTask(null); }}>
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <FlaskConical className="w-4 h-4" /> Complete with Results
+            </DialogTitle>
+          </DialogHeader>
+          {resultsTask && (
+            <div className="space-y-4">
+              <div className="p-3 rounded-md bg-muted/50 border">
+                <p className="text-sm font-medium">{resultsTask.title}</p>
+                {resultsTask.description && <p className="text-xs text-muted-foreground mt-1">{resultsTask.description}</p>}
+              </div>
+
+              <div className="space-y-2">
+                <Label>Results Summary *</Label>
+                <Textarea
+                  value={resultsForm.resultSummary}
+                  onChange={(e) => setResultsForm({ ...resultsForm, resultSummary: e.target.value })}
+                  placeholder="Enter lab results (e.g., HbA1c: 6.8%, Fasting glucose: 105 mg/dL)"
+                  rows={3}
+                  data-testid="input-result-summary"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label>Clinical Interpretation</Label>
+                <Textarea
+                  value={resultsForm.clinicalInterpretation}
+                  onChange={(e) => setResultsForm({ ...resultsForm, clinicalInterpretation: e.target.value })}
+                  placeholder="Your clinical interpretation of results..."
+                  rows={2}
+                  data-testid="input-clinical-interpretation"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label>Treatment Changes (if any)</Label>
+                <Textarea
+                  value={resultsForm.treatmentChanges}
+                  onChange={(e) => setResultsForm({ ...resultsForm, treatmentChanges: e.target.value })}
+                  placeholder="Any changes to treatment plan based on results..."
+                  rows={2}
+                  data-testid="input-treatment-changes"
+                />
+              </div>
+
+              <div className="flex items-start gap-2 p-3 rounded-md border" style={{ borderColor: "#277493" }}>
+                <input
+                  type="checkbox"
+                  checked={resultsForm.createAddendum}
+                  onChange={(e) => setResultsForm({ ...resultsForm, createAddendum: e.target.checked })}
+                  className="mt-1"
+                  data-testid="checkbox-create-addendum"
+                />
+                <div>
+                  <p className="text-sm font-medium">Create signed addendum to encounter note</p>
+                  <p className="text-xs text-muted-foreground">
+                    A dated, signed addendum will be attached to the original visit note documenting these results. This is the recommended compliance practice per Medicare/HIM guidance.
+                  </p>
+                </div>
+              </div>
+
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setResultsTask(null)} data-testid="button-cancel-results">
+                  Cancel
+                </Button>
+                <Button
+                  onClick={() => completeWithResultsMutation.mutate()}
+                  disabled={!resultsForm.resultSummary.trim() || completeWithResultsMutation.isPending}
+                  data-testid="button-submit-results"
+                >
+                  <ClipboardCheck className="w-4 h-4 mr-2" />
+                  {completeWithResultsMutation.isPending ? "Saving..." : "Complete & Sign Addendum"}
+                </Button>
+              </DialogFooter>
+            </div>
+          )}
         </DialogContent>
       </Dialog>
 

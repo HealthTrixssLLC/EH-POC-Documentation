@@ -2038,6 +2038,31 @@ export async function registerRoutes(
         }
       }
 
+      const tasks = await storage.getTasksByVisit(visit.id);
+      const orderedLabTasks = tasks.filter((t: any) => t.status === "ordered" && (t.taskType === "lab_order" || t.taskType === "lab" || t.description?.toLowerCase().includes("lab")));
+      const deferredTasks = tasks.filter((t: any) => t.status === "deferred");
+
+      let planNotesContent = "See care plan tasks for follow-up actions.";
+      if (orderedLabTasks.length > 0 || deferredTasks.length > 0) {
+        const planParts: string[] = [];
+        if (orderedLabTasks.length > 0) {
+          planParts.push("LABS PENDING:");
+          orderedLabTasks.forEach((t: any) => {
+            planParts.push(`- ${t.title}${t.description ? ": " + t.description : ""}`);
+          });
+          planParts.push("Results will be reviewed upon receipt. Follow-up actions will be documented via addendum to this note.");
+        }
+        if (deferredTasks.length > 0) {
+          planParts.push("DEFERRED TO FOLLOW-UP:");
+          deferredTasks.forEach((t: any) => {
+            planParts.push(`- ${t.title}${t.description ? ": " + t.description : ""}`);
+          });
+        }
+        planParts.push("");
+        planParts.push("See care plan tasks for additional follow-up actions.");
+        planNotesContent = planParts.join("\n");
+      }
+
       const existingNote = await storage.getClinicalNote(visit.id);
       const noteData = {
         visitId: visit.id,
@@ -2045,7 +2070,7 @@ export async function registerRoutes(
         hpiNotes: `${member?.firstName} ${member?.lastName} (DOB: ${member?.dob}) seen for scheduled in-home visit.`,
         examNotes: vitals.notes || "Physical exam performed. See vitals for recorded measurements.",
         assessmentMeasuresSummary: assessmentSummaries.join("\n"),
-        planNotes: "See care plan tasks for follow-up actions.",
+        planNotes: existingNote?.planNotes || planNotesContent,
         generatedAt: now,
       };
 
@@ -2137,6 +2162,79 @@ export async function registerRoutes(
     try {
       const note = await storage.getClinicalNote(req.params.id);
       return res.json(note || null);
+    } catch (err: any) {
+      return res.status(500).json({ message: err.message });
+    }
+  });
+
+  app.get("/api/visits/:id/note-addenda", async (req, res) => {
+    try {
+      const visit = await storage.getVisit(req.params.id);
+      if (!visit) return res.status(404).json({ message: "Visit not found" });
+      const addenda = await storage.getNoteAddenda(visit.id);
+      return res.json(addenda);
+    } catch (err: any) {
+      return res.status(500).json({ message: err.message });
+    }
+  });
+
+  app.post("/api/visits/:id/note-addenda", async (req, res) => {
+    try {
+      const visit = await storage.getVisit(req.params.id);
+      if (!visit) return res.status(404).json({ message: "Visit not found" });
+
+      const note = await storage.getClinicalNote(visit.id);
+      const now = new Date().toISOString();
+
+      const { authorId, authorName, addendumType, content, resultSummary, clinicalInterpretation, treatmentChanges, relatedTaskId, signImmediately } = req.body;
+
+      if (!authorId || !authorName || !content) {
+        return res.status(400).json({ message: "authorId, authorName, and content are required" });
+      }
+
+      const addendum = await storage.createNoteAddendum({
+        visitId: visit.id,
+        noteId: note?.id || null,
+        authorId,
+        authorName,
+        addendumType: addendumType || "lab_results",
+        content,
+        resultSummary: resultSummary || null,
+        clinicalInterpretation: clinicalInterpretation || null,
+        treatmentChanges: treatmentChanges || null,
+        relatedTaskId: relatedTaskId || null,
+        signedAt: signImmediately ? now : null,
+        createdAt: now,
+      });
+
+      await storage.createAuditEvent({
+        eventType: "note_addendum_created",
+        visitId: visit.id,
+        patientId: visit.memberId,
+        userId: authorId,
+        details: `Note addendum created: ${addendumType || "lab_results"}${signImmediately ? " (signed)" : ""}`,
+      });
+
+      return res.json(addendum);
+    } catch (err: any) {
+      return res.status(500).json({ message: err.message });
+    }
+  });
+
+  app.post("/api/note-addenda/:id/sign", async (req, res) => {
+    try {
+      const now = new Date().toISOString();
+      const signed = await storage.signNoteAddendum(req.params.id, now);
+      if (!signed) return res.status(404).json({ message: "Addendum not found" });
+
+      await storage.createAuditEvent({
+        eventType: "note_addendum_signed",
+        visitId: signed.visitId,
+        userId: signed.authorId,
+        details: `Note addendum signed: ${signed.addendumType}`,
+      });
+
+      return res.json(signed);
     } catch (err: any) {
       return res.status(500).json({ message: err.message });
     }

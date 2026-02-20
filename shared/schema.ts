@@ -231,6 +231,26 @@ export const insertClinicalNoteSchema = createInsertSchema(clinicalNotes).omit({
 export type InsertClinicalNote = z.infer<typeof insertClinicalNoteSchema>;
 export type ClinicalNote = typeof clinicalNotes.$inferSelect;
 
+export const clinicalNoteAddenda = pgTable("clinical_note_addenda", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  visitId: varchar("visit_id").notNull(),
+  noteId: varchar("note_id"),
+  authorId: varchar("author_id").notNull(),
+  authorName: text("author_name").notNull(),
+  addendumType: text("addendum_type").notNull().default("lab_results"),
+  content: text("content").notNull(),
+  resultSummary: text("result_summary"),
+  clinicalInterpretation: text("clinical_interpretation"),
+  treatmentChanges: text("treatment_changes"),
+  relatedTaskId: varchar("related_task_id"),
+  signedAt: text("signed_at"),
+  createdAt: text("created_at").notNull(),
+});
+
+export const insertClinicalNoteAddendumSchema = createInsertSchema(clinicalNoteAddenda).omit({ id: true });
+export type InsertClinicalNoteAddendum = z.infer<typeof insertClinicalNoteAddendumSchema>;
+export type ClinicalNoteAddendum = typeof clinicalNoteAddenda.$inferSelect;
+
 export const carePlanTasks = pgTable("care_plan_tasks", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   visitId: varchar("visit_id").notNull(),

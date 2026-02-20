@@ -18,6 +18,8 @@ import {
   XCircle,
   History,
   ArrowRight,
+  FilePlus2,
+  PenLine,
 } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -46,6 +48,11 @@ export default function VisitDetail() {
 
   const { data: changeHistory } = useQuery<any[]>({
     queryKey: ["/api/visits", visitId, "change-history"],
+    enabled: !!visitId,
+  });
+
+  const { data: addenda } = useQuery<any[]>({
+    queryKey: ["/api/visits", visitId, "note-addenda"],
     enabled: !!visitId,
   });
 
@@ -171,6 +178,36 @@ export default function VisitDetail() {
                         <strong>Signed by:</strong> {visit.signedBy}<br />
                         <strong>Date:</strong> {visit.signedAt}
                       </p>
+                    </div>
+                  )}
+                  {addenda && addenda.length > 0 && (
+                    <div className="pt-4 border-t space-y-3">
+                      <h4 className="flex items-center gap-2">
+                        <FilePlus2 className="w-4 h-4" /> Addenda ({addenda.length})
+                      </h4>
+                      {addenda.map((a: any) => (
+                        <div key={a.id} className="p-3 rounded-md border space-y-2" data-testid={`addendum-${a.id}`}>
+                          <div className="flex items-center justify-between gap-2 flex-wrap">
+                            <div className="flex items-center gap-2">
+                              <Badge variant="outline" className="text-xs capitalize">{(a.addendumType || "").replace(/_/g, " ")}</Badge>
+                              {a.signedAt ? (
+                                <Badge variant="default" className="text-xs" style={{ backgroundColor: "#277493" }}>
+                                  <PenLine className="w-3 h-3 mr-1" /> Signed
+                                </Badge>
+                              ) : (
+                                <Badge variant="secondary" className="text-xs">Unsigned</Badge>
+                              )}
+                            </div>
+                            <span className="text-xs text-muted-foreground">
+                              {new Date(a.createdAt).toLocaleString()}
+                            </span>
+                          </div>
+                          <p className="text-sm whitespace-pre-wrap">{a.content}</p>
+                          <p className="text-xs text-muted-foreground">
+                            By: {a.authorName}{a.signedAt ? ` — Signed: ${new Date(a.signedAt).toLocaleString()}` : ""}
+                          </p>
+                        </div>
+                      ))}
                     </div>
                   )}
                 </div>

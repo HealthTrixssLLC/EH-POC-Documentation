@@ -91,6 +91,8 @@ import {
   type CocmTimeEntry, type InsertCocmTimeEntry,
   cocmMonthlySummaries,
   type CocmMonthlySummary, type InsertCocmMonthlySummary,
+  clinicalNoteAddenda,
+  type ClinicalNoteAddendum, type InsertClinicalNoteAddendum,
 } from "@shared/schema";
 
 export interface IStorage {
@@ -142,6 +144,10 @@ export interface IStorage {
   getClinicalNote(visitId: string): Promise<ClinicalNote | undefined>;
   createClinicalNote(note: InsertClinicalNote): Promise<ClinicalNote>;
   updateClinicalNote(id: string, updates: Partial<ClinicalNote>): Promise<ClinicalNote | undefined>;
+
+  getNoteAddenda(visitId: string): Promise<ClinicalNoteAddendum[]>;
+  createNoteAddendum(addendum: InsertClinicalNoteAddendum): Promise<ClinicalNoteAddendum>;
+  signNoteAddendum(id: string, signedAt: string): Promise<ClinicalNoteAddendum | undefined>;
 
   getTask(id: string): Promise<CarePlanTask | undefined>;
   getTasksByVisit(visitId: string): Promise<CarePlanTask[]>;
@@ -544,6 +550,20 @@ export class DatabaseStorage implements IStorage {
 
   async updateClinicalNote(id: string, updates: Partial<ClinicalNote>) {
     const [updated] = await db.update(clinicalNotes).set(updates).where(eq(clinicalNotes.id, id)).returning();
+    return updated;
+  }
+
+  async getNoteAddenda(visitId: string) {
+    return db.select().from(clinicalNoteAddenda).where(eq(clinicalNoteAddenda.visitId, visitId)).orderBy(desc(clinicalNoteAddenda.createdAt));
+  }
+
+  async createNoteAddendum(addendum: InsertClinicalNoteAddendum) {
+    const [created] = await db.insert(clinicalNoteAddenda).values(addendum).returning();
+    return created;
+  }
+
+  async signNoteAddendum(id: string, signedAt: string) {
+    const [updated] = await db.update(clinicalNoteAddenda).set({ signedAt }).where(eq(clinicalNoteAddenda.id, id)).returning();
     return updated;
   }
 
